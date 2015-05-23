@@ -1,3 +1,44 @@
+/*!
+ Area Of Interest In Game Developing
+ Copyright Jerryzhou@outlook.com
+ Licence: Apache 2.0
+ 
+ Project: https://github.com/JerryZhou/aoi.git
+ Purpose: Resolve the AOI problem in game developing
+    with high run fps
+    with minimal memory cost,
+ 
+ Use:
+    // make game world
+    imap *map = imapmake(pos, size, divide)
+ 
+    // make a unit
+    iunit *unit = iunitmake(id, x, y);
+ 
+    // add unit to game world
+    imapaddunit(map, unit);
+ 
+    // update the unit position
+    unit->pos.x = 1;
+    unit->pos.y = 1;
+ 
+    // refresh the unit position in game world
+    imapupdateunit(map, unit):
+ 
+    // remove the unit from game world
+    imapremoveunit(map, unit);
+ 
+    // make a aoi list
+    isearchresult *result = isearchresultmake();
+ 
+    // search the unit in range of unita
+    imapsearchfromunit(map, unita, result, range)
+ 
+    // free the aoi list
+    isearchresultfree(result)
+ 
+ Please see examples for more details.
+ */
 
 #ifndef __AOI_H_
 #define __AOI_H_
