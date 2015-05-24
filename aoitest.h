@@ -14,6 +14,160 @@
 
 
 // **********************************************************************************
+// imeta
+SP_SUIT(imeta);
+
+SP_CASE(imeta, imetaget) {
+    
+    imeta *iobjmeta = imetaget(imetaindex(iobj));
+    
+    SP_TRUE(iobjmeta != NULL);
+    
+    SP_EQUAL(iobjmeta->size, sizeof(iobj));
+    SP_TRUE(strcmp(iobjmeta->name, "iobj") == 0);
+}
+
+typedef struct sp_eg_meta_obj {
+    irefdeclare;
+    int i, j;
+}sp_eg_meta_obj;
+
+// 注册类型
+iimplementregister(sp_eg_meta_obj, 0);
+
+SP_CASE(imeta, imetaregister) {
+    imeta * meta = imetaof(sp_eg_meta_obj);
+    SP_EQUAL(meta->size, sizeof(sp_eg_meta_obj));
+    SP_TRUE(strcmp(meta->name, "sp_eg_meta_obj") == 0);
+    
+    SP_EQUAL(meta->current, 0);
+    SP_EQUAL(meta->freed, 0);
+    SP_EQUAL(meta->alloced, 0);
+    
+    sp_eg_meta_obj *obj = iobjmalloc(sp_eg_meta_obj);
+    iretain(obj);
+    
+    SP_EQUAL(meta->current, sizeof(sp_eg_meta_obj) + sizeof(iobj));
+    SP_EQUAL(meta->freed, 0);
+    SP_EQUAL(meta->alloced, sizeof(sp_eg_meta_obj) + sizeof(iobj));
+    
+    irelease(obj);
+    
+    SP_EQUAL(meta->current, 0);
+    SP_EQUAL(meta->freed, sizeof(sp_eg_meta_obj) + sizeof(iobj));
+    SP_EQUAL(meta->alloced, sizeof(sp_eg_meta_obj) + sizeof(iobj));
+}
+
+typedef struct sp_test_cache_clear{
+    irefdeclare;
+    int n, m;
+}sp_test_cache_clear;
+
+// 注册类型
+iimplementregister(sp_test_cache_clear, 1);
+
+SP_CASE(imeta, iaoicacheclear) {
+    imeta * meta = imetaof(sp_test_cache_clear);
+    
+    // 初始状态的meta
+    SP_EQUAL(meta->current, 0);
+    SP_EQUAL(meta->freed, 0);
+    SP_EQUAL(meta->alloced, 0);
+    
+    SP_EQUAL(meta->cache.capacity, 1);
+    SP_EQUAL(meta->cache.length, 0);
+    
+    sp_test_cache_clear *clear = iobjmalloc(sp_test_cache_clear);
+    iretain(clear);
+    
+    int size = sizeof(sp_test_cache_clear) + sizeof(iobj);
+    
+    // 创建一个对象后的meta
+    SP_EQUAL(meta->cache.capacity, 1);
+    SP_EQUAL(meta->cache.length, 0);
+    
+    SP_EQUAL(iobjistype(clear, sp_test_cache_clear), iiok);
+    SP_EQUAL(iobjistype(clear, iobj), iino);
+    
+    SP_EQUAL(meta->current, size);
+    SP_EQUAL(meta->freed, 0);
+    SP_EQUAL(meta->alloced, size);
+    
+    // 第一个对象释放后进入缓冲区的meta
+    irelease(clear);
+    SP_EQUAL(meta->current, size);
+    SP_EQUAL(meta->freed, 0);
+    SP_EQUAL(meta->alloced, size);
+    
+    SP_EQUAL(meta->cache.capacity, 1);
+    SP_EQUAL(meta->cache.length, 1);
+    
+    // 从缓冲区拿到一个对象后的meta
+    sp_test_cache_clear *newclear = iobjmalloc(sp_test_cache_clear);
+    iretain(newclear);
+    
+    SP_EQUAL(newclear, clear);
+    
+    SP_EQUAL(meta->current, size);
+    SP_EQUAL(meta->freed, 0);
+    SP_EQUAL(meta->alloced, size);
+    
+    SP_EQUAL(meta->cache.capacity, 1);
+    SP_EQUAL(meta->cache.length, 0);
+    
+    // 缓冲区已经没有了，重新创建一个对象的meta
+    sp_test_cache_clear *nextclear = iobjmalloc(sp_test_cache_clear);
+    iretain(nextclear);
+    
+    SP_EQUAL(meta->current, 2*size);
+    SP_EQUAL(meta->freed, 0);
+    SP_EQUAL(meta->alloced, 2*size);
+    
+    SP_EQUAL(meta->cache.capacity, 1);
+    SP_EQUAL(meta->cache.length, 0);
+    
+    //  把新对象放入缓存后的meta
+    irelease(nextclear);
+    SP_EQUAL(meta->current, 2*size);
+    SP_EQUAL(meta->freed, 0);
+    SP_EQUAL(meta->alloced, 2*size);
+    
+    SP_EQUAL(meta->cache.capacity, 1);
+    SP_EQUAL(meta->cache.length, 1);
+   
+    // 缓冲区已经满了，直接释放一个对象后的meta
+    irelease(newclear);
+    SP_EQUAL(meta->current, size);
+    SP_EQUAL(meta->freed, size);
+    SP_EQUAL(meta->alloced, 2*size);
+    
+    SP_EQUAL(meta->cache.capacity, 1);
+    SP_EQUAL(meta->cache.length, 1);
+    
+    // 释放对象缓冲区后的meta
+    iaoicacheclear(meta);
+    SP_EQUAL(meta->current, 0);
+    SP_EQUAL(meta->freed, 2*size);
+    SP_EQUAL(meta->alloced, 2*size);
+    
+    SP_EQUAL(meta->cache.capacity, 1);
+    SP_EQUAL(meta->cache.length, 0);
+}
+
+SP_CASE(imeta, iaoiistype) {
+    sp_test_cache_clear *clear = iobjmalloc(sp_test_cache_clear);
+    iretain(clear);
+    
+    SP_EQUAL(iobjistype(clear, sp_test_cache_clear), iiok);
+    SP_EQUAL(iobjistype(clear, iobj), iino);
+    
+    // 释放对象
+    irelease(clear);
+    // 清理缓冲区
+    iaoicacheclear(imetaof(sp_test_cache_clear));
+}
+
+// **********************************************************************************
 // time
 SIMPLETEST_SUIT(time);
 

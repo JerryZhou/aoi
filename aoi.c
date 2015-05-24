@@ -23,11 +23,14 @@ int64_t gfreesize = 0;
 int64_t gholdsize = 0;
 
 #undef __ideclaremeta
-#define __ideclaremeta(type, cap) {.name=#type, .size=sizeof(type), .current=0, .alloced=0, .freed=0, .list={.root=NULL, .length=0, .capacity=cap}}
+#define __ideclaremeta(type, cap) {.name=#type, .size=sizeof(type), .current=0, .alloced=0, .freed=0, .cache={.root=NULL, .length=0, .capacity=cap}}
 // 所有类型的元信息系统
 imeta gmetas[] = {__iallmeta,
     __ideclaremeta(imeta, 0)
 };
+
+// 所有自定义的类型原系统
+imeta gmetasuser[IMaxMetaCountForUser] = {};
 
 #undef __ideclaremeta
 #define __ideclaremeta(type, cap) EnumMetaTypeIndex_##type
@@ -36,25 +39,45 @@ imeta gmetas[] = {__iallmeta,
 #define __countof(array) (sizeof(array)/sizeof(array[0]))
 #endif
 
+#ifndef __max
+#define __max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+// 内置的meta个数
+static int const gmetacount = __countof(gmetas);
+static int gmetacountuser = 0;
+
 // 获取类型的元信息
 imeta *imetaget(int idx) {
     if (idx < 0) {
-        idx = 0;
+        return NULL;
     }
-    if (idx >= __countof(gmetas)) {
-        idx = __countof(gmetas)-1;
+    if (idx < gmetacount) {
+        return &gmetas[idx];
     }
-    return &gmetas[idx];
+    idx -= gmetacount;
+    if (idx <  gmetacountuser ) {
+        return &gmetasuser[idx];
+    }
+    return NULL;
+}
+
+// 也可以手动注册一个元信息来管理自己的对象: 然后就可以通过 iobjmallocuser 进行对象内存管理
+int imetaregister(const char* name, int size, int capacity) {
+    gmetasuser[gmetacountuser].name = name;
+    gmetasuser[gmetacountuser].size = size;
+    gmetasuser[gmetacountuser].cache.capacity = capacity;
+    return gmetacount + gmetacountuser++;
 }
 
 // 尝试从缓冲区拿对象
 iobj *imetapoll(imeta *meta) {
     iobj *obj = NULL;
-    if (meta->list.length) {
-        obj = meta->list.root;
-        meta->list.root = meta->list.root->next;
+    if (meta->cache.length) {
+        obj = meta->cache.root;
+        meta->cache.root = meta->cache.root->next;
         obj->next = NULL;
-        --meta->list.length;
+        --meta->cache.length;
         memset(obj->addr, 0, obj->meta->size);
     }else {
         int newsize = sizeof(iobj) + meta->size;
@@ -81,10 +104,10 @@ void imetaobjfree(iobj *obj) {
 
 // Meta 的缓冲区管理
 void imetapush(iobj *obj) {
-    if (obj->meta->list.length < obj->meta->list.capacity) {
-        obj->next = obj->meta->list.root;
-        obj->meta->list.root = obj;
-        ++obj->meta->list.length;
+    if (obj->meta->cache.length < obj->meta->cache.capacity) {
+        obj->next = obj->meta->cache.root;
+        obj->meta->cache.root = obj;
+        ++obj->meta->cache.length;
     } else {
         imetaobjfree(obj);
     }
@@ -96,24 +119,27 @@ void *iaoicalloc(imeta *meta) {
     return obj->addr;
 }
 
+// 偏移一下获得正确的内存对象
+#define __iobj(p) (iobj*)((char*)(p) - sizeof(iobj) + 4)
+
 // 释放内存：会经过Meta的Cache
 void iaoifree(void *p) {
-    iobj *newp = (iobj*)((char*)(p) - sizeof(iobj) + 4);
+    iobj *newp = __iobj(p);
     imetapush(newp);
 }
 
 // 尽可能的释放Meta相关的Cache
 void iaoicacheclear(imeta *meta) {
-    icheck(meta->list.length);
+    icheck(meta->cache.length);
     iobj *next = NULL;
-    iobj *cur = meta->list.root;
+    iobj *cur = meta->cache.root;
     while (cur) {
         next = cur->next;
         imetaobjfree(cur);
         cur = next;
     }
-    meta->list.root = NULL;
-    meta->list.length = 0;
+    meta->cache.root = NULL;
+    meta->cache.length = 0;
 }
 
 // 打印当前内存状态
@@ -128,13 +154,32 @@ void iaoimemorystate() {
              gmetas[i].name,    gmetas[i].size,
              gmetas[i].alloced, gmetas[i].freed, gmetas[i].current,
              gmetas[i].current/(gmetas[i].size+sizeof(iobj)));
-        if (gmetas[i].list.capacity) {
+        if (gmetas[i].cache.capacity) {
             ilog("[AOI-Memory] Obj: (%s, %d) ---> cache: (%d/%d) \n",
                  gmetas[i].name,    gmetas[i].size,
-                 gmetas[i].list.length, gmetas[i].list.capacity);
+                 gmetas[i].cache.length, gmetas[i].cache.capacity);
         }
     }
     ilog("[AOI-Memory] *************************************************************** End\n");
+}
+
+// 获取指定对象的meta信息
+imeta *iaoigetmeta(void *p) {
+    icheckret(p, NULL);
+    iobj *obj = __iobj(p);
+    return obj->meta;
+}
+
+// 指定对象是响应的类型
+int iaoiistype(void *p, const char* type) {
+    icheckret(type, iino);
+    imeta *meta = iaoigetmeta(p);
+    icheckret(meta, iino);
+    
+    if (strncmp(type, meta->name, __max(strlen(meta->name), strlen(type))) == 0) {
+        return iiok;
+    }
+    return iino;
 }
 
 #else
@@ -501,6 +546,17 @@ iref *irefcachepoll(irefcache *cache) {
 
 // 释放到缓存里面
 void irefcachepush(irefcache *cache, iref *ref) {
+    icheck(ref);
+    // just make sure we should be cacheable
+    if (ref->cache != cache) {
+        ref->cache = cache;
+        if (ref->cache) {
+            ref->watch = _ientrywatch_cache;
+        } else {
+            ref->watch = NULL;
+        }
+    }
+    // release the ref
     irelease(ref);
 }
 

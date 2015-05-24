@@ -60,6 +60,8 @@
  * 4. 整个搜索过程，支持自定义过滤器进行单元过滤
  * 5. AOI 支持对象的内存缓冲区管理
  * 6. 线程不安全
+ * 
+ * 建议启用 iimeta (1)
  */
 
 /* Set up for C function definitions, even when using C++ */
@@ -163,6 +165,10 @@ typedef struct iname {
 #define ifree(p) free(p)
     
 #if iimeta  // if iimeta
+    
+// 最多支持100个类型对象
+#define IMaxMetaCountForUser 100
+    
 // 前置声明
 struct imeta;
     
@@ -174,17 +180,17 @@ typedef struct iobj {
     char addr[];
 }iobj;
     
-// 基础内存对象列表
-typedef struct iobjlist {
+// 基础内存对象缓存
+typedef struct iobjcache {
     struct iobj *root;
     int length;
     int capacity;
-}iobjlist;
+}iobjcache;
 
 // 编码对象的元信息
 typedef struct imeta {
     const char* name;
-    struct iobjlist list;
+    struct iobjcache cache;
     int size;
     int64_t current;
     int64_t alloced;
@@ -193,8 +199,23 @@ typedef struct imeta {
     
 // 获取类型的元信息
 imeta *imetaget(int idx);
+    
+// 也可以手动注册一个元信息来管理自己的对象: 然后就可以通过 iobjmalloc 进行对象内存管理
+// 将会返回对象的meta索引
+int imetaregister(const char* name, int size, int capacity);
+// 注册宏
+#define iregister(type, capacity) imetaregister(#type, sizeof(type), capacity)
+// 声明
+#define iidelcareregister(type) extern int imeta_##type##_index
+// 注册宏
+#define iimplementregister(type, capacity) int imeta_##type##_index = iregister(type, capacity)
+// 获取索引
+#define imetaindex(type) imeta_##type##_index
+// 获取meta
+#define imetaof(type) imetaget(imetaindex(type))
 
-#define __ideclaremeta(type, capacity) EnumMetaTypeIndex_##type
+// 定义所有内部对象的meta索引
+#define __ideclaremeta(type, capacity) imetaindex(type)
 #define __iallmeta \
     __ideclaremeta(iobj, 0), \
     __ideclaremeta(iref, 0),\
@@ -225,8 +246,15 @@ void iaoicacheclear(imeta *meta);
 // 打印当前内存状态
 void iaoimemorystate();
     
-#define iobjmalloc(type) ((type*)iaoicalloc(imetaget(__ideclaremeta(type, 0))))
+// 获取指定对象的meta信息
+imeta *iaoigetmeta(void *p);
+    
+// 指定对象是响应的类型: 一致返回iiok, 否则返回 iino
+int iaoiistype(void *p, const char* type);
+    
+#define iobjmalloc(type) ((type*)iaoicalloc(imetaof(type)))
 #define iobjfree(p) do { iaoifree(p); p = NULL; } while(0)
+#define iobjistype(p, type) iaoiistype((void*)p, #type)
     
 #else   // #if iimeta
     
@@ -235,6 +263,7 @@ void iaoimemorystate() ;
     
 #define iobjmalloc(type) ((type*)icalloc(1, sizeof(type)))
 #define iobjfree(p) do { ifree(p); p = NULL; } while(0)
+#define iobjistype(p, type) iino
     
 #endif  // #if iimeta
 
@@ -360,7 +389,8 @@ irefcache *irefcachemake(int capacity, icachenewentry newentry);
 iref *irefcachepoll(irefcache *cache); 
 
 // 释放到缓存里面: 只有 ref 真正没有被其他用到的时候才会回收到缓冲区重复使用
-// irefcachepush 更 irelease 没有区别
+// 可以用来代替 irelease 的调用
+// 即使不是通过irefcachepoll 获取的对象也可以放入缓存里面只要类型一致
 void irefcachepush(irefcache *cache, iref *ref); 
 
 // 释放缓存
