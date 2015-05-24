@@ -300,6 +300,9 @@ void irefrelease(iref *ref);
 
 // 释放宏
 #define irelease(p) do { if(p) irefrelease((iref*)(p)); } while(0)
+    
+// 应用计数的赋值操作
+#define iassign(dst, src) do { if(src != dst) { irelease(dst); iretain(src); dst = src; } } while(0)
 
 // 前置声明
 struct ireflist;
@@ -368,7 +371,7 @@ typedef iref* (*icachenewentry)();
 
 // 缓存弃守接口: 缓冲区放不下了就会调用这个
 typedef void (*icacheenvictedentry)(iref *ref);
-
+   
 // Cache
 // 从缓存里面拿的东西，是需要释放的
 // 缓存参与引用计数对象的管理
@@ -391,8 +394,11 @@ iref *irefcachepoll(irefcache *cache);
 // 释放到缓存里面: 只有 ref 真正没有被其他用到的时候才会回收到缓冲区重复使用
 // 可以用来代替 irelease 的调用
 // 即使不是通过irefcachepoll 获取的对象也可以放入缓存里面只要类型一致
-void irefcachepush(irefcache *cache, iref *ref); 
-
+void irefcachepush(irefcache *cache, iref *ref);
+    
+// 当前缓冲区清理, 不能直接操作里面的list
+void irefcacheclear(irefcache *cache);
+    
 // 释放缓存
 void irefcachefree(irefcache *cache);
     

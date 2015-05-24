@@ -16,6 +16,11 @@
 #define iunused(v) (void)(v)
 #define ilog(...) printf(__VA_ARGS__)
 
+// 状态操作宏
+#define _state_add(value, state) value |= state
+#define _state_remove(value, state) value &= ~state
+#define _state_is(value, state) (value & state)
+
 #if iimeta
 // 内存统计
 int64_t gcallocsize = 0;
@@ -391,8 +396,7 @@ do {\
 // 构造列表节点
 irefjoint* irefjointmake(iref *value) {
     irefjoint *joint = iobjmalloc(irefjoint);
-    joint->value = value;
-    iretain(value);
+    iassign(joint->value, value);
     return joint;
 }
 
@@ -502,7 +506,9 @@ void ireflistfree(ireflist *list) {
 void _ientrywatch_cache(iref *ref) {
     icheck(ref->ref == 0);
     
+    // only move ref to live cache
     irefcache *cache = ref->cache;
+    
     int len = ireflistlen(cache->cache);
     if (len < cache->capacity) {
         ireflistadd(cache->cache, ref);
@@ -522,13 +528,12 @@ irefcache *irefcachemake(int capacity, icachenewentry newentry) {
 
 // 从缓存里面取一个
 iref *irefcachepoll(irefcache *cache) {
-    iref *ref;
+    iref *ref = NULL;
     irefjoint* joint = ireflistfirst(cache->cache);
     if (joint) {
         ireflistremovejoint(cache->cache, joint);
         
-        ref = joint->value;
-        iretain(ref);
+        iassign(ref, joint->value);
         
         irefjointfree(joint);
         
@@ -560,8 +565,20 @@ void irefcachepush(irefcache *cache, iref *ref) {
     irelease(ref);
 }
 
+// 清理缓冲区
+void irefcacheclear(irefcache *cache) {
+    icheck(cache);
+    int oldcapacity = cache->capacity;
+    cache->capacity = 0;
+    ireflistremoveall(cache->cache);
+    cache->capacity = oldcapacity;
+}
+
 // 释放缓存
 void irefcachefree(irefcache *cache) {
+    icheck(cache);
+    // 因为Cache会劫持对象的释放，所以释放对象的时候应该停掉Cache的劫持
+    cache->capacity = 0;
     // 释放缓存的引用对象
     ireflistfree(cache->cache);
     // 释放缓存自己
@@ -584,11 +601,6 @@ do { \
     memset(dst.code, 0, IMaxDivide); \
     memcpy(dst.code, src.code, count); \
 } while(0)
-
-// 状态操作宏
-#define _state_add(value, state) value |= state
-#define _state_remove(value, state) value &= ~state
-#define _state_is(value, state) (value & state)
 
 // 释放几个基本单元
 iunit * imakeunit(iid id, ireal x, ireal y) {
@@ -748,8 +760,8 @@ inode* addnodetoparent(imap *map, inode *node, int codei, int idx, icode *code) 
     imapgenpos(map, &child->code.pos, &child->code);
     
     // 加入父节点
-    node->childs[codei] = child;
     node->childcnt++;
+    node->childs[codei] = child;
     
 #if open_log_node
     ilog("[IMAP-Node] Add Node (%d, %s, %p) To Node (%d, %s, %p) in %d\n",
@@ -785,12 +797,12 @@ int removenodefromparent(imap *map, inode *node) {
     }
     
     // 移除出父节点
-    node->parent->childs[node->codei] = NULL;
     node->parent->childcnt--;
+    node->parent->childs[node->codei] = NULL;
+    node->parent = NULL;
     
     // reset
     node->level = -1;
-    node->parent = NULL;
     node->codei = -1;
     node->code.code[0] = 0;
     node->tick = 0;
@@ -1062,8 +1074,12 @@ void imapfree(imap *map) {
     imapstatedesc(map, EnumMapStateAll, "[MAP-Free]", "[MAP-Free]");
     // 释放四叉树
     ifreenodetree(map->root);
-    // 释放叶子缓冲区
+    // 释放节点缓冲区
     irefcachefree(map->nodecache);
+    // 释放叶子节点链表
+    while (map->leaf) {
+        justremoveleaf(map, map->leaf);
+    }
     // 释放地图本身
     iobjfree(map);
 }
@@ -1550,9 +1566,7 @@ void isearchresultattach(isearchresult* result, ifilter *filter) {
     icheck(result);
     icheck(result->filter != filter);
     
-    irelease(result->filter);
-    iretain(filter);
-    result->filter = filter;
+    iassign(result->filter, filter);
 }
 
 // 移除过滤器

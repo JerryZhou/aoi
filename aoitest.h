@@ -12,6 +12,16 @@
 #include "aoi.h"
 #include "simpletest.h"
 
+// 清理掉所有缓存并打印内存日志
+void clearalliaoicacheandmemrorystate() {
+    iaoicacheclear(imetaof(ifilter));
+    iaoicacheclear(imetaof(iunit));
+    iaoicacheclear(imetaof(inode));
+    iaoicacheclear(imetaof(ireflist));
+    iaoicacheclear(imetaof(irefjoint));
+    
+    iaoimemorystate();
+}
 
 // **********************************************************************************
 // imeta
@@ -166,6 +176,7 @@ SP_CASE(imeta, iaoiistype) {
     // 清理缓冲区
     iaoicacheclear(imetaof(sp_test_cache_clear));
 }
+
 
 // **********************************************************************************
 // time
@@ -899,7 +910,7 @@ SIMPLETEST_CASE(inode, nothing) {
 // imap
 SIMPLETEST_SUIT(imap);
 
-imap *map; // {.x=0, .y=0}, {.w=8, .h=8}, 3
+imap *map = NULL; // {.x=0, .y=0}, {.w=8, .h=8}, 3
 // 是一个左闭右开区间
 // AAA: [(0,0) -- (1.0, 1.0))
 // AAD: [(1.0, 1.0) --- (2.0, 2.0))
@@ -936,10 +947,22 @@ imap *map; // {.x=0, .y=0}, {.w=8, .h=8}, 3
  |AAA| AAC| ACA| ACC| CAA| CAC| CCA| CCC|
  |_______________________________________
   */
-SIMPLETEST_CASE(imap, imapmake) {
+void free_test_map() {
+    if(map) {
+        imapfree(map);
+        map = NULL;
+    }
+}
+
+void make_test_map() {
+    free_test_map();
     ipos pos = {.x=0, .y=0};
     isize size = {.w=8, .h=8};
     map = imapmake(&pos, &size, 3);
+}
+
+SIMPLETEST_CASE(imap, imapmake) {
+    make_test_map();
     
     SIMPLETEST_EQUAL(map->divide, 3);
     SIMPLETEST_EQUAL(map->state.nodecount, 0);
@@ -969,10 +992,11 @@ SIMPLETEST_CASE(imap, imapmake) {
     SIMPLETEST_EQUAL(map->distances[1], 32);
     SIMPLETEST_EQUAL(map->distances[2], 8);
     SIMPLETEST_EQUAL(map->distances[3], 2);
+    
+    
 }
 
 SIMPLETEST_CASE(imap, imapgencode) {
-    
     icode code;
     
     ipos p = {.x = 0, .y = 0};
@@ -1251,7 +1275,7 @@ SIMPLETEST_CASE(imap, complexANDimapaddunitANDimapremoveunitANDimapgetnode) {
     SIMPLETEST_EQUAL(map->state.leafcount, 1);
     SIMPLETEST_EQUAL(map->state.unitcount, 3);
     
-    SIMPLETEST_EQUAL(ireflistlen(map->nodecache->cache), 1);
+    SIMPLETEST_EQUAL(irefcachesize(map->nodecache), 1);
     
     imapremoveunit(map, __getunitfor(0));
     SIMPLETEST_EQUAL(map->state.nodecount, 3);
@@ -1269,7 +1293,7 @@ SIMPLETEST_CASE(imap, complexANDimapaddunitANDimapremoveunitANDimapgetnode) {
     SIMPLETEST_EQUAL(map->state.leafcount, 0);
     SIMPLETEST_EQUAL(map->state.unitcount, 0);
     
-    SIMPLETEST_EQUAL(ireflistlen(map->nodecache->cache), 4);
+    SIMPLETEST_EQUAL(irefcachesize(map->nodecache), 4);
     
     SIMPLETEST_EQUAL(NULL, __getunitfor(0)->node);
     SIMPLETEST_EQUAL(NULL, __getunitfor(1)->node);
@@ -1467,8 +1491,6 @@ SIMPLETEST_CASE(imap, imapupdateunit) {
 
 SIMPLETEST_CASE(imap, end) {
     
-    ireflistremoveall(map->nodecache->cache);
-    
     SIMPLETEST_TRUE();
 }
 
@@ -1477,6 +1499,8 @@ SIMPLETEST_CASE(imap, end) {
 SIMPLETEST_SUIT(ifilter);
 
 SIMPLETEST_CASE(ifilter, ifiltermake) {
+    make_test_map();
+    
     ifilter *filter = ifiltermake();
     
     SIMPLETEST_EQUAL(ifilterchecksum(map, filter), 0);
@@ -1815,7 +1839,6 @@ SIMPLETEST_CASE(ifilter, imapcollectunit) {
 }
 
 SIMPLETEST_CASE(ifilter, end) {
-    ireflistremoveall(map->nodecache->cache);
     SIMPLETEST_TRUE();
 }
 
@@ -2170,8 +2193,7 @@ SIMPLETEST_CASE(searching, end) {
     
     imapfree(map);
     
-    // out put all the memory information after unit test
-    iaoimemorystate();
+    clearalliaoicacheandmemrorystate();
 }
 
 #endif
