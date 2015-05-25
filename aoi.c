@@ -691,6 +691,9 @@ int justaddunit(imap *map, inode *node, iunit *unit){
     
     node->unitcnt++;
     node->tick = unit->tick;
+#if open_node_utick
+    node->utick = unit->tick;
+#endif
     
 #if open_log_unit
     ilog("[IMAP-Unit] Add Unit (%lld, %s) To Node (%d, %s)\n",
@@ -716,6 +719,10 @@ int justremoveunit(imap *map, inode *node, iunit *unit) {
     
     node->unitcnt--;
     node->tick = igetnextnano();
+    
+#if open_node_utick
+    node->utick = node->tick;
+#endif
     
     unit->node = NULL;
     unit->tick = node->tick;
@@ -802,10 +809,14 @@ int removenodefromparent(imap *map, inode *node) {
     node->parent = NULL;
     
     // reset
-    node->level = -1;
-    node->codei = -1;
+    node->level = 0;
+    node->codei = 0;
     node->code.code[0] = 0;
     node->tick = 0;
+    
+#if open_node_utick
+    node->utick = 0;
+#endif
     
     // 释放节点
     icacheput(map->nodecache, node);
@@ -861,6 +872,9 @@ i       // log it
     if (ok == iiok) {
         if (child) {
             node->tick = child->tick;
+#if open_node_utick
+            node->utick = child->tick;
+#endif
         }else {
             // 已经在 justaddunit 更新了节点时间戳
         }
@@ -902,6 +916,9 @@ int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop
         // 更新时间
         if (child) {
             node->tick = child->tick;
+#if open_node_utick
+            node->utick = child->tick;
+#endif
         }else {
             // 已经在 justremoveunit 更新了时间戳
         }
@@ -1186,7 +1203,7 @@ inode *imapgetnode(imap *map, icode *code, int level, int find) {
     inode *node = map->root;
     while(node->level < level) {
         int codei = code->code[node->level] - 'A';
-        // 孩子草畜返回了
+        // 孩子超出了
         if (!(codei>=0 && codei<IMaxChilds)) {
             break;
         }
@@ -1207,6 +1224,17 @@ inode *imapgetnode(imap *map, icode *code, int level, int find) {
     return node->level == level ? node : NULL;
 }
 
+// 刷新更新时间点
+#if open_node_utick
+void imaprefreshutick(inode *node, int64_t utick) {
+    icheck(node);
+    while (node) {
+        node->utick = utick;
+        node = node->parent;
+    }
+}
+#endif
+
 // 更新一个单元在地图上的数据
 int imapupdateunit(imap *map, iunit *unit) {
     icheckret(map, iino);
@@ -1219,6 +1247,12 @@ int imapupdateunit(imap *map, iunit *unit) {
     int offset;
     icode code;
     int64_t nano;
+    inode *impact;
+    inode *removeimpact;
+    inode *addimpact;
+#if open_node_utick
+    int64_t utick = 0;
+#endif
     
     // 计算新的偏移量，如果偏移量相对于当前叶子节点原点偏移量小于节点大小
     ireal dsx = unit->pos.x - unit->node->code.pos.x;
@@ -1227,6 +1261,11 @@ int imapupdateunit(imap *map, iunit *unit) {
         && dsy>=0 && dsy<map->nodesizes[unit->node->level].h) {
 #if open_log_unit_update
         ilog("[MAP-Unit] Update:  Change Do Not Need Trace (%.3f, %.3f)\n", dsx, dsy);
+#endif
+        // 如果需要支持utick 依然需要更新所有父级节点的utick
+        // 获取影响的顶级节,  更新父亲节点影响节点的utick点
+#if open_node_utick
+        imaprefreshutick(unit->node, igetnextnano());
 #endif
         return iiok;
     }
@@ -1244,30 +1283,50 @@ int imapupdateunit(imap *map, iunit *unit) {
     }
     // 没有任何变更: 虽然距离很大，但是编码不变（在地图边界外部会出现这种情况）
     if (offset == map->divide) {
+        // 如果需要支持utick 依然需要更新所有父级节点的utick
+        // 获取影响的顶级节点
+        // 更新父亲节点影响节点的utick
+#if open_node_utick
+        imaprefreshutick(unit->node, igetnextnano());
+#endif
         return iiok;
     }
     // 设置编码里面的坐标
     unit->code.pos.x = unit->pos.x;
     unit->code.pos.y = unit->pos.y;
     // 获取影响的顶级节点
-    inode *impact = imapgetnode(map, &code, offset, EnumFindBehaviorFuzzy);
+    impact = imapgetnode(map, &code, offset, EnumFindBehaviorFuzzy);
     
     // 从影响的顶级节点的具体子节点移除
-    inode *removeimpact = impact->childs[unit->code.code[offset]-'A'];
+    removeimpact = impact->childs[unit->code.code[offset]-'A'];
     ok = imapremoveunitfrom(map, removeimpact, unit, removeimpact->level, impact);
     // 新的编码
     copycode(unit->code, code, map->divide);
     // 加入到新的节点单元
     if (ok == iiok) {
+#if open_node_utick
+        utick = removeimpact->utick;
+#endif
         // 从当前顶级节点开始加入节点
         int codei = unit->code.code[offset]-'A';
-        inode *addimpact = impact->childs[codei];
+        addimpact = impact->childs[codei];
         if (!addimpact) {
             addimpact = addnodetoparent(map, impact, codei, impact->level, &code);
         }
         
         ok = imapaddunitto(map, addimpact, unit, addimpact->level);
+        #if open_node_utick
+        if (ok == iiok) {
+            utick = addimpact->utick;
+        }
+        #endif
     }
+    // 更新父亲节点影响节点的utick
+#if open_node_utick
+    if (utick) {
+        imaprefreshutick(impact, utick);
+    }
+#endif
     iplog(__Since(nano), "[MAP-Unit] Update  Unit(%lld) To (%s, %.3f, %.3f)\n",
               unit->id, code.code, code.pos.x, code.pos.y);
     
@@ -1629,20 +1688,36 @@ void isearchresultrefreshfromsnap(imap *map, isearchresult *result) {
 }
 
 // 计算节点列表的指纹信息
-int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick) {
+int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_t *maxutick) {
     int64_t hash = 0;
+#if open_node_utick
+    int64_t utick = 0;
+#endif
     int64_t tick = 0;
     irefjoint *joint = ireflistfirst(list);
     while (joint) {
         inode *node = icast(inode, joint->value);
+#if open_node_utick
+        if (node->utick > utick) {
+            utick = node->utick;
+        }
+#endif
         if (node->tick > tick) {
             tick = node->tick;
         }
+        
         ihash(&hash, node->tick);
         joint = joint->next;
     }
     if (maxtick) {
         *maxtick = tick;
+    }
+    if (maxutick) {
+#if open_node_utick
+        *maxutick = utick;
+#else
+        *maxutick = 0;
+#endif
     }
     return hash;
 }
@@ -1655,15 +1730,27 @@ void imapsearchfromnode(imap *map, inode *node,
     int64_t nano = __Nanos;
     // 校验码
     int64_t maxtick;
+    int64_t maxutick;
     int64_t checksum = ifilterchecksum(map, result->filter);
-    int64_t nodechecksum = imapchecksumnodelist(map, innodes, &maxtick);
-    maxtick = maxtick > node->tick ? maxtick : node->tick;
+    int64_t nodechecksum = imapchecksumnodelist(map, innodes, &maxtick, &maxutick);
     ihash(&checksum, nodechecksum);
-    // 结果时间戳和节点时间戳进行比对，看是否需要重新搜索
-    if (result->tick >= maxtick && result->checksum == checksum) {
-        isearchresultrefreshfromsnap(map, result);
-        return;
+    if (result->checksum == checksum) {
+        // 上下文的环境一样，而且没有人动过或者变更过相关属性，直接返回了
+        // 如果不支持 utick , 则maxutick == 0
+        if (result->tick >= maxutick) {
+            return;
+        }
+        
+        // 有人动过，但动作幅度不大 ： 直接从快照里面找吧
+        maxtick = maxtick > node->tick ? maxtick : node->tick;
+        if (result->tick >= maxtick) {
+            isearchresultrefreshfromsnap(map, result);
+            return;
+        }
     }
+    // 重新搜索赋予最大的tick
+    maxtick = __max(maxtick, maxutick);
+    
     // 释放旧的单元，重新搜索
     isearchresultclean(result);
     
@@ -1831,6 +1918,79 @@ void imapsearchfromunit(imap *map, iunit *unit,
     // 从节点范围搜索
     imapsearchfrompos(map, &unit->pos, result, range);
     _state_remove(unit->state, EnumUnitStateSearching);
+}
+
+// 找一种方式打印出地图的树结构
+// ************************************************************
+// ************************************************************
+/**
+ └── [ROOT] tick: 1432538485114727, utick: 1432538485114727
+    └── [A] tick: 1432538485114727, utick: 1432538485114727
+        └── [AA] tick: 1432538485114727, utick: 1432538485114727
+            ├── [AAA] tick: 1432538485114725, utick: 1432538485114725 units(2,1,0)
+            └── [AAD] tick: 1432538485114727, utick: 1432538485114727 units(3)
+ */
+// 打印节点
+void _aoi_printnode(int require, inode *node, const char* prefix, int tail) {
+    // 前面
+    printf("%s", prefix);
+    if (tail) {
+        printf("%s", "└── ");
+    }else {
+        printf("%s", "├── ");
+    }
+    // 打印节点
+    printf("[%s]", node->code.code);
+    // 打印节点时间戳
+    if (require & EnumNodePrintStateTick) {
+        printf(" tick(%lld", node->tick);
+#if open_node_utick
+        printf(",%lld", node->utick);
+#endif
+        printf(")");
+    }
+    // 打印节点单元
+    if ((require & EnumNodePrintStateUnits) && node->units) {
+        printf(" units(");
+        iunit *u = node->units;
+        while (u) {
+            printf("%lld%s", u->id, u->next ? ",":")");
+            u= u->next;
+        }
+    }
+    printf("\n");
+    
+    if (node->childcnt) {
+        int cur = 0;
+        inode *child = NULL;
+        for (int i=0; i<node->childcnt; ++i) {
+            
+            char snbuf[1024] = {};
+            memset(snbuf, 0, 1024);
+            
+            while (child == NULL && cur < IMaxChilds) {
+                child = node->childs[cur];
+                cur++;
+            }
+            
+            snprintf(snbuf, 1023, "%s%s", prefix, tail ? "    " : "│   ");
+            if (i == node->childcnt - 1) {
+                _aoi_printnode(require, child, snbuf, iiok);
+            }else {
+                _aoi_printnode(require, child, snbuf, iino);
+            }
+            child = NULL;
+        }
+    }
+}
+
+// 打印出地图树
+void _aoi_print(imap *map, int require) {
+    if (require & EnumNodePrintStateMap) {
+        imapstatedesc(map, EnumMapStateAll, "Print", "Map-Printing");
+    }
+    
+    _aoi_printnode(require, map->root, "", iiok);
 }
 
 // 测试

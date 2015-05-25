@@ -492,6 +492,9 @@ typedef enum EnumNodeState {
     EnumNodeStateSearching = 1<<11,
 }EnumNodeState;
 
+// 是否追踪更新时间戳
+#define open_node_utick (1)
+
 // 节点
 typedef struct inode {
     // 声明引用对象
@@ -505,8 +508,12 @@ typedef struct inode {
     
     // 节点状态
     int64_t state;
-    // 更新时间
+    // 管理时间戳(增加单元，减少单元，增加子节点，减少子节点会更新这个时间戳)
     int64_t tick;
+#if open_node_utick
+    // 更新时间戳(管理时间戳 + 单元移动时间戳)
+    int64_t utick;
+#endif
     
     // 四叉树
     struct inode *parent;
@@ -760,8 +767,20 @@ void imapsearchfromnode(imap *map, inode *node,
                         isearchresult* result, ireflist *innodes);
     
 // 计算节点列表的指纹信息
-int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick);
+int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_t *maxutick);
 
+// 打印树的时候携带的信息
+typedef enum EnumNodePrintState {
+    EnumNodePrintStateTick = 1,
+    EnumNodePrintStateUnits = 1 << 1,
+    EnumNodePrintStateMap = 1 << 2,
+    EnumNodePrintStateNode = EnumNodePrintStateTick | EnumNodePrintStateUnits,
+    EnumNodePrintStateAll = 0xFFFFFFFF,
+}EnumNodePrintState;
+    
+// 打印节点树
+void _aoi_print(imap *map, int require);
+    
 // 测试
 int _aoi_test(int argc, char** argv);
 

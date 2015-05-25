@@ -1270,6 +1270,8 @@ SIMPLETEST_CASE(imap, complexANDimapaddunitANDimapremoveunitANDimapgetnode) {
     node = imapgetnode(map, &code, 3, EnumFindBehaviorFuzzy);
     SIMPLETEST_EQUAL(node, map->root->childs[0]);
     
+    _aoi_print(map, EnumNodePrintStateAll);
+    
     imapremoveunit(map, __getunitfor(3));
     SIMPLETEST_EQUAL(map->state.nodecount, 3);
     SIMPLETEST_EQUAL(map->state.leafcount, 1);
@@ -2146,9 +2148,9 @@ SIMPLETEST_CASE(searching, imapsearchfromunit) {
      |_______________________________________
      |ABA| ABC| ADA| ADC| CBA| CBC| CDA| CDC|
      |_______________________________________
-     |AAB| AAD:[3,5]| ACB| ACD| CAB| CAD| CCB| CCD|
+     |AAB| AAD:[3]| ACB| ACD| CAB| CAD| CCB| CCD|
      |_______________________________________
-     |AAA:[0,1,2]| AAC:[4]| ACA| ACC| CAA| CAC| CCA| CCC|
+     |AAA:[0,1,2]| AAC:[4,5]| ACA| ACC| CAA| CAC| CCA| CCC|
      |_______________________________________
      */
     
@@ -2159,7 +2161,7 @@ SIMPLETEST_CASE(searching, imapsearchfromunit) {
     
     // ------------------------------------------------------------------------------------
     // (0: 0.1, 0.0)    (1: 0.3, 0.4)   (2: 0.5, 0.0)   (3: 1.5, 1.2)   (4: 1.5, 0.2)
-    // (5: 1.0, 1.0)
+    // (5: 1.0, 0.0)
     // ------------------------------------------------------------------------------------
     icode code = {.code={'A','A','A',0}};
     imapsearchfromunit(map, __getunitfor(0), result, 0.45);
@@ -2178,13 +2180,149 @@ SIMPLETEST_CASE(searching, imapsearchfromunit) {
     
     isearchresultfree(result);
     
+    _aoi_print(map, EnumNodePrintStateNode);
+    
+    __setu(5, 1.0, 0.3);
+    imapupdateunit(map, __getunitfor(5));
+    
+    _aoi_print(map, EnumNodePrintStateNode);
+    
+    __setu(5, 1.0, -2.0);
+    imapupdateunit(map, __getunitfor(5));
+    _aoi_print(map, EnumNodePrintStateNode);
+    
     // remove all unit
     for (int i=0; i<=20; ++i) {
         imapremoveunit(map, __getunitfor(i));
     }
 }
 
+SP_CASE(searching, utick) {
+    /**
+     |BBB| BBD| BDB| BDD| DBB| DBD| DDB| DDD|
+     |_______________________________________
+     |BBA| BBC| BDA| BDC| DBA| DBC| DDA| DDC|
+     |_______________________________________
+     |BAB| BAD| BCB| BCD| DAB| DAD:[5]| DCB| DCD|
+     |_______________________________________
+     |BAA| BAC| BCA| BCC| DAA:[4]| DAC| DCA| DCC|
+     |_______________________________________
+     |ABB| ABD| ADB| ADD:[3]| CBB| CBD| CDB| CDD|
+     |_______________________________________
+     |ABA| ABC| ADA:[2]| ADC| CBA| CBC| CDA| CDC|
+     |_______________________________________
+     |AAB| AAD:[1]| ACB| ACD| CAB| CAD| CCB| CCD|
+     |_______________________________________
+     |AAA:[0]| AAC| ACA| ACC| CAA| CAC| CCA| CCC|
+     |_______________________________________
+     */
+    __setu(0, 0, 0);
+    imapaddunit(map, __getunitfor(0));
+    
+    __setu(1, 1.0, 1.0);
+    imapaddunit(map, __getunitfor(1));
+    
+    __setu(2, 2, 2);
+    imapaddunit(map, __getunitfor(2));
+    
+    __setu(3, 3, 3);
+    imapaddunit(map, __getunitfor(3));
+    
+    __setu(4, 4, 4);
+    imapaddunit(map, __getunitfor(4));
+    
+    __setu(5, 5, 5);
+    
+    _aoi_print(map, EnumNodePrintStateNode);
+    
+    isearchresult *result = isearchresultmake();
+    
+    imapsearchfromunit(map, __getunitfor(0), result, 0.4);
+    
+    SP_EQUAL(result->tick, __getunitfor(0)->tick);
+    SP_EQUAL(result->tick, __getnode(__getunitfor(0)->code, 3)->tick);
+    SP_EQUAL(ireflistlen(result->units), 0);
+    
+    __setu(1, 1.1, 1.1);
+    imapupdateunit(map, __getunitfor(1));
+    _aoi_print(map, EnumNodePrintStateNode);
+    
+    // AAA ->tick
+    imapsearchfromunit(map, __getunitfor(0), result, 0.4);
+    SP_EQUAL(result->tick, __getunitfor(0)->tick);
+    SP_EQUAL(result->tick, __getnode(__getunitfor(0)->code, 3)->tick);
+    SP_EQUAL(ireflistlen(result->units), 0);
+    
+    // AA ->utick
+    imapsearchfromunit(map, __getunitfor(0), result, 0.8);
+    SP_EQUAL(result->tick, __getnode(__getunitfor(0)->code, 2)->utick);
+    SP_TRUE(result->tick != __getnode(__getunitfor(0)->code, 2)->tick);
+    SP_EQUAL(ireflistlen(result->units), 0);
+    SP_TRUE(__getnode(__getunitfor(0)->code, 2)->utick == __getnode(__getunitfor(0)->code, 1)->utick);
+    
+    __setu(2, 2.2, 2.2);
+    imapupdateunit(map, __getunitfor(2));
+    _aoi_print(map, EnumNodePrintStateNode);
+    
+    imapsearchfromunit(map, __getunitfor(0), result, 0.8);
+    SP_EQUAL(result->tick, __getnode(__getunitfor(0)->code, 2)->utick);
+    SP_TRUE(result->tick != __getnode(__getunitfor(0)->code, 2)->tick);
+    SP_EQUAL(ireflistlen(result->units), 0);
+    SP_TRUE(__getnode(__getunitfor(0)->code, 2)->utick != __getnode(__getunitfor(0)->code, 1)->utick);
+    
+    {
+        
+        imapsearchfromunit(map, __getunitfor(0), result, 1.1);
+        SP_EQUAL(result->tick, __getnode(__getunitfor(0)->code, 1)->utick);
+        
+        int64_t uts = __getnode(__getunitfor(0)->code, 0)->utick;
+        int64_t auts = __getnode(__getunitfor(0)->code, 1)->utick;
+        int64_t aauts = __getnode(__getunitfor(0)->code, 2)->utick;
+        int64_t aaauts = __getnode(__getunitfor(0)->code, 3)->utick;
+        
+        int64_t ts = __getnode(__getunitfor(0)->code, 0)->tick;
+        int64_t ats = __getnode(__getunitfor(0)->code, 1)->tick;
+        int64_t aats = __getnode(__getunitfor(0)->code, 2)->tick;
+        int64_t aaats = __getnode(__getunitfor(0)->code, 3)->tick;
+        
+        SP_EQUAL(aaauts, aaats);
+        SP_EQUAL(aauts > aats, 1);
+        SP_EQUAL(auts > ats, 1);
+        SP_EQUAL(auts > aauts, 1);
+        SP_EQUAL(uts > ts, 1);
+        
+        __setu(5, 4.2, 4.2);
+        imapaddunit(map, __getunitfor(5));
+        _aoi_print(map, EnumNodePrintStateNode);
+        
+        uts = __getnode(__getunitfor(0)->code, 0)->utick;
+        ts = __getnode(__getunitfor(0)->code, 0)->tick;
+        
+        imapsearchfromunit(map, __getunitfor(0), result, 1.1);
+        SP_EQUAL(result->tick, __getnode(__getunitfor(0)->code, 1)->utick);
+        SP_EQUAL(uts == ts, 1);
+        
+        __setu(5, 0.5, 0.5);
+        imapupdateunit(map, __getunitfor(5));
+        _aoi_print(map, EnumNodePrintStateNode);
+        
+        uts = __getnode(__getunitfor(0)->code, 0)->utick;
+        ts = __getnode(__getunitfor(0)->code, 0)->tick;
+        auts = __getnode(__getunitfor(0)->code, 1)->utick;
+        ats = __getnode(__getunitfor(0)->code, 1)->tick;
+        SP_EQUAL(uts > ts, 1);
+        SP_EQUAL(auts, ats);
+        SP_EQUAL(auts, uts);
+        imapsearchfromunit(map, __getunitfor(0), result, 1.1);
+        SP_EQUAL(result->tick, __getnode(__getunitfor(0)->code, 1)->utick);
+    }
+    
+    isearchresultfree(result);
+}
+
 SIMPLETEST_CASE(searching, end) {
+    
+    
     for (int i=0; i<__preparecnt; ++i) {
         __unhold(i);
     }
