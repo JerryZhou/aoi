@@ -1021,6 +1021,126 @@ int imapgenpos(imap *map, ipos *pos, icode *code) {
     return iiok;
 }
 
+
+// 编码移动步骤
+typedef struct movestep {
+    char from;
+    char to;
+    int next;
+}movestep;
+/**
+ |BBB| BBD| BDB| BDD| DBB| DBD| DDB| DDD|
+ |_______________________________________
+ |BBA| BBC| BDA| BDC| DBA| DBC| DDA| DDC|
+ |_______________________________________
+ |BAB| BAD| BCB| BCD| DAB| DAD| DCB| DCD|
+ |_______________________________________
+ |BAA| BAC| BCA| BCC| DAA| DAC| DCA| DCC|
+ |_______________________________________
+ |ABB| ABD| ADB| ADD| CBB| CBD| CDB| CDD|
+ |_______________________________________
+ |ABA| ABC| ADA| ADC| CBA| CBC| CDA| CDC|
+ |_______________________________________
+ |AAB| AAD| ACB| ACD| CAB| CAD| CCB| CCD|
+ |_______________________________________
+ |AAA| AAC| ACA| ACC| CAA| CAC| CCA| CCC|
+ |_______________________________________
+ */
+// 移动编码具体步骤
+static movestep gmovesteps[][IMaxChilds] = {
+    {// EnumCodeMoveLeft
+        {'A', 'C', iiok},
+        {'B', 'D', iiok},
+        {'C', 'A', iino},
+        {'D', 'B', iino},
+    },
+    {// EnumCodeMoveRight
+        {'A', 'C', iino},
+        {'B', 'D', iino},
+        {'C', 'A', iiok},
+        {'D', 'B', iiok},
+    },
+    {// EnumCodeMoveDown
+        {'A', 'B', iiok},
+        {'B', 'A', iino},
+        {'C', 'D', iiok},
+        {'D', 'C', iino},
+    },
+    {// EnumCodeMoveUp
+        {'A', 'B', iino},
+        {'B', 'A', iiok},
+        {'C', 'D', iino},
+        {'D', 'C', iiok},
+    }
+};
+// 坐标移动符号
+static int gmoveposstep[][2] = {
+    //EnumCodeMoveLeft
+    {-1, 0},
+    //EnumCodeMoveRight
+    {1, 0},
+    //EnumCodeMoveDown
+    {0, -1},
+    //EnumCodeMoveUp
+    {0, 1},
+};
+
+//  边缘部分是不能进行某些操作的
+static int gmoveforbid[][4] = {
+    // EnumCodeMoveLeft
+    {'A',   'B',    0,      0},
+    // EnumCodeMoveRight
+    {0,     0,      'C',    'D'},
+    // EnumCodeMoveDown
+    {'A',   0,      'C',    0}, 
+    // EnumCodeMoveUp
+    {0,     'B',    0,      'D'},
+};
+ 
+// 移动编码
+int imapmovecode(imap *map, icode *code, int way) {
+    icheckret(code, iino);
+    icheckret(way>=0 && way<EnumCodeMoveMax, iino);
+    
+    int moves = 0;
+    size_t level = strlen(code->code);
+    size_t when = level;
+    // 确定编码移动没有超出边界
+    for (;when>0; --when) {
+        char at = code->code[when-1];
+        icheckret(at>='A' && at<='D', iino);
+        if(gmoveforbid[way][at-'A'] == 0 ) {
+            break;
+        }
+    }
+    // 确实可以移动编码
+    if (when > 0) {
+        // 第一个不同的级别
+        for (;level > 0; --level) {
+            // get code
+            char at = code->code[level-1];
+            icheckret(at>='A' && at<='D', iino);
+            // move it
+            movestep * step = &gmovesteps[way][at-'A'];
+            code->code[level-1] =step->to;
+            moves++;
+            // do need next step
+            if (step->next == iino) {
+                --level; // oldlevel = level + movies;
+                break;
+            }
+        }
+    }
+    
+    // 坐标移动
+    if (moves) {
+        code->pos.x += gmoveposstep[way][0] * map->nodesizes[level+moves].w;
+        code->pos.y += gmoveposstep[way][1] * map->nodesizes[level+moves].h;
+    }
+    
+    return moves;
+}
+
 // 生成一张地图数据
 imap *imapmake(ipos *pos, isize *size, int divide) {
     imap *map = iobjmalloc(imap);

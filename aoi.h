@@ -594,6 +594,17 @@ int imapgencode(imap *map, ipos *pos, icode *code);
 
 // 从编码生成坐标
 int imapgenpos(imap *map, ipos *pos, icode *code);
+   
+// 编码移动方向
+typedef enum EnumCodeMove {
+    EnumCodeMoveLeft,
+    EnumCodeMoveRight,
+    EnumCodeMoveDown,
+    EnumCodeMoveUp,
+    EnumCodeMoveMax
+}EnumCodeMove;
+// 移动编码: 失败返回0, 成功返回移动的步骤数
+int imapmovecode(imap *map, icode *code, int way);
 
 // 生成一张地图数据
 imap *imapmake(ipos *pos, isize *size, int divide);
