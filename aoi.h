@@ -174,9 +174,9 @@ struct imeta;
     
 // 基础的内存对象, 都具备缓冲功能
 typedef struct iobj {
+    int size;
     struct imeta *meta;
     struct iobj *next;
-    int size;
     char addr[];
 }iobj;
     
