@@ -125,7 +125,7 @@ void *iaoicalloc(imeta *meta) {
 }
 
 // 偏移一下获得正确的内存对象
-#define __iobj(p) (iobj*)((char*)(p) - sizeof(iobj) + 4)
+#define __iobj(p) (iobj*)((char*)(p) - sizeof(iobj))
 
 // 释放内存：会经过Meta的Cache
 void iaoifree(void *p) {
