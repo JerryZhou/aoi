@@ -1,3 +1,16 @@
+/*!
+ Area Of Interest In Game Developing
+ Copyright Jerryzhou@outlook.com
+ Licence: Apache 2.0
+ 
+ Project: https://github.com/JerryZhou/aoi.git
+ Purpose: Resolve the AOI problem in game developing
+    with high run fps
+    with minimal memory cost,
+ 
+  Please see examples for more details.
+ */
+
 #include "aoi.h"
 
 // 日志开关
@@ -832,6 +845,11 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
     int codei;
     int ok = iino;
     inode *child = NULL;
+
+    // 如果节点不能附加单元到上面则直接返回失败
+    if (_state_is(node->state, EnumNodeStateNoUnit)) {
+        return ok;
+    }
     
     code = unit->code.code[idx];
 #if open_log_code
@@ -923,9 +941,11 @@ int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop
             // 已经在 justremoveunit 更新了时间戳
         }
         // 回收可能的节点
-        if (node != stop
-            && node->childcnt == 0
-            && node->unitcnt == 0) {
+        if (node != stop // 不是停止节点
+            && !_state_is(node->state, EnumNodeStateStatic) // 不是静态节点
+            && node->childcnt == 0 // 孩子节点为0
+            && node->unitcnt == 0 // 上面绑定的单元节点也为空
+            ) { 
             removenodefromparent(map, node);
         }
     }

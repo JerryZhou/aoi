@@ -16,3 +16,32 @@ area of interest(AOI)
 
 详情见wiki
 
+# 简单实用
+    // make game world
+    imap *map = imapmake(pos, size, divide)
+ 
+    // make a unit
+    iunit *unit = iunitmake(id, x, y);
+ 
+    // add unit to game world
+    imapaddunit(map, unit);
+ 
+    // update the unit position
+    unit->pos.x = 1;
+    unit->pos.y = 1;
+ 
+    // refresh the unit position in game world
+    imapupdateunit(map, unit):
+ 
+    // remove the unit from game world
+    imapremoveunit(map, unit);
+ 
+    // make a aoi list
+    isearchresult *result = isearchresultmake();
+ 
+    // search the unit in range of unita
+    imapsearchfromunit(map, unita, result, range)
+ 
+    // free the aoi list
+    isearchresultfree(result)
+

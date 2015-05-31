@@ -8,36 +8,7 @@
     with high run fps
     with minimal memory cost,
  
- Use:
-    // make game world
-    imap *map = imapmake(pos, size, divide)
- 
-    // make a unit
-    iunit *unit = iunitmake(id, x, y);
- 
-    // add unit to game world
-    imapaddunit(map, unit);
- 
-    // update the unit position
-    unit->pos.x = 1;
-    unit->pos.y = 1;
- 
-    // refresh the unit position in game world
-    imapupdateunit(map, unit):
- 
-    // remove the unit from game world
-    imapremoveunit(map, unit);
- 
-    // make a aoi list
-    isearchresult *result = isearchresultmake();
- 
-    // search the unit in range of unita
-    imapsearchfromunit(map, unita, result, range)
- 
-    // free the aoi list
-    isearchresultfree(result)
- 
- Please see examples for more details.
+  Please see examples for more details.
  */
 
 #ifndef __AOI_H_
@@ -484,12 +455,19 @@ void ifreeunitlist(iunit *unit);
 // 二维空间
 #define IDimension 2
 
+// 节点的状态
 typedef enum EnumNodeState {
     EnumNodeStateNone = 0,
-    EnumNodeStateLive = 1,
-    EnumNodeStateDead = 1<<1,
-    EnumNodeStateRecycle = 1<<10,
+    // 查找标记，在搜索的时候回短暂的标记
     EnumNodeStateSearching = 1<<11,
+
+    // 寻路的时候代表不可走，需要避开
+    EnumNodeStateNoWalkingAble = 1<<12,
+
+    // 节点需要Hold 住，不能释放
+    EnumNodeStateStatic = 1<<13,
+    // 节点可不可以附加单元
+    EnumNodeStateNoUnit = 1<<14, 
 }EnumNodeState;
 
 // 是否追踪更新时间戳
