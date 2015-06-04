@@ -197,7 +197,8 @@ int imetaregister(const char* name, int size, int capacity);
     __ideclaremeta(imap, 0),\
     __ideclaremeta(irefcache, 0),\
     __ideclaremeta(ifilter, 2000),\
-    __ideclaremeta(isearchresult, 0)
+    __ideclaremeta(isearchresult, 0), \
+    __ideclaremeta(irefautoreleasepool, 0)
 
 // 定义所有元信息索引
 typedef enum EnumMetaTypeIndex {
@@ -260,6 +261,7 @@ typedef struct iref {
     irefdeclare;
 }iref;
 
+
 // 增加营养计数
 int irefretain(iref *ref); 
 
@@ -277,6 +279,20 @@ void irefrelease(iref *ref);
 
 // 前置声明
 struct ireflist;
+
+// 自动释放池子
+typedef struct irefautoreleasepool {
+    struct ireflist *list;
+}irefautoreleasepool;
+
+// 申请自动释放池子
+irefautoreleasepool * irefautoreleasebegin();
+
+// 自动释放
+void irefautorelease(irefautoreleasepool *pool, iref *ref);
+
+// 结束自动释放
+void irefautoreleaseend(irefautoreleasepool *pool);
 
 // 节点
 typedef struct irefjoint {

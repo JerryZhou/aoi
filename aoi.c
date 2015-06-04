@@ -377,6 +377,36 @@ void irefrelease(iref *ref) {
     }
 }
 
+// 申请自动释放池子
+irefautoreleasepool * irefautoreleasebegin() {
+    return iobjmalloc(irefautoreleasepool);
+}
+
+// 自动释放
+void irefautorelease(irefautoreleasepool *pool, iref *ref) {
+    icheck(pool);
+    if(!pool->list) {
+        pool->list = ireflistmake();
+    }
+
+    ireflistadd(pool->list, ref);
+}
+
+// 结束自动释放
+void irefautoreleaseend(irefautoreleasepool *pool) {
+    icheck(pool);
+    icheck(pool->list);
+
+    irefjoint *joint = ireflistfirst(pool->list);
+    while(joint) {
+        irelease(joint->value);
+        joint = joint->next;
+    }
+    ireflistfree(pool->list);
+    iobjfree(pool);
+}
+
+
 // 列表操作
 #define list_add_front(root, node) \
 do {\
