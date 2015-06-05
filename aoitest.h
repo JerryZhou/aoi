@@ -2561,4 +2561,31 @@ SP_CASE(searching, end) {
     clearalliaoicacheandmemrorystate();
 }
 
+SP_SUIT(autoreleasepool);
+
+static int _autoreleasecount = 0;
+static void _hook_iref_free(iref *ref) {
+    iobjfree(ref);
+    ++_autoreleasecount;
+}
+
+SP_CASE(autoreleasepool, autorelease) {
+
+    _iautoreleasepool;
+
+    for (int i=0; i<10; ++i) {
+        iref *ref = _iautomalloc(iref);
+        ref->free = _hook_iref_free;
+    }
+
+    for (int i=0; i<10; ++i) {
+        inode *node = imakenode();
+        node->free = _hook_iref_free;
+        _iautorelease(node);
+    }
+
+    _iautoreleaseall;
+
+    SP_EQUAL(_autoreleasecount, 20);
+}
 #endif

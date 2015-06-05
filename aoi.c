@@ -383,13 +383,14 @@ irefautoreleasepool * irefautoreleasebegin() {
 }
 
 // 自动释放
-void irefautorelease(irefautoreleasepool *pool, iref *ref) {
-    icheck(pool);
+iref* irefautorelease(irefautoreleasepool *pool, iref *ref) {
+    icheckret(pool, NULL);
     if(!pool->list) {
         pool->list = ireflistmake();
     }
 
     ireflistadd(pool->list, ref);
+    return ref;
 }
 
 // 结束自动释放
@@ -404,6 +405,12 @@ void irefautoreleaseend(irefautoreleasepool *pool) {
     }
     ireflistfree(pool->list);
     iobjfree(pool);
+}
+
+// 返回值本身的引用retain
+iref *irefassistretain(iref *ref) {
+    iretain(ref);
+    return ref;
 }
 
 

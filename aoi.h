@@ -289,10 +289,22 @@ typedef struct irefautoreleasepool {
 irefautoreleasepool * irefautoreleasebegin();
 
 // 自动释放
-void irefautorelease(irefautoreleasepool *pool, iref *ref);
+iref* irefautorelease(irefautoreleasepool *pool, iref *ref);
 
 // 结束自动释放
 void irefautoreleaseend(irefautoreleasepool *pool);
+
+// 返回值本身的，引用retain
+iref *irefassistretain(iref *ref);
+
+// 便利宏用来使用autoreleasepool
+#define _iautoreleasepool irefautoreleasepool* pool = irefautoreleasebegin()
+
+#define _iautomalloc(type) ((type*)irefautorelease(pool, irefassistretain((iref*)iobjmalloc(type))))
+
+#define _iautorelease(p) irefautorelease(pool, (iref*)p)
+
+#define _iautoreleaseall irefautoreleaseend(pool)
 
 // 节点
 typedef struct irefjoint {
