@@ -354,10 +354,10 @@ irefjoint* ireflistaddjoint(ireflist *list, irefjoint * joint);
 irefjoint* ireflistadd(ireflist *list, iref *value); 
 
 // 从节点里面移除节点
-int ireflistremovejoint(ireflist *list, irefjoint *joint); 
+irefjoint* ireflistremovejoint(ireflist *list, irefjoint *joint); 
 
 // 从节点里面移除节点: 并且会释放节点
-int ireflistremove(ireflist *list, iref *value); 
+irefjoint* ireflistremove(ireflist *list, iref *value); 
 
 // 释放所有节点
 void ireflistremoveall(ireflist *list); 
@@ -800,6 +800,7 @@ void _aoi_print(imap *map, int require);
     
 // 测试
 int _aoi_test(int argc, char** argv);
+
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

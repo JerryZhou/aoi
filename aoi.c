@@ -502,29 +502,31 @@ irefjoint* ireflistadd(ireflist *list, iref *value) {
 }
 
 // 从节点里面移除节点
-int ireflistremovejoint(ireflist *list, irefjoint *joint) {
-    icheckret(list, iino);
-    icheckret(joint, iino);
-    icheckret(joint->list == list, iino);
+irefjoint * ireflistremovejoint(ireflist *list, irefjoint *joint) {
+    irefjoint *next = NULL;
+    icheckret(list, next);
+    icheckret(joint, next);
+    icheckret(joint->list == list, next);
     joint->list = NULL;
+
+    next = joint->next;
     
     list_remove(list->root, joint);
     --list->length;
     
-    return iiok;
+    return next;
 }
 
 // 从节点里面移除节点: 并且会释放节点
-int ireflistremove(ireflist *list, iref *value) {
-    icheckret(list, iino);
-    int ok;
+irefjoint* ireflistremove(ireflist *list, iref *value) {
+    icheckret(list, NULL);
     irefjoint *joint = ireflistfind(list, value);
-    ok = ireflistremovejoint(list, joint);
-    if (ok == iiok) {
+    irefjoint *next = ireflistremovejoint(list, joint);
+    if (joint) {
         irefjointfree(joint);
     }
     
-    return iiok;
+    return next;
 }
 
 // 释放所有节点
