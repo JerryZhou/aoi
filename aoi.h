@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <inttypes.h>
 #include <memory.h>
 #include <math.h>
@@ -174,16 +175,21 @@ imeta *imetaget(int idx);
 // 也可以手动注册一个元信息来管理自己的对象: 然后就可以通过 iobjmalloc 进行对象内存管理
 // 将会返回对象的meta索引
 int imetaregister(const char* name, int size, int capacity);
+// 获取索引
+#define imetaindex(type) imeta_##type##_index
 // 注册宏
 #define iregister(type, capacity) imetaregister(#type, sizeof(type), capacity)
 // 声明
-#define iidelcareregister(type) extern int imeta_##type##_index
+#define irealdeclareregister(type) int imetaindex(type)
+// 声明
+#define iideclareregister(type) extern irealdeclareregister(type)
 // 注册宏
-#define iimplementregister(type, capacity) int imeta_##type##_index = iregister(type, capacity)
-// 获取索引
-#define imetaindex(type) imeta_##type##_index
+#define irealimplementregister(type, capacity) imetaindex(type) = iregister(type, capacity)
+// 注册宏
+#define iimplementregister(type, capacity) int irealimplementregister(type, capacity)
 // 获取meta
 #define imetaof(type) imetaget(imetaindex(type))
+
 
 // 定义所有内部对象的meta索引
 #define __ideclaremeta(type, capacity) imetaindex(type)
