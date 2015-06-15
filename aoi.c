@@ -501,8 +501,8 @@ irefjoint* ireflistadd(ireflist *list, iref *value) {
     return ireflistaddjoint(list, joint);
 }
 
-// 从节点里面移除节点
-irefjoint * ireflistremovejoint(ireflist *list, irefjoint *joint) {
+// 从节点里面移除节点 , 并且释放当前节点, 并且返回下一个节点
+static irefjoint* _ireflistremovejointwithfree(ireflist *list, irefjoint *joint, bool withfree) {
     irefjoint *next = NULL;
     icheckret(list, next);
     icheckret(joint, next);
@@ -513,20 +513,29 @@ irefjoint * ireflistremovejoint(ireflist *list, irefjoint *joint) {
     
     list_remove(list->root, joint);
     --list->length;
+
+    if (withfree) {
+        irefjointfree(joint);
+    }
     
     return next;
+}
+
+// 从节点里面移除节点 , 并且释放当前节点, 并且返回下一个节点
+irefjoint* ireflistremovejointandfree(ireflist *list, irefjoint *joint) {
+    return _ireflistremovejointwithfree(list, joint, true);
+}
+
+// 从节点里面移除节点
+irefjoint * ireflistremovejoint(ireflist *list, irefjoint *joint) {
+    return _ireflistremovejointwithfree(list, joint, false);
 }
 
 // 从节点里面移除节点: 并且会释放节点
 irefjoint* ireflistremove(ireflist *list, iref *value) {
     icheckret(list, NULL);
     irefjoint *joint = ireflistfind(list, value);
-    irefjoint *next = ireflistremovejoint(list, joint);
-    if (joint) {
-        irefjointfree(joint);
-    }
-    
-    return next;
+    return _ireflistremovejointwithfree(list, joint, true);
 }
 
 // 释放所有节点

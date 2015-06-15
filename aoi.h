@@ -353,10 +353,11 @@ irefjoint* ireflistaddjoint(ireflist *list, irefjoint * joint);
 // 往列表增加节点: 前置节点(会增加引用计数)
 irefjoint* ireflistadd(ireflist *list, iref *value); 
 
-// 从节点里面移除节点
+// 从节点里面移除节点, 返回下一个节点
 irefjoint* ireflistremovejoint(ireflist *list, irefjoint *joint); 
-
-// 从节点里面移除节点: 并且会释放节点
+// 从节点里面移除节点 , 并且释放当前节点, 并且返回下一个节点
+irefjoint* ireflistremovejointandfree(ireflist *list, irefjoint *joint); 
+// 从节点里面移除节点: 并且会释放节点, 返回下一个节点
 irefjoint* ireflistremove(ireflist *list, iref *value); 
 
 // 释放所有节点
