@@ -688,10 +688,10 @@ typedef struct ifilter {
             irect rect;
             icode code;
             int64_t id;
-        };
+        }u;
         /* 复合过滤器 */
         ireflist *list;
-    };
+    }s;
     
     /* 过滤器入口 */
     ientryfilter entry;

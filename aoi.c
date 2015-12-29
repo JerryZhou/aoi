@@ -1544,24 +1544,24 @@ int64_t _entryfilterchecksumdefault(imap *map, struct ifilter *d) {
 	int64_t hash = 0;
 
 	/* circle */
-	ihash(&hash, __realint(d->circle.pos.x));
-	ihash(&hash, __realint(d->circle.pos.y));
-	ihash(&hash, __realint(d->circle.radis));
+	ihash(&hash, __realint(d->s.u.circle.pos.x));
+	ihash(&hash, __realint(d->s.u.circle.pos.y));
+	ihash(&hash, __realint(d->s.u.circle.radis));
 
 	/* rect */
-	ihash(&hash, __realint(d->rect.pos.x));
-	ihash(&hash, __realint(d->rect.pos.y));
-	ihash(&hash, __realint(d->rect.size.w));
-	ihash(&hash, __realint(d->rect.size.h));
+	ihash(&hash, __realint(d->s.u.rect.pos.x));
+	ihash(&hash, __realint(d->s.u.rect.pos.y));
+	ihash(&hash, __realint(d->s.u.rect.size.w));
+	ihash(&hash, __realint(d->s.u.rect.size.h));
 
 	/* id */
-	ihash(&hash, d->id);
+	ihash(&hash, d->s.u.id);
 
 	/* code */
-	ihash(&hash, *(int64_t *)(d->code.code));
-	ihash(&hash, *(int64_t *)(d->code.code + sizeof(int64_t)));
-	ihash(&hash, *(int64_t *)(d->code.code + sizeof(int64_t) * 2));
-	ihash(&hash, *(int64_t *)(d->code.code + sizeof(int64_t) * 3));
+	ihash(&hash, *(int64_t *)(d->s.u.code.code));
+	ihash(&hash, *(int64_t *)(d->s.u.code.code + sizeof(int64_t)));
+	ihash(&hash, *(int64_t *)(d->s.u.code.code + sizeof(int64_t) * 2));
+	ihash(&hash, *(int64_t *)(d->s.u.code.code + sizeof(int64_t) * 3));
 
 	return hash;
 }
@@ -1575,8 +1575,8 @@ int64_t ifilterchecksum(imap *map, ifilter *d) {
 	hash = d->entrychecksum ? d->entrychecksum(map, d) : _entryfilterchecksumdefault(map, d);
 
 	/* Subs */
-	if (d->list) {
-		sub = ireflistfirst(d->list);
+	if (d->s.list) {
+		sub = ireflistfirst(d->s.list);
 		while (sub) {
 			ihash(&hash, ifilterchecksum(map, icast(ifilter, sub->value)));
 			sub = sub->next;
@@ -1589,8 +1589,8 @@ int64_t ifilterchecksum(imap *map, ifilter *d) {
 /* 过滤器的析构入口 */
 void __ifilterfreeentry(iref *ref) {
 	ifilter *filter = icast(ifilter, ref);
-	ireflistfree(filter->list);
-	filter->list = NULL;
+	ireflistfree(filter->s.list);
+	filter->s.list = NULL;
 	iobjfree(filter);
 }
 
@@ -1612,33 +1612,33 @@ ifilter *ifiltermake() {
 void ifilteradd(ifilter *filter, ifilter *added) {
 	icheck(filter);
 	icheck(added);
-	if (!filter->list) {
-		filter->list = ireflistmake();
+	if (!filter->s.list) {
+		filter->s.list = ireflistmake();
 	}
-	ireflistadd(filter->list, irefcast(added));
+	ireflistadd(filter->s.list, irefcast(added));
 }
 
 /* 移除子过滤器 */
 void ifilterremove(ifilter *filter, ifilter *sub) {
 	icheck(filter);
-	icheck(filter->list);
+	icheck(filter->s.list);
 
-	ireflistremove(filter->list, irefcast(sub));
+	ireflistremove(filter->s.list, irefcast(sub));
 }
 
 /* 移除所有子过滤器 */
 void ifilterclean(ifilter *filter) {
 	icheck(filter);
-	ireflistremoveall(filter->list);
+	ireflistremoveall(filter->s.list);
 }
 
 /* 组合过滤器 */
 int _entryfilter_compose(imap *map, ifilter *filter, iunit* unit) {
 	icheckret(unit, iino);
-	icheckret(filter->list, iino);
+	icheckret(filter->s.list, iino);
 
 	/* 遍历所有的过滤器 */
-	irefjoint *joint = ireflistfirst(filter->list);
+	irefjoint *joint = ireflistfirst(filter->s.list);
 	while(joint) {
 		icheckret(joint->value, iino);
 		/* 子过滤器 */
@@ -1658,7 +1658,7 @@ int ifilterrun(imap *map, ifilter *filter, iunit *unit) {
 	icheckret(filter, iiok);
 	int ok = iiok;
 	/* 组合过滤模式 */
-	if (filter->list) {
+	if (filter->s.list) {
 		ok = _entryfilter_compose(map, filter, unit);
 	}
 	/* 单一过滤模式 */
@@ -1675,12 +1675,12 @@ int _entryfilter_circle(imap *map, ifilter *filter, iunit* unit) {
 	iunused(map);
 
 	/* 距离超出范围 */
-	if (icirclecontainspoint(&filter->circle, &unit->pos) == iino) {
+	if (icirclecontainspoint(&filter->s.u.circle, &unit->pos) == iino) {
 #if open_log_filter
 		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) - (%.3f, %.3f: %.3f)\n",
 				unit->id,
 				unit->pos.x, unit->pos.y,
-				filter->circle.pos.x, filter->circle.pos.y, filter->circle.radis);
+				filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
 #endif
 		return iino;
 	}
@@ -1693,17 +1693,17 @@ int64_t _entryfilechecksum_circile(imap *map, ifilter *d) {
 	int64_t hash = 0;
 
 	/* circle */
-	ihash(&hash, __realint(d->circle.pos.x));
-	ihash(&hash, __realint(d->circle.pos.y));
-	ihash(&hash, __realint(d->circle.radis));
+	ihash(&hash, __realint(d->s.u.circle.pos.x));
+	ihash(&hash, __realint(d->s.u.circle.pos.y));
+	ihash(&hash, __realint(d->s.u.circle.radis));
 	return hash;
 }
 
 /* range过滤器 */
 ifilter *ifiltermake_circle(ipos *pos, ireal range) {
 	ifilter *filter = ifiltermake();
-	filter->circle.pos = *pos;
-	filter->circle.radis = range;
+	filter->s.u.circle.pos = *pos;
+	filter->s.u.circle.radis = range;
 	filter->entry = _entryfilter_circle;
 	filter->entrychecksum = _entryfilechecksum_circile;
 	return filter;
@@ -1715,13 +1715,13 @@ int _entryfilter_rect(imap *map, ifilter *filter, iunit* unit) {
 	iunused(map);
 
 	/* 距离超出范围 */
-	if (irectcontainspoint(&filter->rect, &unit->pos) == iino) {
+	if (irectcontainspoint(&filter->s.u.rect, &unit->pos) == iino) {
 #if open_log_filter
 		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
 				unit->id,
 				unit->pos.x, unit->pos.y,
-				filter->rect.pos.x, filter->rect.pos.y,
-				filter->rect.size.w, filter->rect.size.h);
+				filter->s.u.rect.pos.x, filter->s.u.rect.pos.y,
+				filter->s.u.rect.size.w, filter->s.u.rect.size.h);
 #endif
 		return iino;
 	}
@@ -1734,10 +1734,10 @@ int64_t _entryfilterchecksum_rect(imap *map, ifilter *d) {
 	int64_t hash = 0;
 
 	/* rect */
-	ihash(&hash, __realint(d->rect.pos.x));
-	ihash(&hash, __realint(d->rect.pos.y));
-	ihash(&hash, __realint(d->rect.size.w));
-	ihash(&hash, __realint(d->rect.size.h));
+	ihash(&hash, __realint(d->s.u.rect.pos.x));
+	ihash(&hash, __realint(d->s.u.rect.pos.y));
+	ihash(&hash, __realint(d->s.u.rect.size.w));
+	ihash(&hash, __realint(d->s.u.rect.size.h));
 
 	return hash;
 }
@@ -1745,8 +1745,8 @@ int64_t _entryfilterchecksum_rect(imap *map, ifilter *d) {
 /* 矩形过滤器 */
 ifilter *ifiltermake_rect(ipos *pos, isize *size) {
 	ifilter *filter = ifiltermake();
-	filter->rect.pos = *pos;
-	filter->rect.size = *size;
+	filter->s.u.rect.pos = *pos;
+	filter->s.u.rect.size = *size;
 	filter->entry = _entryfilter_rect;
 	filter->entrychecksum = _entryfilterchecksum_rect;
 	return filter;
