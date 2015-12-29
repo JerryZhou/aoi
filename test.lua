@@ -11,6 +11,9 @@ local function printf(fmt, ...)
 	return io.stdout:write(string.format(fmt, ...))
 end
 
+table.foreach(laoi.NodeEnum, print)
+table.foreach(laoi.MapEnum, print)
+
 local mapinfo = {
 	width = 512,
 	height = 512,
@@ -83,6 +86,8 @@ for i=1, unitcount do
 end
 
 -- table.foreach(map:get_state(), print)
+laoi.dbg_dump_mapstate(map)
+laoi.dbg_dump_map(map)
 map = nil
 collectgarbage("collect")
 collectgarbage("collect")

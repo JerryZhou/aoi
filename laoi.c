@@ -29,6 +29,12 @@
 #define CHECK_AOI_MAP(L, idx)\
 	(*(imap **) luaL_checkudata(L, idx, AOI_MAP))
 
+#define LUA_SETMACRO(L, index, name, var) 	\
+	(lua_pushstring(L, name), 		\
+	lua_pushinteger(L, var), 		\
+	lua_settable(L, index >= 0 ? index : index - 2))
+
+#define LUA_SET_ENUM(L, index, name) LUA_SETMACRO(L, index, #name, name)
 
 #define LUA_BIND_META(L, type_t, ptr, mname) do {                   \
 	type_t **my__p = lua_newuserdata(L, sizeof(void *));        \
@@ -88,6 +94,25 @@ static int lua__map_gc(lua_State *L)
 	}
 	return 0;
 }
+
+static int lua__map_dump(lua_State *L)
+{
+	imap * map = CHECK_AOI_MAP(L, 1);
+	int require = luaL_optnumber(L, 2, EnumMapStateAll);
+	_aoi_print(map, require);
+	return 0;
+}
+
+static int lua__map_dumpstate(lua_State *L)
+{
+	imap * map = CHECK_AOI_MAP(L, 1);
+	const char * intag = luaL_optstring(L, 2, "tag");
+	const char * inhead = luaL_optstring(L, 3, "head");
+	int require = luaL_optnumber(L, 4, EnumNodePrintStateMap);
+	imapstatedesc(map, require, intag, inhead);
+	return 0;
+}
+
 
 /* method of map */
 
@@ -349,16 +374,52 @@ static int opencls__unit(lua_State *L)
 	return 1;
 }
 
+int luac__new_node_enum(lua_State *L)
+{
+	lua_newtable(L);
+	LUA_SET_ENUM(L, -1, EnumNodePrintStateTick);
+	LUA_SET_ENUM(L, -1, EnumNodePrintStateUnits);
+	LUA_SET_ENUM(L, -1, EnumNodePrintStateMap);
+	LUA_SET_ENUM(L, -1, EnumNodePrintStateNode);
+	LUA_SET_ENUM(L, -1, EnumNodePrintStateAll);
+	return 1;
+}
+
+int luac__new_map_enum(lua_State *L)
+{
+	lua_newtable(L);
+	LUA_SET_ENUM(L, -1, EnumMapStateAll);
+	LUA_SET_ENUM(L, -1, EnumMapStateHead);
+	LUA_SET_ENUM(L, -1, EnumMapStateTail);
+	LUA_SET_ENUM(L, -1, EnumMapStateBasic);
+	LUA_SET_ENUM(L, -1, EnumMapStatePrecisions);
+	LUA_SET_ENUM(L, -1, EnumMapStateNode);
+	LUA_SET_ENUM(L, -1, EnumMapStateUnit);
+	LUA_SET_ENUM(L, -1, EnumMapStateAll);
+	LUA_SET_ENUM(L, -1, EnumMapStateAllNoHeadTail);
+	LUA_SET_ENUM(L, -1, EnumMapStateNone);
+	return 1;
+}
+
 int luaopen_laoi(lua_State* L)
 {
 	luaL_Reg lfuncs[] = {
 		{"new_map", lua__map_new},
 		{"new_unit", lua__unit_new},
+		{"dbg_dump_map", lua__map_dump},
+		{"dbg_dump_mapstate", lua__map_dumpstate},
 		{NULL, NULL},
 	};
 	opencls__map(L);
 	opencls__unit(L);
 	luaL_newlib(L, lfuncs);
+
+	luac__new_node_enum(L);
+	lua_setfield(L, -2, "NodeEnum");
+
+	luac__new_map_enum(L);
+	lua_setfield(L, -2, "MapEnum");
+
 	return 1;
 }
 
