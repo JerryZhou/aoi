@@ -25,6 +25,9 @@
 #define snprintf _snprintf
 typedef _int64 int64_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 static int gettimeofday(struct timeval *tp, void *tzp)
 {
         time_t clock;
@@ -32,19 +35,22 @@ static int gettimeofday(struct timeval *tp, void *tzp)
         SYSTEMTIME wtm;
 
         GetLocalTime(&wtm);
-        tm.tm_year     = wtm.wYear - 1900;
-        tm.tm_mon     = wtm.wMonth - 1;
-        tm.tm_mday     = wtm.wDay;
-        tm.tm_hour     = wtm.wHour;
-        tm.tm_min     = wtm.wMinute;
-        tm.tm_sec     = wtm.wSecond;
-        tm. tm_isdst    = -1; 
+        tm.tm_year = wtm.wYear - 1900;
+        tm.tm_mon = wtm.wMonth - 1;
+        tm.tm_mday = wtm.wDay;
+        tm.tm_hour = wtm.wHour;
+        tm.tm_min = wtm.wMinute;
+        tm.tm_sec = wtm.wSecond;
+        tm.tm_isdst = -1; 
         clock = mktime(&tm);
         tp->tv_sec = clock;
         tp->tv_usec = wtm.wMilliseconds * 1000;
 
-        return (0);
+        return 0;
 }
+#ifdef __cplusplus
+}
+#endif
 
 #else
 #include <stdbool.h>
