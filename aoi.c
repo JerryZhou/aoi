@@ -41,14 +41,15 @@ int64_t gfreesize = 0;
 int64_t gholdsize = 0;
 
 #undef __ideclaremeta
-#define __ideclaremeta(type, cap) {.name=#type, .size=sizeof(type), .current=0, .alloced=0, .freed=0, .cache={.root=NULL, .length=0, .capacity=cap}}
+/* #define __ideclaremeta(type, cap) {.name=#type, .size=sizeof(type), .current=0, .alloced=0, .freed=0, .cache={.root=NULL, .length=0, .capacity=cap}}*/
+#define __ideclaremeta(type, cap) {#type, {NULL, 0, cap}, sizeof(type), 0, 0, 0}
 /* 所有类型的元信息系统 */
 imeta gmetas[] = {__iallmeta,
 	__ideclaremeta(imeta, 0)
 };
 
 /* 所有自定义的类型原系统 */
-imeta gmetasuser[IMaxMetaCountForUser] = {};
+imeta gmetasuser[IMaxMetaCountForUser] = {0};
 
 #undef __ideclaremeta
 #define __ideclaremeta(type, cap) EnumMetaTypeIndex_##type
@@ -150,9 +151,10 @@ void iaoifree(void *p) {
 
 /* 尽可能的释放Meta相关的Cache */
 void iaoicacheclear(imeta *meta) {
-	icheck(meta->cache.length);
 	iobj *next = NULL;
-	iobj *cur = meta->cache.root;
+	iobj *cur = NULL;
+	icheck(meta->cache.length);
+	cur = meta->cache.root;
 	while (cur) {
 		next = cur->next;
 		imetaobjfree(cur);
@@ -164,10 +166,10 @@ void iaoicacheclear(imeta *meta) {
 
 /* 打印当前内存状态 */
 void iaoimemorystate() {
-	ilog("[AOI-Memory] *************************************************************** Begin\n");
-	ilog("[AOI-Memory] Total---> new: %lld, free: %lld, hold: %lld \n", gcallocsize, gfreesize, gholdsize);
 	int count = __countof(gmetas);
 	int i;
+	ilog("[AOI-Memory] *************************************************************** Begin\n");
+	ilog("[AOI-Memory] Total---> new: %lld, free: %lld, hold: %lld \n", gcallocsize, gfreesize, gholdsize);
 
 	for (i=0; i<count; ++i) {
 		ilog("[AOI-Memory] Obj: (%s, %d) ---> alloc: %lld, free: %lld, hold: %lld - count: %lld\n",
@@ -185,15 +187,17 @@ void iaoimemorystate() {
 
 /* 获取指定对象的meta信息 */
 imeta *iaoigetmeta(void *p) {
+	iobj *obj = NULL;
 	icheckret(p, NULL);
-	iobj *obj = __iobj(p);
+	obj = __iobj(p);
 	return obj->meta;
 }
 
 /* 指定对象是响应的类型 */
 int iaoiistype(void *p, const char* type) {
+	imeta *meta = NULL;
 	icheckret(type, iino);
-	imeta *meta = iaoigetmeta(p);
+	meta = iaoigetmeta(p);
 	icheckret(meta, iino);
 
 	if (strncmp(type, meta->name, __max(strlen(meta->name), strlen(type))) == 0) {
@@ -272,10 +276,11 @@ int irectcontainspoint(irect *con, ipos *p) {
 
 /* 圆形相交: iiok, iino */
 int icircleintersect(icircle *con, icircle *c) {
+	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(c, iiok);
 
-	ireal ds = (con->radis + c->radis);
+	ds = (con->radis + c->radis);
 
 	if (idistancepow2(&con->pos, &c->pos) <= ds * ds) {
 		return iiok;
@@ -286,9 +291,10 @@ int icircleintersect(icircle *con, icircle *c) {
 
 /* 圆形包含: iiok, iino */
 int icirclecontains(icircle *con, icircle *c) {
+	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(c, iiok);
-	ireal ds = (con->radis - c->radis);
+	ds = (con->radis - c->radis);
 	icheckret(ds >= 0, iino);
 
 	if (idistancepow2(&con->pos, &c->pos) <= ds * ds) {
@@ -300,9 +306,10 @@ int icirclecontains(icircle *con, icircle *c) {
 
 /* 圆形包含: iiok, iino */
 int icirclecontainspoint(icircle *con, ipos *p) {
+	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(p, iiok);
-	ireal ds = (con->radis);
+	ds = (con->radis);
 	icheckret(ds >= 0, iino);
 
 	if (idistancepow2(&con->pos, p) <= ds * ds) {
@@ -317,12 +324,15 @@ int icirclecontainspoint(icircle *con, ipos *p) {
 /*	  EnumCircleRelationIntersect(相交), */
 /*	  EnumCircleRelationNoIntersect(相离) */
 int icirclerelation(icircle *con, icircle *c) {
+	ireal minusds = 0.0;
+	ireal addds = 0.0;
+	ireal ds = 0.0;
 	icheckret(con, EnumCircleRelationBContainsA);
 	icheckret(c, EnumCircleRelationAContainsB);
 
-	ireal minusds = con->radis - c->radis;
-	ireal addds = con->radis + c->radis;
-	ireal ds = idistancepow2(&con->pos, &c->pos);
+	minusds = con->radis - c->radis;
+	addds = con->radis + c->radis;
+	ds = idistancepow2(&con->pos, &c->pos);
 
 	if (ds <= minusds * minusds) {
 		if (minusds >= 0) {
@@ -397,10 +407,11 @@ iref* irefautorelease(irefautoreleasepool *pool, iref *ref) {
 
 /* 结束自动释放 */
 void irefautoreleaseend(irefautoreleasepool *pool) {
+	irefjoint *joint = NULL;
 	icheck(pool);
 	icheck(pool->list);
 
-	irefjoint *joint = ireflistfirst(pool->list);
+	joint = ireflistfirst(pool->list);
 	while(joint) {
 		irelease(joint->value);
 		joint = joint->next;
@@ -498,13 +509,14 @@ irefjoint* ireflistaddjoint(ireflist *list, irefjoint * joint) {
 
 /* 往列表增加节点: 前置节点(会增加引用计数) */
 irefjoint* ireflistadd(ireflist *list, iref *value) {
+	irefjoint *joint = NULL;
 	icheckret(list, NULL);
-	irefjoint *joint = irefjointmake(value);
+	joint = irefjointmake(value);
 	return ireflistaddjoint(list, joint);
 }
 
 /* 从节点里面移除节点 , 并且释放当前节点, 并且返回下一个节点 */
-static irefjoint* _ireflistremovejointwithfree(ireflist *list, irefjoint *joint, bool withfree) {
+static irefjoint* _ireflistremovejointwithfree(ireflist *list, irefjoint *joint, int withfree) {
 	irefjoint *next = NULL;
 	icheckret(list, next);
 	icheckret(joint, next);
@@ -525,26 +537,28 @@ static irefjoint* _ireflistremovejointwithfree(ireflist *list, irefjoint *joint,
 
 /* 从节点里面移除节点 , 并且释放当前节点, 并且返回下一个节点 */
 irefjoint* ireflistremovejointandfree(ireflist *list, irefjoint *joint) {
-	return _ireflistremovejointwithfree(list, joint, true);
+	return _ireflistremovejointwithfree(list, joint, 1);
 }
 
 /* 从节点里面移除节点 */
 irefjoint * ireflistremovejoint(ireflist *list, irefjoint *joint) {
-	return _ireflistremovejointwithfree(list, joint, false);
+	return _ireflistremovejointwithfree(list, joint, 0);
 }
 
 /* 从节点里面移除节点: 并且会释放节点 */
 irefjoint* ireflistremove(ireflist *list, iref *value) {
+	irefjoint *joint = NULL;
 	icheckret(list, NULL);
-	irefjoint *joint = ireflistfind(list, value);
-	return _ireflistremovejointwithfree(list, joint, true);
+	joint = ireflistfind(list, value);
+	return _ireflistremovejointwithfree(list, joint, 1);
 }
 
 /* 释放所有节点 */
 void ireflistremoveall(ireflist *list) {
+	irefjoint *joint = NULL;
+	irefjoint *next = NULL;
 	icheck(list);
-	irefjoint *joint = ireflistfirst(list);
-	irefjoint *next;
+	joint = ireflistfirst(list);
 	while(joint) {
 		next = joint->next;
 		irefjointfree(joint);
@@ -567,12 +581,14 @@ void ireflistfree(ireflist *list) {
 
 /* cache 的 绑定在 ref 上的回调 */
 void _ientrywatch_cache(iref *ref) {
+	irefcache *cache = NULL;
+	int len = 0;
 	icheck(ref->ref == 0);
 
 	/* only move ref to live cache */
-	irefcache *cache = ref->cache;
+	cache = ref->cache;
 
-	int len = ireflistlen(cache->cache);
+	len = ireflistlen(cache->cache);
 	if (len < cache->capacity) {
 		ireflistadd(cache->cache, ref);
 	}else if (cache->envicted){
@@ -630,8 +646,9 @@ void irefcachepush(irefcache *cache, iref *ref) {
 
 /* 清理缓冲区 */
 void irefcacheclear(irefcache *cache) {
+	int oldcapacity = 0;
 	icheck(cache);
-	int oldcapacity = cache->capacity;
+	oldcapacity = cache->capacity;
 	cache->capacity = 0;
 	ireflistremoveall(cache->cache);
 	cache->capacity = oldcapacity;
@@ -683,8 +700,8 @@ void ifreeunit(iunit *unit) {
 
 /* 释放链表 */
 void ifreeunitlist(iunit *unit) {
-	icheck(unit);
 	iunit *next = NULL;
+	icheck(unit);
 	while (unit) {
 		next = unit->next;
 		ifreeunit(unit);
@@ -890,12 +907,12 @@ int removenodefromparent(imap *map, inode *node) {
 
 /* 节点加入地图 */
 int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
-	icheckret(idx <= map->divide, iino);
-
 	char code;
 	int codei;
 	int ok = iino;
 	inode *child = NULL;
+
+	icheckret(idx <= map->divide, iino);
 
 	/* 如果节点不能附加单元到上面则直接返回失败 */
 	if (_state_is(node->state, EnumNodeStateNoUnit)) {
@@ -953,13 +970,15 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
 
 /* 从地图上移除 */
 int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop) {
-	icheckret(idx <= map->divide, iino);
-	icheckret(node, iino);
-
 	char code;
 	int codei;
 	inode *child = NULL;
-	int ok = iino;
+	int ok = 0;
+	icheckret(idx <= map->divide, iino);
+	icheckret(node, iino);
+
+	ok = iino;
+
 	code = unit->code.code[idx];
 	if (code == 0 || idx >= map->divide) {
 		/* log it */
@@ -1008,9 +1027,12 @@ int imapgencode(imap *map, ipos *pos, icode *code) {
 	/* init value */
 	int i = 0;
 	int iw, ih;
-	ireal threshold = 0;
+	ireal threshold = 0.0;
+	/*
 	ipos np = {.x=pos->x-map->pos.x,
 		.y=pos->y-map->pos.y};
+	*/
+	ipos np = {pos->x-map->pos.x, pos->y-map->pos.y};
 
 	/* assign pos: keep it */
 	code->pos.x = pos->x;
@@ -1060,7 +1082,8 @@ int imapgencode(imap *map, ipos *pos, icode *code) {
 int imapgenpos(imap *map, ipos *pos, icode *code) {
 	/* init value */
 	int i = 0;
-	ipos np = {.x=0, .y=0};
+	/* ipos np = {.x=0, .y=0}; */
+	ipos np = {0, 0};
 
 	/* 计算pos */
 	/* y */
@@ -1170,12 +1193,14 @@ static int gmoveforbid[][4] = {
 
 /* 移动编码 */
 int imapmovecode(imap *map, icode *code, int way) {
+	int moves = 0;
+	size_t level = 0;
+	size_t when = 0;
 	icheckret(code, iino);
 	icheckret(way>=0 && way<EnumCodeMoveMax, iino);
 
-	int moves = 0;
-	size_t level = strlen(code->code);
-	size_t when = level;
+	level = strlen(code->code);
+	when = level;
 	/* 确定编码移动没有超出边界 */
 	for (;when>0; --when) {
 		char at = code->code[when-1];
@@ -1190,9 +1215,10 @@ int imapmovecode(imap *map, icode *code, int way) {
 		for (;level > 0; --level) {
 			/* get code */
 			char at = code->code[level-1];
+			movestep * step = NULL;
 			icheckret(at>='A' && at<='D', iino);
 			/* move it */
-			movestep * step = &gmovesteps[way][at-'A'];
+			step = &gmovesteps[way][at-'A'];
 			code->code[level-1] =step->to;
 			moves++;
 			/* do need next step */
@@ -1227,11 +1253,12 @@ imap *imapmake(ipos *pos, isize *size, int divide) {
 /* 打印地图状态信息 */
 void imapstatedesc(imap *map, int require,
 		const char* intag, const char *inhead) {
+	/* 设置Tag */
+	const char* tag = "[IMAP-State]";
+
 	icheck(require);
 	icheck(map);
 
-	/* 设置Tag */
-	const char* tag = "[IMAP-State]";
 	if (intag) {
 		tag = intag;
 	}
@@ -1299,10 +1326,10 @@ iref *_cache_newnode() {
 
 /* 生成地图数据 */
 int imapgen(imap *map) {
-	icheckret(map->divide>=0 && map->divide<IMaxDivide, iino);
-
 	int i = 0;
 	ireal iw, ih;
+
+	icheckret(map->divide>=0 && map->divide<IMaxDivide, iino);
 
 	/* 根节点 */
 	map->root = imakenode();
@@ -1341,10 +1368,11 @@ int imapgen(imap *map) {
 
 /* 增加一个单元到地图上 */
 int imapaddunit(imap *map, iunit *unit) {
-	icheckret(unit, iino);
-	icheckret(map, iino);
 	int ok;
 	int64_t nano;
+
+	icheckret(unit, iino);
+	icheckret(map, iino);
 
 	/* move out side */
 	imapgencode(map, &unit->pos, &unit->code);
@@ -1363,11 +1391,12 @@ int imapaddunit(imap *map, iunit *unit) {
 
 /* 从地图上移除一个单元 */
 int imapremoveunit(imap *map, iunit *unit) {
+	int ok;
+	int64_t nano;
+
 	icheckret(unit, iino);
 	icheckret(unit->node, iino);
 	icheckret(map, iino);
-	int ok;
-	int64_t nano;
 
 	/* log it */
 #if open_log_unit
@@ -1386,12 +1415,14 @@ int imapremoveunit(imap *map, iunit *unit) {
 
 /* 从地图上检索节点 */
 inode *imapgetnode(imap *map, icode *code, int level, int find) {
+	int64_t nano = __Nanos;
+	inode *node = NULL;
+
 	icheckret(map, NULL);
 	icheckret(code, NULL);
 	icheckret(level<=map->divide, NULL);
-	int64_t nano = __Nanos;
 
-	inode *node = map->root;
+	node = map->root;
 	while(node->level < level) {
 		int codei = code->code[node->level] - 'A';
 		/* 孩子超出了 */
@@ -1428,12 +1459,6 @@ void imaprefreshutick(inode *node, int64_t utick) {
 
 /* 更新一个单元在地图上的数据 */
 int imapupdateunit(imap *map, iunit *unit) {
-	icheckret(map, iino);
-	icheckret(unit->node, iino);
-
-	/* 判断一下坐标变更是否够大 */
-	/* 寻找可能的变化范围，定位父亲节点 */
-	/* 从公共的父级别节点开始往下找 */
 	int ok;
 	int offset;
 	icode code;
@@ -1444,10 +1469,18 @@ int imapupdateunit(imap *map, iunit *unit) {
 #if open_node_utick
 	int64_t utick = 0;
 #endif
+	ireal dsx = 0.0;
+	ireal dsy = 0.0;
 
+	icheckret(map, iino);
+	icheckret(unit->node, iino);
+
+	/* 判断一下坐标变更是否够大 */
+	/* 寻找可能的变化范围，定位父亲节点 */
+	/* 从公共的父级别节点开始往下找 */
 	/* 计算新的偏移量，如果偏移量相对于当前叶子节点原点偏移量小于节点大小 */
-	ireal dsx = unit->pos.x - unit->node->code.pos.x;
-	ireal dsy = unit->pos.y - unit->node->code.pos.y;
+	dsx = unit->pos.x - unit->node->code.pos.x;
+	dsy = unit->pos.y - unit->node->code.pos.y;
 	if (dsx>=0 && dsx<map->nodesizes[unit->node->level].w
 			&& dsy>=0 && dsy<map->nodesizes[unit->node->level].h) {
 #if open_log_unit_update
@@ -1495,11 +1528,12 @@ int imapupdateunit(imap *map, iunit *unit) {
 	copycode(unit->code, code, map->divide);
 	/* 加入到新的节点单元 */
 	if (ok == iiok) {
+		int codei = 0;
 #if open_node_utick
 		utick = removeimpact->utick;
 #endif
 		/* 从当前顶级节点开始加入节点 */
-		int codei = unit->code.code[offset]-'A';
+		codei = unit->code.code[offset]-'A';
 		addimpact = impact->childs[codei];
 		if (!addimpact) {
 			addimpact = addnodetoparent(map, impact, codei, impact->level, &code);
@@ -1634,15 +1668,17 @@ void ifilterclean(ifilter *filter) {
 
 /* 组合过滤器 */
 int _entryfilter_compose(imap *map, ifilter *filter, iunit* unit) {
+	irefjoint *joint = NULL;
 	icheckret(unit, iino);
 	icheckret(filter->s.list, iino);
 
 	/* 遍历所有的过滤器 */
-	irefjoint *joint = ireflistfirst(filter->s.list);
+	joint = ireflistfirst(filter->s.list);
 	while(joint) {
+		ifilter* subfilter = NULL;
 		icheckret(joint->value, iino);
 		/* 子过滤器 */
-		ifilter* subfilter = icast(ifilter, joint->value);
+		subfilter = icast(ifilter, joint->value);
 		if (subfilter->entry(map, subfilter, unit) == iino) {
 			return iino;
 		}
@@ -1655,8 +1691,10 @@ int _entryfilter_compose(imap *map, ifilter *filter, iunit* unit) {
 
 /* 通用过滤器入口 */
 int ifilterrun(imap *map, ifilter *filter, iunit *unit) {
+	int ok = 0;
 	icheckret(filter, iiok);
-	int ok = iiok;
+
+	ok = iiok;
 	/* 组合过滤模式 */
 	if (filter->s.list) {
 		ok = _entryfilter_compose(map, filter, unit);
@@ -1754,11 +1792,12 @@ ifilter *ifiltermake_rect(ipos *pos, isize *size) {
 
 /* 搜集树上的所有单元 */
 void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ireflist *snap) {
+	int i;
+	iunit* unit = NULL;
 	icheck(node);
 
-	int i;
 	/* 增加节点单元 */
-	iunit* unit = node->units;
+	unit = node->units;
 	for (;unit;unit=unit->next) {
 		/* 是否已经处理过 */
 		int havestate = _state_is(unit->state, EnumUnitStateSearching);
@@ -1853,13 +1892,14 @@ void isearchresultclean(isearchresult *result) {
 
 /* 从快照里面从新生成新的结果 */
 void isearchresultrefreshfromsnap(imap *map, isearchresult *result) {
+	irefjoint* joint = NULL;
 	icheck(result);
 
 	/* 移除旧的结果 */
 	ireflistremoveall(result->units);
 
 	/* 增加节点单元 */
-	irefjoint* joint = ireflistfirst(result->snap);
+	joint = ireflistfirst(result->snap);
 	for (;joint;joint=joint->next) {
 		iunit *unit = icast(iunit, joint->value);
 		/* 是否已经处理过 */
@@ -2042,11 +2082,12 @@ inode *imapcaculatesameparent(imap *map, ireflist *collects) {
 /* 从地图上搜寻单元 irect{pos, size{rangew, rangeh}}, 并附加条件 filter */
 void imapsearchfromrectwithfilter(imap *map, irect *rect,
 		isearchresult *result, ifilter *filter) {
-	icheck(result);
-	icheck(result->filter);
 	int64_t nano = __Nanos;
 	inode *node;
 	ireflist *collects;
+
+	icheck(result);
+	icheck(result->filter);
 
 	/* 获取可能存在数据的节点 */
 	collects = ireflistmake();
@@ -2088,14 +2129,18 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 /* 从地图上搜寻单元, 并附加条件 filter */
 void imapsearchfrompos(imap *map, ipos *pos,
 		isearchresult *result, ireal range) {
+	/* 目标矩形 */
+	/*irect rect = {.pos={.x=pos->x-range, .y=pos->y-range}, .size={.w=2*range, .h=2*range}};*/
+	irect rect = {{pos->x-range, pos->y-range}, {2*range, 2*range}};
+
+	ifilter *filter = NULL;
+
 	icheck(result);
 	icheck(result->filter);
 
-	/* 目标矩形 */
-	irect rect = {.pos={.x=pos->x-range, .y=pos->y-range}, .size={.w=2*range, .h=2*range}};
 
 	/* 造一个距离过滤器 */
-	ifilter *filter = ifiltermake_circle(pos , range);
+	filter = ifiltermake_circle(pos , range);
 
 	imapsearchfromrectwithfilter(map, &rect, result, filter);
 
@@ -2144,8 +2189,8 @@ void _aoi_printnode(int require, inode *node, const char* prefix, int tail) {
 	}
 	/* 打印节点单元 */
 	if ((require & EnumNodePrintStateUnits) && node->units) {
-		printf(" units(");
 		iunit *u = node->units;
+		printf(" units(");
 		while (u) {
 			printf("%lld%s", u->id, u->next ? ",":")");
 			u= u->next;
@@ -2158,8 +2203,7 @@ void _aoi_printnode(int require, inode *node, const char* prefix, int tail) {
 		int i;
 		inode *child = NULL;
 		for (i=0; i<node->childcnt; ++i) {
-
-			char snbuf[1024] = {};
+			char snbuf[1024] = {0};
 			memset(snbuf, 0, 1024);
 
 			while (child == NULL && cur < IMaxChilds) {
@@ -2189,13 +2233,25 @@ void _aoi_print(imap *map, int require) {
 
 /* 测试 */
 int _aoi_test(int argc, char** argv) {
-	iunused(argc);
-	iunused(argv);
 	int i;
+	/*
 	ipos pos = {.x = 0, .y = 0};
 	isize size = {.w = 512, .h = 512};
+	*/
+	ipos pos = {0, 0};
+	isize size = {512, 512};
+
 	int divide = 1;/*10; */
 	int randcount = 2000;
+
+	imap *map = NULL;
+	iunit* units[10] = {0};
+
+
+	isearchresult *result = NULL;
+
+	iunused(argc);
+	iunused(argv);
 
 	if (argc >= 2) {
 		divide = atoi(argv[1]);
@@ -2204,9 +2260,8 @@ int _aoi_test(int argc, char** argv) {
 		randcount = atoi(argv[2]);
 	}
 
-	imap *map = imapmake(&pos, &size, divide);
+	map = imapmake(&pos, &size, divide);
 
-	iunit* units[10] = {0};
 	for (i=0; i<10; ++i) {
 		units[i] = imakeunit((iid)i, (ireal)i, (ireal)i);
 		imapaddunit(map, units[i]);
@@ -2259,10 +2314,11 @@ int _aoi_test(int argc, char** argv) {
 	imapstatedesc(map, EnumMapStateAll, NULL, "[Check-After-Update-100-Rand]");
 
 	/* 搜索节点 */
-	isearchresult *result = isearchresultmake();
+	result = isearchresultmake();
 
 	for (i=0; i<1000; ++i) {
-		ipos pos = {.x=(ireal)(rand()%512), .y=(ireal)(rand()%512)};
+		/*ipos pos = {.x=(ireal)(rand()%512), .y=(ireal)(rand()%512)};*/
+		ipos pos = {(ireal)(rand()%512), (ireal)(rand()%512)};
 		imapsearchfrompos(map, &pos, result, (ireal)(rand()%10));
 	}
 	isearchresultfree(result);
