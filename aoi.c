@@ -49,7 +49,7 @@ imeta gmetas[] = {__iallmeta,
 };
 
 /* 所有自定义的类型原系统 */
-imeta gmetasuser[IMaxMetaCountForUser] = {0};
+imeta gmetasuser[IMaxMetaCountForUser] = {{0}};
 
 #undef __ideclaremeta
 #define __ideclaremeta(type, cap) EnumMetaTypeIndex_##type

@@ -20,10 +20,10 @@ $(SLIB) : aoi.o
 	$(AR) crs $@ $^
 
 main.o : $(call GET_DEPENDS, main.cpp)
-	$(CXX) -o $@ -c main.cpp
+	$(CXX) -o $@ $(CFLAGS) main.cpp
 
 aoi.o : $(call GET_DEPENDS, aoi.c)
-	$(CC) -o $@ -c aoi.c
+	$(CC) -o $@ $(CFLAGS) aoi.c
 
 output: 
 	@echo $(LDFLAGS) 
