@@ -228,17 +228,18 @@ int imetaregister(const char* name, int size, int capacity);
 
 /* 定义所有内部对象的meta索引 */
 #define __ideclaremeta(type, capacity) imetaindex(type)
-#define __iallmeta \
-    __ideclaremeta(iobj, 0), \
-    __ideclaremeta(iref, 0),\
-    __ideclaremeta(ireflist, 1000),\
-    __ideclaremeta(irefjoint, 200000), \
-    __ideclaremeta(inode, 4000),\
-    __ideclaremeta(iunit, 2000),\
-    __ideclaremeta(imap, 0),\
-    __ideclaremeta(irefcache, 0),\
-    __ideclaremeta(ifilter, 2000),\
-    __ideclaremeta(isearchresult, 0), \
+
+#define __iallmeta                            \
+    __ideclaremeta(iobj, 0),                  \
+    __ideclaremeta(iref, 0),                  \
+    __ideclaremeta(ireflist, 1000),           \
+    __ideclaremeta(irefjoint, 200000),        \
+    __ideclaremeta(inode, 4000),              \
+    __ideclaremeta(iunit, 2000),              \
+    __ideclaremeta(imap, 0),                  \
+    __ideclaremeta(irefcache, 0),             \
+    __ideclaremeta(ifilter, 2000),            \
+    __ideclaremeta(isearchresult, 0),         \
     __ideclaremeta(irefautoreleasepool, 0)
 
 /* 定义所有元信息索引 */
@@ -507,7 +508,7 @@ typedef struct iunit {
     struct inode* node;
 }iunit;
 
-/* 释放几个基本单元 */
+/* 构造一个基本单元 */
 iunit * imakeunit(iid id, ireal x, ireal y); 
 
 /* 释放一个基本单元 */

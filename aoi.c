@@ -367,7 +367,7 @@ int icirclerelation(icircle *con, icircle *c) {
 /* 转换成iref */
 #define irefcast(v) icast(iref, v)
 
-/* 增加营养计数 */
+/* 增加引用计数 */
 int irefretain(iref *ref) {
 	return ++ref->ref;
 }
@@ -428,32 +428,32 @@ iref *irefassistretain(iref *ref) {
 
 
 /* 列表操作 */
-#define list_add_front(root, node) \
-	do {\
-		if (root == NULL) { \
-			root = node; \
-		}else { \
-			node->next = root; \
-			root->pre = node; \
-			root = node; \
-		}\
+#define list_add_front(root, node)                \
+	do {                                      \
+	        if (root == NULL) {               \
+	                root = node;              \
+	        }else {                           \
+	                node->next = root;        \
+	                root->pre = node;         \
+	                root = node;              \
+	        }                                 \
 	}while(0)
 
-#define list_remove(root, node) \
-	do {\
-		if (root == node) { \
-			root = node->next;\
-		}\
-		if (node->next) {\
-			node->next->pre = node->pre;\
-		}\
-		\
-		if (node->pre) {\
-			node->pre->next = node->next;\
-		}\
-		\
-		node->pre = NULL;\
-		node->next = NULL;\
+#define list_remove(root, node)                              \
+	do {                                                 \
+	        if (root == node) {                          \
+	                root = node->next;                   \
+	        }                                            \
+	        if (node->next) {                            \
+	                node->next->pre = node->pre;         \
+	        }                                            \
+	                                                     \
+	        if (node->pre) {                             \
+	                node->pre->next = node->next;        \
+	        }                                            \
+	                                                     \
+	        node->pre = NULL;                            \
+	        node->next = NULL;                           \
 	}while(0)
 
 /* 构造列表节点 */
@@ -676,13 +676,13 @@ int irefcachesize(irefcache *cache) {
 #define icacheput(cache, ref) irefcachepush(cache, (iref*)(ref))
 
 /* 拷贝一个ABCD编码 */
-#define copycode(dst, src, count) \
-	do { \
-		memset(dst.code, 0, IMaxDivide); \
-		memcpy(dst.code, src.code, count); \
+#define copycode(dst, src, count)                         \
+	do {                                              \
+	        memset(dst.code, 0, IMaxDivide);          \
+	        memcpy(dst.code, src.code, count);        \
 	} while(0)
 
-/* 释放几个基本单元 */
+/* 构造一个基本单元 */
 iunit * imakeunit(iid id, ireal x, ireal y) {
 	iunit *unit = iobjmalloc(iunit);
 	iretain(unit);
@@ -815,17 +815,17 @@ int justremoveunit(imap *map, inode *node, iunit *unit) {
 }
 
 /* 打印节点信息 */
-#define _print_node(node) \
-	do {\
-		ilog("[IMAP-Node] Node (%d, %s, %p)\n", \
-				node->level, node->code.code, node);\
+#define _print_node(node)                                                   \
+	do {                                                                \
+	        ilog("[IMAP-Node] Node (%d, %s, %p)\n",                     \
+	                        node->level, node->code.code, node);        \
 	}while(0)
 
 /* 打印单元加入节点的操作 */
 #define _print_unit_add(node, unit, idx) \
-	do {\
+	do { \
 		ilog("[IMAP-Unit-Add] Unit(%lld, %s, x: %.3f, y: %.3f) To Node (%d, %s, %p) \n", \
-				unit->id, unit->code.code, unit->code.pos.x, unit->code.pos.y, node->level, node->code.code, node);\
+				unit->id, unit->code.code, unit->code.pos.x, unit->code.pos.y, node->level, node->code.code, node); \
 	}while(0)
 
 /* 打印单元移除出节点的操作 */
@@ -2140,7 +2140,7 @@ void imapsearchfrompos(imap *map, ipos *pos,
 
 
 	/* 造一个距离过滤器 */
-	filter = ifiltermake_circle(pos , range);
+	filter = ifiltermake_circle(pos, range);
 
 	imapsearchfromrectwithfilter(map, &rect, result, filter);
 

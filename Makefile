@@ -6,18 +6,26 @@ CFLAGS = -c -O3 -Wall -fPIC
 LIBS = -lstdc++
 
 APP = aoi
-SLIB = libaoi.a
+STATIC_LIB = libaoi.a
+LUA_SHARED_LIB = laoi.so
+
 OBJS = main.o aoi.o
 
 GET_DEPENDS=$(shell gcc -MM $(1) | cut -d ':' -f 2)
 
-all : $(APP)
+all : $(APP) $(LUA_SHARED_LIB)
 
 $(APP):$(OBJS)
 	$(CXX) -o $@ $^ $(LIBS)
 
-$(SLIB) : aoi.o
+$(STATIC_LIB) : aoi.o
 	$(AR) crs $@ $^
+
+$(LUA_SHARED_LIB) : aoi.o laoi.o
+	$(CC) -o $@ $^ --shared -llua
+
+laoi.o : $(call GET_DEPENDS, laoi.c)
+	$(CC) -o $@ $(CFLAGS) laoi.c
 
 main.o : $(call GET_DEPENDS, main.cpp)
 	$(CXX) -o $@ $(CFLAGS) main.cpp
@@ -34,5 +42,6 @@ output:
 .PHONY : all clean	
 
 clean:
-	-rm -f $(APP) $(OBJS)
+	-rm -f $(APP) $(OBJS) $(LUA_SHARED_LIB) $(STATIC_LIB) laoi.o
+	
 
