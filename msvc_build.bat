@@ -45,6 +45,7 @@ if exist "%VS110COMNTOOLS%" (
 @del %LIB_NAME%64.lib
 @rename %LIB_NAME%.dll %LIB_NAME%64.dll
 @rename %LIB_NAME%.lib %LIB_NAME%64.lib
+@%LAOI_LINK% /OUT:test.exe ctest.obj  %LIB_NAME%64.lib
 @del *.obj
 @pause
 
