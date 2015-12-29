@@ -5,6 +5,15 @@
 #include <lauxlib.h>
 #include "aoi.h"
 
+/*
+ * #define ENABLE_LAOI_DEBUG
+ */
+#ifdef ENABLE_LAOI_DEBUG
+# define DLOG(fmt, ...) fprintf(stderr, "<laoi>" fmt, ##__VA_ARGS__)
+#else
+# define DLOG(...)
+#endif
+
 #if LUA_VERSION_NUM < 502
 #  define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))
 #endif
@@ -66,6 +75,7 @@ static int lua__map_new(lua_State *L)
 
 	lua_setfenv(L, -2);
 
+	DLOG("new map,map=%p\n", map);
 	return 1;
 }
 
@@ -73,6 +83,7 @@ static int lua__map_gc(lua_State *L)
 {
 	imap * map = CHECK_AOI_MAP(L, 1);
 	if (map != NULL) {
+		DLOG("map gc,map=%p\n", map);
 		imapfree(map);
 	}
 	return 0;
@@ -259,6 +270,7 @@ static int lua__unit_new(lua_State *L)
 		return 0;
 	}
 	LUA_BIND_META(L, iunit, u, AOI_UNIT);
+	DLOG("new unit,id=%lld\n", id);
 	return 1;
 }
 
@@ -266,7 +278,7 @@ static int lua__unit_gc(lua_State *L)
 {
 	iunit * unit = CHECK_AOI_UNIT(L, 1);
 	if (unit != NULL) {
-		/* fprintf(stderr, "auto release unit\n"); */
+		DLOG("unit gc,id=%lld\n", unit->id);
 		ifreeunit(unit);
 	}
 	return 0;

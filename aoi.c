@@ -24,6 +24,8 @@ Please see examples for more details.
 #define open_log_unit_add	(0)
 #define open_log_unit_remove (0)
 #define open_log_profile	(0)
+#define open_log_map_construct  (0)
+
 
 /* 常用的宏 */
 #define iunused(v) (void)(v)
@@ -1305,8 +1307,10 @@ void imapstatedesc(imap *map, int require,
 
 /* 释放地图数据，不会释放附加在地图上的单元数据 */
 void imapfree(imap *map) {
+#if open_log_map_construct
 	/* 打印状态 */
 	imapstatedesc(map, EnumMapStateAll, "[MAP-Free]", "[MAP-Free]");
+#endif
 	/* 释放四叉树 */
 	ifreenodetree(map->root);
 	/* 释放节点缓冲区 */
@@ -1361,7 +1365,9 @@ int imapgen(imap *map) {
 		map->distances[i] =  iw * iw + ih *ih;
 	}
 
+#if open_log_map_construct
 	imapstatedesc(map, EnumMapStateAll, "[MAP-Gen]", "[MAP-Gen]");
+#endif
 
 	return iiok;
 }
