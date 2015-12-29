@@ -1,4 +1,4 @@
-CXX = gcc -g -std=gnu++0x
+CXX = gcc -g -std=c++0x
 CC = gcc -g -std=c89
 AR = ar
 CFLAGS = -c -O3 -Wall -fPIC

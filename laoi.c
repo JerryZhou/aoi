@@ -12,6 +12,8 @@
 #define AOI_MAP "cls{aoi_map}"
 #define AOI_UNIT "cls{aoi_unit}"
 
+#define AOI_UNITS_MAP_NAME "units"
+
 #define CHECK_AOI_UNIT(L, idx)\
 	(*(iunit **) luaL_checkudata(L, idx, AOI_UNIT))
 
@@ -25,6 +27,13 @@
 	luaL_getmetatable(L, mname);                                \
 	lua_setmetatable(L, -2);                                    \
 } while(0)
+
+static void luac__map_getfield(lua_State *L, int mapidx, const char * fieldname)
+{
+	lua_getfenv(L, mapidx);
+	lua_getfield(L, -1, fieldname);
+	lua_replace(L, -2);
+}
 
 
 /* {{ map */
@@ -48,6 +57,15 @@ static int lua__map_new(lua_State *L)
 		return 0;
 	}
 	LUA_BIND_META(L, imap, map, AOI_MAP);
+
+	/* bind a fenv table onto map, to save units */
+	lua_newtable(L);
+
+	lua_newtable(L);
+	lua_setfield(L, -2, AOI_UNITS_MAP_NAME);
+
+	lua_setfenv(L, -2);
+
 	return 1;
 }
 
@@ -91,7 +109,20 @@ static int lua__map_unit_add(lua_State *L)
 {
 	imap * map = CHECK_AOI_MAP(L, 1);
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
-	imapaddunit(map, unit);
+
+	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_pushnumber(L, unit->id);
+	lua_rawget(L, -2);
+
+	if (lua_isnil(L, -1)) {
+		imapaddunit(map, unit);
+
+		lua_pop(L, 1);
+		lua_pushnumber(L, unit->id);
+		lua_pushvalue(L, 2);
+		lua_rawset(L, -3);
+	}
+
 	return 0;
 }
 
@@ -100,6 +131,11 @@ static int lua__map_unit_del(lua_State *L)
 	imap * map = CHECK_AOI_MAP(L, 1);
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
 	imapremoveunit(map, unit);
+
+	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_pushnumber(L, unit->id);
+	lua_pushnil(L);
+	lua_rawset(L, -3);
 	return 0;
 }
 
@@ -119,19 +155,51 @@ static int lua__map_unit_update(lua_State *L)
 	return 0;
 }
 
+static int lua__map_units_all(lua_State *L)
+{
+	imap * map = CHECK_AOI_MAP(L, 1);
+	(void)map;
+	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	return 1;
+}
+
+
 static int lua__map_unit_search(lua_State *L)
 {
 	ireal range;
 	isearchresult *result = NULL;
+	irefjoint* joint = NULL;
+
 	imap * map = CHECK_AOI_MAP(L, 1);
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
 	range = luaL_checknumber(L, 3);
-	
+
+	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+
+	/* to restore result */
+	lua_newtable(L);
+
 	result = isearchresultmake();
 	imapsearchfromunit(map, unit, result, range);
+
+	joint = ireflistfirst(result->units);
+
+	/* 追溯最大的公共父节点 */
+	while(joint) {
+		iunit *unit = icast(iunit, joint->value);
+		iid id = unit->id;
+
+		lua_pushnumber(L, id);
+		lua_pushnumber(L, id);
+		lua_rawget(L, -4);
+		lua_rawset(L, -3);
+
+		joint = joint->next;
+	}
+
 	isearchresultfree(result);
 
-	return 0;
+	return 1;
 }
 
 
@@ -141,16 +209,38 @@ static int lua__map_searchcircle(lua_State *L)
 	ireal range;
 	isearchresult *result = NULL;
 
+	irefjoint* joint = NULL;
+
 	imap * map = CHECK_AOI_MAP(L, 1);
 	pos.x = luaL_checknumber(L, 2);
 	pos.y = luaL_checknumber(L, 3);
 	range = (ireal)luaL_checknumber(L, 4);
 
+	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+
+	lua_newtable(L);
+
 	result = isearchresultmake();
 	imapsearchfrompos(map, &pos, result, range);
+
+	joint = ireflistfirst(result->units);
+
+	/* 追溯最大的公共父节点 */
+	while(joint) {
+		iunit *unit = icast(iunit, joint->value);
+		iid id = unit->id;
+
+		lua_pushnumber(L, id);
+		lua_pushnumber(L, id);
+		lua_rawget(L, -4);
+		lua_rawset(L, -3);
+
+		joint = joint->next;
+	}
+
 	isearchresultfree(result);
 
-	return 0;
+	return 1;
 }
 
 
@@ -176,6 +266,7 @@ static int lua__unit_gc(lua_State *L)
 {
 	iunit * unit = CHECK_AOI_UNIT(L, 1);
 	if (unit != NULL) {
+		/* fprintf(stderr, "auto release unit\n"); */
 		ifreeunit(unit);
 	}
 	return 0;
@@ -212,6 +303,7 @@ static int opencls__map(lua_State *L)
 		{"get_state", lua__map_get_state},
 		{"search_circle", lua__map_searchcircle},
 
+		{"units", lua__map_units_all},
 		{"unit_search", lua__map_unit_search},
 		{"unit_add", lua__map_unit_add},
 		{"unit_del", lua__map_unit_del},
