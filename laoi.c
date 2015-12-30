@@ -43,6 +43,19 @@
 	lua_setmetatable(L, -2);                                    \
 } while(0)
 
+#define META_MAP(XX)                 \
+	XX(iobj, 0)                  \
+	XX(iref, 0)                  \
+	XX(ireflist, 1000)           \
+	XX(irefjoint, 200000)        \
+	XX(inode, 4000)              \
+	XX(iunit, 2000)              \
+	XX(imap, 0)                  \
+	XX(irefcache, 0)             \
+	XX(ifilter, 2000)            \
+	XX(isearchresult, 0)         \
+	XX(irefautoreleasepool, 0)
+
 static void luac__map_getfield(lua_State *L, int mapidx, const char * fieldname)
 {
 	lua_getfenv(L, mapidx);
@@ -384,6 +397,26 @@ static int lua__unit_get_tick(lua_State *L)
 
 /* }} iunit */
 
+static int lua__meta_cache_clear(lua_State *L)
+{
+	const char * typename = luaL_optstring(L, 1, "all");
+	if (strcmp(typename, "all") == 0) {
+#define XX(imeta_type, imeta_cache_cap) imetacacheclear(imeta_type);
+	META_MAP(XX)
+#undef XX
+
+#define XX(imeta_type, imeta_cache_cap) \
+	} else if (strcmp(typename, #imeta_type) == 0) { \
+		imetacacheclear(imeta_type);
+	META_MAP(XX)
+#undef XX
+	} else {
+		return luaL_error(L, "unkown imeta_type");
+	}
+	return 0;
+}
+
+
 static int opencls__map(lua_State *L)
 {
 	luaL_Reg lmethods[] = {
@@ -436,6 +469,17 @@ int luac__new_node_enum(lua_State *L)
 	return 1;
 }
 
+int luac__new_imeta_map(lua_State *L)
+{
+	lua_newtable(L);
+#define XX(imeta_type, imeta_cache_cap) \
+	LUA_SETMACRO(L, -1, #imeta_type, imeta_cache_cap);
+
+	META_MAP(XX);
+#undef XX
+	return 1;
+}
+
 int luac__new_map_enum(lua_State *L)
 {
 	lua_newtable(L);
@@ -457,6 +501,7 @@ int luaopen_laoi(lua_State* L)
 	luaL_Reg lfuncs[] = {
 		{"new_map", lua__map_new},
 		{"new_unit", lua__unit_new},
+		{"imeta_cache_clear", lua__meta_cache_clear},
 		{"dbg_dump_map", lua__map_dump},
 		{"dbg_dump_mapstate", lua__map_dumpstate},
 		{NULL, NULL},
@@ -470,6 +515,9 @@ int luaopen_laoi(lua_State* L)
 
 	luac__new_map_enum(L);
 	lua_setfield(L, -2, "MapEnum");
+
+	luac__new_imeta_map(L);
+	lua_setfield(L, -2, "IMetaCacheCap");
 
 	return 1;
 }

@@ -36,8 +36,13 @@ local function printf(fmt, ...)
 	return io.stdout:write(string.format(fmt, ...))
 end
 
+local splitstr = string.rep("=", 10)
+printf("%s %s %s\n", splitstr, "laoi.NodeEnum", splitstr)
 table.foreach(laoi.NodeEnum, print)
+printf("%s %s %s\n", splitstr, "laoi.MapEnum", splitstr)
 table.foreach(laoi.MapEnum, print)
+printf("%s %s %s\n", splitstr, "laoi.IMetaCacheCap", splitstr)
+table.foreach(laoi.IMetaCacheCap, print)
 
 local mapinfo = {
 	width = 512,
@@ -65,6 +70,7 @@ for i=1, unitcount do
 end
 
 -- get map state
+printf("%s %s %s\n", splitstr, "map state", splitstr)
 table.foreach(map:get_state(), print)
 
 -- move unit
@@ -74,9 +80,11 @@ for i=1, 800 do
 	local y = math.random(0, mapinfo.height-1)
 	map:unit_update(unit, {x, y})
 end
+printf("%s %s %s\n", splitstr, "unit tick", splitstr)
 print("tick", unit:get_tick())
 
 -- get range
+printf("%s %s %s\n", splitstr, "unit_search", splitstr)
 local unit = map:get_units()[3]
 for i=1, 500 do
 	map:unit_search(unit, 20)
@@ -106,7 +114,7 @@ for id, unit in pairs(map:unit_search(centerunit, range)) do
 	printf("unit_search,range=%d,%d(%d, %d),center=%d(%d, %d),dis=%f\n", range, id, x, y, cid, cx, cy, dis)
 end
 
-print("del units from map")
+printf("%s %s %s\n", splitstr, "del units from map", splitstr)
 map:unit_del_by_id(2)
 printf("unit count=%d, after remove id=2\n", tablesize(map:get_units()))
 map:unit_del(map:get_units()[3])
@@ -118,6 +126,9 @@ table.foreach(map:get_state(), print)
 for i=1, unitcount do
 	map:unit_del_by_id(i)
 end
+
+printf("%s %s %s\n", splitstr, "laoi.imeta_cache_clear", splitstr)
+laoi.imeta_cache_clear()
 
 laoi.dbg_dump_mapstate(map)
 laoi.dbg_dump_map(map)

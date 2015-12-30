@@ -266,6 +266,8 @@ imeta *iaoigetmeta(void *p);
 /* 指定对象是响应的类型: 一致返回iiok, 否则返回 iino */
 int iaoiistype(void *p, const char* type);
     
+#define imetacacheclear(type) (iaoicacheclear(imetaof(type)))
+
 #define iobjmalloc(type) ((type*)iaoicalloc(imetaof(type)))
 #define iobjfree(p) do { iaoifree(p); p = NULL; } while(0)
 #define iobjistype(p, type) iaoiistype((void*)p, #type)
