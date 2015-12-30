@@ -87,13 +87,15 @@ for id, unit in pairs(map:get_units()) do
 end
 
 local range = 20
-local cx, cy = 5, 5
+local cx, cy = 20, 50
+print("============ search_circle ============ ")
 for id, unit in pairs(map:search_circle(range, {cx, cy})) do
 	local x, y = unit:get_pos()
 	local dis = distance(x, y, cx, cy)
 	printf("search_circle,range=%d,%d(%d, %d),pos(%d, %d),dis=%f\n", range, id, x, y, cx, cy, dis)
 end
 
+print("============ unit_search ==============")
 local centerunit = map:get_units()[5]
 local cx, cy = centerunit:get_pos()
 local cid = centerunit:get_id()
