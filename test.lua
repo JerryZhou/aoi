@@ -7,7 +7,7 @@ size : {width, height}
 divide : divide -- optional (default : 1)
 pos : {posx, posy} -- optional (default: {0, 0})
 
-map:update(unit, pos)
+map:unit_update(unit, pos)
 unit : unit
 pos : {posx, posy} -- optional, if nil just update tick
 
@@ -15,7 +15,7 @@ local unit = laoi.new_unit(id, pos)
 id : number
 pos : {posx, posy}
 
-unit:get_tick() -- return last update time
+unit:get_tick() -- return last unit_update time
 --]]
 
 math.randomseed(os.time())
@@ -82,6 +82,9 @@ for i=1, 800 do
 end
 printf("%s %s %s\n", splitstr, "unit tick", splitstr)
 print("tick", unit:get_tick())
+print("getcurtick", laoi.getcurtick())
+print("getcurnano", laoi.getcurnano())
+print("getnextnano", laoi.getnextnano())
 
 -- get range
 printf("%s %s %s\n", splitstr, "unit_search", splitstr)

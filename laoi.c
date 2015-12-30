@@ -417,6 +417,27 @@ static int lua__meta_cache_clear(lua_State *L)
 }
 
 
+static int lua__getcurnano(lua_State *L)
+{
+	int64_t ret = igetcurnano();
+	lua_pushnumber(L, ret);
+	return 1;
+}
+
+static int lua__getcurtick(lua_State *L)
+{
+	int64_t ret = igetcurtick();
+	lua_pushnumber(L, ret);
+	return 1;
+}
+
+static int lua__getnextnano(lua_State *L)
+{
+	int64_t ret = igetnextnano();
+	lua_pushnumber(L, ret);
+	return 1;
+}
+
 static int opencls__map(lua_State *L)
 {
 	luaL_Reg lmethods[] = {
@@ -502,6 +523,9 @@ int luaopen_laoi(lua_State* L)
 		{"new_map", lua__map_new},
 		{"new_unit", lua__unit_new},
 		{"imeta_cache_clear", lua__meta_cache_clear},
+		{"getcurnano", lua__getcurnano},
+		{"getcurtick", lua__getcurtick},
+		{"getnextnano", lua__getnextnano},
 		{"dbg_dump_map", lua__map_dump},
 		{"dbg_dump_mapstate", lua__map_dumpstate},
 		{NULL, NULL},
