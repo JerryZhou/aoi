@@ -1,10 +1,35 @@
 local laoi = require "laoi"
 local math = math
 
+--[[
+local map = laoi.new_map(size, divide, pos)
+size : {width, height}
+divide : divide -- optional (default : 1)
+pos : {posx, posy} -- optional (default: {0, 0})
+
+map:update(unit, pos)
+unit : unit
+pos : {posx, posy} -- optional, if nil just update tick
+
+local unit = laoi.new_unit(id, pos)
+id : number
+pos : {posx, posy}
+
+unit:get_tick() -- return last update time
+--]]
+
 math.randomseed(os.time())
 
 local function distance(x1, y1, x2, y2)
 	return math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
+end
+
+local function tablesize(t)
+	local idx = 0
+	table.foreach(t, function()
+		idx = idx + 1
+	end)
+	return idx
 end
 
 local function printf(fmt, ...)
@@ -19,58 +44,57 @@ local mapinfo = {
 	height = 512,
 	x = 0,
 	y = 0,
-	divide = 1,
+	divide = 6,
 }
 
 local unitcount = 2000
-local unitlist = {}
+-- local unitlist = {}
 
-local map = laoi.new_map(mapinfo.width,
-			 mapinfo.height,
-			 mapinfo.x,
-			 mapinfo.y,
-			 mapinfo.divide)
+local map = laoi.new_map({mapinfo.width, mapinfo.height},
+			 mapinfo.divide,
+			 {mapinfo.x, mapinfo.y})
 
 -- add unit to map
 for i=1, unitcount do 
 	local x = math.random(0, mapinfo.width-1)
 	local y = math.random(0, mapinfo.height-1)
-	local unit = laoi.new_unit(i, x, y)
+	local unit = laoi.new_unit(i, {x, y})
 	map:unit_add(unit)
 	-- print("unit", unit:get_id(), unit:get_pos())
-	table.insert(unitlist, unit)
+	-- table.insert(unitlist, unit)
 end
 
 -- get map state
 table.foreach(map:get_state(), print)
 
 -- move unit
-local unit = unitlist[3]
+local unit = map:get_units()[3]
 for i=1, 800 do
 	local x = math.random(0, mapinfo.width-1)
 	local y = math.random(0, mapinfo.height-1)
-	map:unit_move(unit, x, y)
-	map:unit_update(unit)
+	map:unit_update(unit, {x, y})
 end
+print("tick", unit:get_tick())
 
 -- get range
-local unit = unitlist[3]
+local unit = map:get_units()[3]
 for i=1, 500 do
 	map:unit_search(unit, 20)
 end
 
-for id, unit in pairs(map:units()) do
+for id, unit in pairs(map:get_units()) do
 	assert(id == unit:get_id())
 end
 
 local range = 20
-for id, unit in pairs(map:search_circle(5, 5, range)) do
+local cx, cy = 5, 5
+for id, unit in pairs(map:search_circle(range, {cx, cy})) do
 	local x, y = unit:get_pos()
-	local dis = distance(x, y, 5, 5)
-	printf("search_circle,range=%d,%d(%d, %d),pos(%d, %d),dis=%f\n", range, id, x, y, 5, 5, dis)
+	local dis = distance(x, y, cx, cy)
+	printf("search_circle,range=%d,%d(%d, %d),pos(%d, %d),dis=%f\n", range, id, x, y, cx, cy, dis)
 end
 
-local centerunit = unitlist[5]
+local centerunit = map:get_units()[5]
 local cx, cy = centerunit:get_pos()
 local cid = centerunit:get_id()
 local range = 20
@@ -81,11 +105,18 @@ for id, unit in pairs(map:unit_search(centerunit, range)) do
 end
 
 print("del units from map")
+map:unit_del_by_id(2)
+printf("unit count=%d, after remove id=2\n", tablesize(map:get_units()))
+map:unit_del(map:get_units()[3])
+collectgarbage("collect")
+collectgarbage("collect")
+
+table.foreach(map:get_state(), print)
+
 for i=1, unitcount do
-	map:unit_del(unitlist[i])
+	map:unit_del_by_id(i)
 end
 
--- table.foreach(map:get_state(), print)
 laoi.dbg_dump_mapstate(map)
 laoi.dbg_dump_map(map)
 map = nil

@@ -56,16 +56,24 @@ static int lua__map_new(lua_State *L)
 {
 	imap *map = NULL;
 	int divide = 1;
-	ipos pos;
+	ipos pos = {0.0, 0.0};
 	isize size;
 
-	size.w = luaL_checknumber(L, 1);
-	size.h = luaL_checknumber(L, 2);
+	luaL_checktype(L, 1, LUA_TTABLE);
 
-	divide = luaL_optint(L, 3, 1);
+	lua_rawgeti(L, 1, 1);
+	size.w = luaL_checknumber(L, -1);
+	lua_rawgeti(L, 1, 2);
+	size.h = luaL_checknumber(L, -1);
 
-	pos.x = luaL_optnumber(L, 4, 0);
-	pos.y = luaL_optnumber(L, 5, 0);
+	divide = luaL_optint(L, 2, 1);
+
+	if (lua_type(L, 3) == LUA_TTABLE) {
+		lua_rawgeti(L, 3, 1);
+		pos.x = luaL_optnumber(L, -1, 0);
+		lua_rawgeti(L, 3, 2);
+		pos.y = luaL_optnumber(L, -1, 0);
+	}
 
 	map = imapmake(&pos, &size, divide);
 	if (map == NULL) {
@@ -162,6 +170,32 @@ static int lua__map_unit_add(lua_State *L)
 	return 0;
 }
 
+static int lua__map_unit_del_byid(lua_State *L)
+{
+	iunit * unit = NULL;
+	imap * map = CHECK_AOI_MAP(L, 1);
+	iid id = (iid)luaL_checknumber(L, 2);
+
+	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_pushnumber(L, id);
+	lua_rawget(L, -2);
+	if (lua_isnoneornil(L, -1)) {
+		/* fprintf(stderr, "%s,id=%lld not found\n", __FUNCTION__, id); */
+		return 0;
+	}
+
+	unit = CHECK_AOI_UNIT(L, -1);
+	imapremoveunit(map, unit);
+
+	lua_pushnumber(L, id);
+	lua_pushnil(L);
+	lua_rawset(L, 3);
+	/* fprintf(stderr, "%s,id=%lld removed\n", __FUNCTION__, id); */
+
+	return 0;
+}
+
+
 static int lua__map_unit_del(lua_State *L)
 {
 	imap * map = CHECK_AOI_MAP(L, 1);
@@ -175,23 +209,31 @@ static int lua__map_unit_del(lua_State *L)
 	return 0;
 }
 
-static int lua__map_unit_move(lua_State *L)
-{
-	imap * map = CHECK_AOI_MAP(L, 1);
-	iunit * unit = CHECK_AOI_UNIT(L, 2);
-	imapremoveunit(map, unit);
-	return 0;
-}
-
 static int lua__map_unit_update(lua_State *L)
 {
+	ipos pos;
 	imap * map = CHECK_AOI_MAP(L, 1);
+	(void) map;
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
+	if (lua_type(L, 3) == LUA_TTABLE) {
+		lua_rawgeti(L, 3, 1);
+		pos.x = luaL_checknumber(L, -1);
+		lua_rawgeti(L, 3, 2);
+		pos.y = luaL_checknumber(L, -1);
+
+                DLOG("unit move,id=%lld,from=(%.2f,%.2f),to=(%.2f,%.2f)\n",
+		     unit->id,
+		     unit->pos.x, unit->pos.y,
+		     pos.x, pos.y);
+		unit->pos.x = pos.x;
+		unit->pos.y = pos.y;
+	}
+
 	imapupdateunit(map, unit);
 	return 0;
 }
 
-static int lua__map_units_all(lua_State *L)
+static int lua__map_get_units(lua_State *L)
 {
 	imap * map = CHECK_AOI_MAP(L, 1);
 	(void)map;
@@ -248,9 +290,12 @@ static int lua__map_searchcircle(lua_State *L)
 	irefjoint* joint = NULL;
 
 	imap * map = CHECK_AOI_MAP(L, 1);
-	pos.x = luaL_checknumber(L, 2);
-	pos.y = luaL_checknumber(L, 3);
-	range = (ireal)luaL_checknumber(L, 4);
+	range = (ireal)luaL_checknumber(L, 2);
+	luaL_checktype(L, 3, LUA_TTABLE);
+	lua_rawgeti(L, 3, 1);
+	pos.x = luaL_checknumber(L, -1);
+	lua_rawgeti(L, 3, 2);
+	pos.y = luaL_checknumber(L, -1);
 
 	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
 
@@ -287,9 +332,15 @@ static int lua__map_searchcircle(lua_State *L)
 static int lua__unit_new(lua_State *L)
 {
 	iunit *u = NULL;
+	lua_Number x, y;
 	iid id = (iid)luaL_checknumber(L, 1);
-	lua_Number x = luaL_checknumber(L, 2);
-	lua_Number y = luaL_checknumber(L, 3);
+	luaL_checktype(L, 2, LUA_TTABLE);
+	lua_rawgeti(L, 2, 1);
+	x = luaL_checknumber(L, -1);
+
+	lua_rawgeti(L, 2, 2);
+	y = luaL_checknumber(L, -1);
+
 	u = imakeunit(id, (ireal)x, (ireal)y);
 	if (u == NULL) {
 		return 0;
@@ -338,13 +389,13 @@ static int opencls__map(lua_State *L)
 	luaL_Reg lmethods[] = {
 		{"get_size", lua__map_get_size},
 		{"get_state", lua__map_get_state},
-		{"search_circle", lua__map_searchcircle},
+		{"get_units", lua__map_get_units},
 
-		{"units", lua__map_units_all},
+		{"search_circle", lua__map_searchcircle},
 		{"unit_search", lua__map_unit_search},
 		{"unit_add", lua__map_unit_add},
 		{"unit_del", lua__map_unit_del},
-		{"unit_move", lua__map_unit_move},
+		{"unit_del_by_id", lua__map_unit_del_byid},
 		{"unit_update", lua__map_unit_update},
 		{NULL, NULL},
 	};
