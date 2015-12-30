@@ -2,12 +2,21 @@ CXX = gcc -g -std=c++0x
 CC = gcc -g -std=c89
 AR = ar
 CFLAGS = -c -O3 -Wall -fPIC
+PLATFORM = $(shell uname)
 
 LIBS = -lstdc++
 
 APP = aoi
 STATIC_LIB = libaoi.a
 LUA_SHARED_LIB = laoi.so
+LUA_LDFLAGS = 
+
+ifeq ($(PLATFORM),Linux)
+else
+        ifeq ($(PLATFORM), Darwin)
+                LUA_LDFLAGS += -llua
+        endif
+endif
 
 OBJS = main.o aoi.o
 
@@ -22,7 +31,7 @@ $(STATIC_LIB) : aoi.o
 	$(AR) crs $@ $^
 
 $(LUA_SHARED_LIB) : aoi.o laoi.o
-	$(CC) -o $@ $^ --shared -llua
+	$(CC) -o $@ $^ --shared $(LUA_LDFLAGS)
 
 laoi.o : $(call GET_DEPENDS, laoi.c)
 	$(CC) -o $@ $(CFLAGS) laoi.c
@@ -37,7 +46,6 @@ output:
 	@echo $(LDFLAGS) 
 	@echo $(LIBS)
 	@echo $(OBJS)
-
 
 .PHONY : all clean	
 
