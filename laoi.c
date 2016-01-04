@@ -226,8 +226,8 @@ static int lua__map_unit_update(lua_State *L)
 {
 	ipos pos;
 	imap * map = CHECK_AOI_MAP(L, 1);
-	(void) map;
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
+	(void) map;
 	if (lua_type(L, 3) == LUA_TTABLE) {
 		lua_rawgeti(L, 3, 1);
 		pos.x = luaL_checknumber(L, -1);
