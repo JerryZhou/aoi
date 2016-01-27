@@ -388,6 +388,15 @@ static int lua__unit_get_pos(lua_State *L)
 	return 2;
 }
 
+static int lua__unit_get_dis_pow2(lua_State *L)
+{
+	iunit * unit1 = CHECK_AOI_UNIT(L, 1);
+	iunit * unit2 = CHECK_AOI_UNIT(L, 1);
+	ireal dis = idistancepow2(&unit1->pos, &unit2->pos);
+	lua_pushnumber(L, dis);
+	return 1;
+}
+
 static int lua__unit_get_tick(lua_State *L)
 {
 	iunit * unit = CHECK_AOI_UNIT(L, 1);
@@ -468,6 +477,7 @@ static int opencls__unit(lua_State *L)
 		{"get_pos", lua__unit_get_pos},
 		{"get_id", lua__unit_get_id},
 		{"get_tick", lua__unit_get_tick},
+		{"get_dispow2", lua__unit_get_dis_pow2},
 		{NULL, NULL},
 	};
 	luaL_newmetatable(L, AOI_UNIT);
