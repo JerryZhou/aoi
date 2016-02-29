@@ -25,7 +25,6 @@ make ENABLE_LUALIB=true
 msvc_build.bat
 ```
 
-
 # 视野服务
 游戏服务器的AOI（area of interest)部分，位置有关的游戏实体一般都有一个视野或关心的范围
 
@@ -68,4 +67,13 @@ msvc_build.bat
  
     // free the aoi list
     isearchresultfree(result)
+
+
+# lua Test
+
+build first and then:
+
+```
+lua test.lua
+```
 
