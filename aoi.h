@@ -212,7 +212,7 @@ typedef enum EnumMetaTypeIndex {
    EnumMetaTypeIndex_imax,
 }EnumMetaTypeIndex;
 
-// 获取响应的内存：会经过Meta的Cache
+// 获取相应的内存：会经过Meta的Cache
 void *iaoicalloc(imeta *meta);
 
 // 释放内存：会经过Meta的Cache
@@ -268,7 +268,7 @@ typedef struct iref {
 }iref;
 
 
-// 增加营养计数
+// 增加引用计数
 int irefretain(iref *ref); 
 
 // 释放引用计数
