@@ -4,11 +4,22 @@ AR = ar
 CFLAGS = -c -O3 -Wall -fPIC
 PLATFORM = $(shell uname)
 
-LIBS = -lstdc++
+CXXLDLIBS = -lstdc++
 
 APP = aoi
+
+
+# for c
 STATIC_LIB = libaoi.a
+
+# for lua
 LUA_SHARED_LIB = laoi.so
+LUA_STATIC_LIB = laoi.a
+
+ALL_LIBS = $(STATIC_LIB)
+
+ENABLE_LUALIB=
+
 LUA_LDFLAGS = 
 
 ifeq ($(PLATFORM),Linux)
@@ -18,16 +29,23 @@ else
         endif
 endif
 
+ifeq ($(ENABLE_LUALIB), true)
+	ALL_LIBS += $(LUA_SHARED_LIB) $(LUA_STATIC_LIB)
+endif
+
 OBJS = main.o aoi.o
 
 GET_DEPENDS=$(shell gcc -MM $(1) | cut -d ':' -f 2)
 
-all : $(APP) $(LUA_SHARED_LIB)
+all : $(APP) $(ALL_LIBS)
 
 $(APP):$(OBJS)
-	$(CXX) -o $@ $^ $(LIBS)
+	$(CXX) -o $@ $^ $(CXXLDLIBS)
 
 $(STATIC_LIB) : aoi.o
+	$(AR) crs $@ $^
+
+$(LUA_STATIC_LIB) : aoi.o laoi.o
 	$(AR) crs $@ $^
 
 $(LUA_SHARED_LIB) : aoi.o laoi.o
@@ -44,12 +62,12 @@ aoi.o : $(call GET_DEPENDS, aoi.c)
 
 output: 
 	@echo $(LDFLAGS) 
-	@echo $(LIBS)
+	@echo $(CXXLDLIBS)
 	@echo $(OBJS)
 
 .PHONY : all clean	
 
 clean:
-	-rm -f $(APP) $(OBJS) $(LUA_SHARED_LIB) $(STATIC_LIB) laoi.o
+	-rm -f $(APP) $(OBJS) $(LUA_STATIC_LIB) $(LUA_SHARED_LIB) $(STATIC_LIB) laoi.o
 	
 

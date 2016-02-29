@@ -1,6 +1,30 @@
 # aoi
 area of interest(AOI)
 
+# How to Build
+
+### on Linux/Mac OSX
+
+###### to make libaoi.a for c:
+
+```
+make
+```
+
+###### make laoi.so and laoi.a for lua
+
+```
+make ENABLE_LUALIB=true
+```
+
+### on Windows
+
+##### see msvc_build.bat
+
+```
+msvc_build.bat
+```
+
 
 # 视野服务
 游戏服务器的AOI（area of interest)部分，位置有关的游戏实体一般都有一个视野或关心的范围
