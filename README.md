@@ -1,6 +1,29 @@
 # aoi
 area of interest(AOI)
 
+# How to Build
+
+### on Linux/Mac OSX
+
+###### to make libaoi.a for c:
+
+```
+make
+```
+
+###### make laoi.so and laoi.a for lua
+
+```
+make ENABLE_LUALIB=true
+```
+
+### on Windows
+
+##### see msvc_build.bat
+
+```
+msvc_build.bat
+```
 
 # 视野服务
 游戏服务器的AOI（area of interest)部分，位置有关的游戏实体一般都有一个视野或关心的范围
@@ -17,6 +40,7 @@ area of interest(AOI)
 详情见wiki
 
 # 简单实用
+    ```
     // make game world
     imap *map = imapmake(pos, size, divide)
  
@@ -44,7 +68,15 @@ area of interest(AOI)
  
     // free the aoi list
     isearchresultfree(result)
+    ```
 
+# lua Test
+
+build first and then:
+
+```
+lua test.lua
+```
 # wiki
 主要是维护实体区域，并维护对象的AOI列表
 
@@ -52,3 +84,5 @@ area of interest(AOI)
 
 
 ![1.2M内存消耗，750 个对象同时移动，100个对象同时计算周围的AOI，总共消耗2毫秒的样子](http://dwgaga-image.qiniudn.com/Banners_and_Alerts_App_0_8_2.png)
+
+
