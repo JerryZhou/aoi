@@ -3,6 +3,7 @@ CC = gcc -g -std=c89
 AR = ar
 CFLAGS = -c -O3 -Wall -fPIC 
 PLATFORM = $(shell uname)
+PWD = $(shell pwd)
 
 CXXLDLIBS = -lstdc++
 
