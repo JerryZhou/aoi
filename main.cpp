@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
     (void)argc;
     (void)argv;
 
-    irect r = {.pos={.x=0,.y=0}};
+    irect r = {{0,0}};
     (void)r;
 
     runAllTest();

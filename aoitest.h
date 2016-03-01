@@ -200,8 +200,8 @@ SP_CASE(time, igetnextnano) {
 SP_SUIT(ipos);
 
 SP_CASE(ipos, idistancepow2) {
-    ipos pos1 = {.x=0, .y=0};
-    ipos pos2 = {.x=3, .y=4};
+    ipos pos1 = {0, 0};
+    ipos pos2 = {3, 4};
     
     SP_EQUAL(25.0, idistancepow2(&pos1, &pos2));
 }
@@ -219,54 +219,54 @@ SP_CASE(isize, nothing) {
 SP_SUIT(irect);
 
 SP_CASE(irect, irectcontainsTHEself) {
-    irect r = {.pos={.x=0,.y=0}, .size={.w=1,.h=1}};
+    irect r = {{0,0}, {1,1}};
     
     SP_EQUAL(irectcontains(&r, &r), 1);
 }
 
 SP_CASE(irect, irectcontainsTHEsub) {
-    irect r = {.pos={.x=0,.y=0}, .size={.w=2,.h=2}};
+    irect r = {{0,0}, {2,2}};
     
-    irect r0 = {.pos={.x=0,.y=0}, .size={.w=0,.h=0}};
+    irect r0 = {{0,0}, {0,0}};
     
     SP_EQUAL(irectcontains(&r, &r0), 1);
 }
 
 SP_CASE(irect, irectcontainsTHEsubNo) {
-    irect r = {.pos={.x=0,.y=0}, .size={.w=2,.h=2}};
+    irect r = {{0,0}, {2,2}};
     
-    irect r0 = {.pos={.x=0,.y=0}, .size={.w=3,.h=3}};
+    irect r0 = {{0,0}, {3,3}};
     
     SP_EQUAL(irectcontains(&r, &r0), 0);
 }
 
 SP_CASE(irect, irectcontainsTHEsubNo2) {
-    irect r = {.pos={.x=0,.y=0}, .size={.w=2,.h=2}};
+    irect r = {{0,0}, {2,2}};
     
-    irect r0 = {.pos={.x=1,.y=1}, .size={.w=2,.h=2}};
+    irect r0 = {{1,1}, {2,2}};
     
     SP_EQUAL(irectcontains(&r, &r0), 0);
 }
 
 SP_CASE(irect, irectcontainsTHEsubNo3) {
-    irect r = {.pos={.x=0,.y=0}, .size={.w=2,.h=2}};
+    irect r = {{0,0}, {2,2}};
     
-    irect r0 = {.pos={.x=-1,.y=-1}, .size={.w=2,.h=2}};
+    irect r0 = {{-1,-1}, {2,2}};
     
     SP_EQUAL(irectcontains(&r, &r0), 0);
 }
 
 SP_CASE(irect, irectcontainsTHEsubNo4) {
-    irect r = {.pos={.x=0,.y=0}, .size={.w=2,.h=2}};
+    irect r = {{0,0}, {2,2}};
     
-    irect r0 = {.pos={.x=-1,.y=-1}, .size={.w=5,.h=5}};
+    irect r0 = {{-1,-1}, {5,5}};
     
     SP_EQUAL(irectcontains(&r, &r0), 0);
 }
 
 SP_CASE(irect, irectcontainspoint) {
-    irect r = {.pos={.x=0,.y=0}, .size={.w=2,.h=2}};
-    ipos p = {.x=0, .y=0};
+    irect r = {{0,0}, {2,2}};
+    ipos p = {0, 0};
     
     SP_EQUAL(irectcontainspoint(&r, &p), iiok);
     p.x = 2, p.y = 2;
@@ -298,87 +298,87 @@ SP_CASE(irect, irectcontainspoint) {
 SP_SUIT(icircle);
 
 SP_CASE(icircle, icircleintersect) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=1.0};
+    icircle c = {{0, 0}, 1.0};
     
     SP_EQUAL(c.radis, 1.0);
     
-    icircle c0 = {.pos={.x=0, .y=0}, .radis=2.0};
+    icircle c0 = {{0, 0}, 2.0};
     
     SP_EQUAL(icircleintersect(&c, &c0), 1);
 }
 
 SP_CASE(icircle, icircleintersectYES) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=1.0};
+    icircle c = {{0, 0}, 1.0};
     
     SP_EQUAL(c.radis, 1.0);
     
-    icircle c0 = {.pos={.x=0, .y=3}, .radis=2.0};
+    icircle c0 = {{0, 3}, 2.0};
     
     SP_EQUAL(icircleintersect(&c, &c0), 1);
 }
 
 SP_CASE(icircle, icircleintersectNo) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=1.0};
+    icircle c = {{0, 0}, 1.0};
     
     SP_EQUAL(c.radis, 1.0);
     
-    icircle c0 = {.pos={.x=3, .y=3}, .radis=2.0};
+    icircle c0 = {{3, 3}, 2.0};
     
     SP_EQUAL(icircleintersect(&c, &c0), 0);
 }
 
 SP_CASE(icircle, icirclecontains) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=2.0};
+    icircle c = {{0, 0}, 2.0};
     
     SP_EQUAL(icirclecontains(&c, &c), 1);
 }
 
 SP_CASE(icircle, icirclecontainsYES) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=2.0};
+    icircle c = {{0, 0}, 2.0};
     
-    icircle c0 = {.pos={.x=0, .y=0}, .radis=1.0};
+    icircle c0 = {{0, 0}, 1.0};
     
     SP_EQUAL(icirclecontains(&c, &c0), 1);
 }
 
 SP_CASE(icircle, icirclecontainsYES1) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=2.0};
+    icircle c = {{0, 0}, 2.0};
     
     SP_EQUAL(icirclecontains(&c, NULL), 1);
 }
 
 SP_CASE(icircle, icirclecontainsNO) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=2.0};
+    icircle c = {{0, 0}, 2.0};
     
     SP_EQUAL(icirclecontains(NULL, &c), 0);
 }
 
 SP_CASE(icircle, icirclecontainsNO1) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=2.0};
-    icircle c0 = {.pos={.x=0, .y=0}, .radis=3.0};
+    icircle c = {{0, 0}, 2.0};
+    icircle c0 = {{0, 0}, 3.0};
     
     SP_EQUAL(icirclecontains(&c, &c0), 0);
 }
 
 SP_CASE(icircle, icirclecontainsNO2) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=2.0};
-    icircle c0 = {.pos={.x=1, .y=1}, .radis=2.0};
+    icircle c = {{0, 0}, 2.0};
+    icircle c0 = {{1, 1}, 2.0};
     
     SP_EQUAL(icirclecontains(&c, &c0), 0);
 }
 
 SP_CASE(icircle, icirclecontainsNO3) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=2.0};
-    icircle c0 = {.pos={.x=5, .y=5}, .radis=2.0};
+    icircle c = {{0, 0}, 2.0};
+    icircle c0 = {{5, 5}, 2.0};
     
     SP_EQUAL(icirclecontains(&c, &c0), 0);
 }
 
 SP_CASE(icircle, icirclerelation) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=2.0};
-    icircle c0 = {.pos={.x=0, .y=0}, .radis=1.0};
-    icircle c1 = {.pos={.x=1, .y=0}, .radis=1.0};
-    icircle c2 = {.pos={.x=3, .y=0}, .radis=1.0};
+    icircle c = {{0, 0}, 2.0};
+    icircle c0 = {{0, 0}, 1.0};
+    icircle c1 = {{1, 0}, 1.0};
+    icircle c2 = {{3, 0}, 1.0};
     
     SP_EQUAL(icirclerelation(&c, &c), EnumCircleRelationAContainsB);
     SP_EQUAL(icirclerelation(&c, &c0), EnumCircleRelationAContainsB);
@@ -388,8 +388,8 @@ SP_CASE(icircle, icirclerelation) {
 }
 
 SP_CASE(icircle, icirclecontainspoint) {
-    icircle c = {.pos={.x=0, .y=0}, .radis=2.0};
-    ipos p = {.x=0, .y=0};
+    icircle c = {{0, 0}, 2.0};
+    ipos p = {0, 0};
     
     SP_EQUAL(icirclecontainspoint(&c, &p), iiok);
     
@@ -405,7 +405,7 @@ SP_CASE(icircle, icirclecontainspoint) {
 SP_SUIT(iname);
 
 SP_CASE(iname, nothing) {
-    iname name = {.name = {'A', 'B', 'C', 0}};
+    iname name = {{'A', 'B', 'C', 0}};
     
     SP_EQUAL(name.name[0], 'A');
     SP_EQUAL(name.name[1], 'B');
@@ -849,7 +849,7 @@ SP_CASE(irefcache, irefcachefree) {
 SP_SUIT(icode);
 
 SP_CASE(icode, nothing) {
-    icode code = {.code={'A','B', 0}, .pos={.x=0, .y=0}};
+    icode code = {{'A','B', 0}, {0, 0}};
     
     SP_EQUAL(code.code[0], 'A');
 }
@@ -859,7 +859,7 @@ SP_CASE(icode, nothing) {
 SP_SUIT(iuserdata);
 
 SP_CASE(iuserdata, nothing) {
-    iuserdata u = {.u1=0, .up1=NULL};
+    iuserdata u = {0, NULL};
     
     SP_EQUAL(u.u1, 0);
     
@@ -910,7 +910,7 @@ SP_CASE(inode, nothing) {
 // imap
 SP_SUIT(imap);
 
-imap *map = NULL; // {.x=0, .y=0}, {.w=8, .h=8}, 3
+imap *map = NULL; // {0, 0}, {8, 8}, 3
 // 是一个左闭右开区间
 // AAA: [(0,0) -- (1.0, 1.0))
 // AAD: [(1.0, 1.0) --- (2.0, 2.0))
@@ -956,8 +956,8 @@ void free_test_map() {
 
 void make_test_map() {
     free_test_map();
-    ipos pos = {.x=0, .y=0};
-    isize size = {.w=8, .h=8};
+    ipos pos = {0, 0};
+    isize size = {8, 8};
     map = imapmake(&pos, &size, 3);
 }
 
@@ -999,7 +999,7 @@ SP_CASE(imap, imapmake) {
 SP_CASE(imap, imapgencode) {
     icode code;
     
-    ipos p = {.x = 0, .y = 0};
+    ipos p = {0, 0};
     
     imapgencode(map, &p, &code);
     
@@ -1024,9 +1024,9 @@ SP_CASE(imap, imapgencode) {
 
 SP_CASE(imap, imapgenpos) {
     
-    icode code = {.code={'A', 'A', 'A', 0}};
+    icode code = {{'A', 'A', 'A', 0}};
     
-    ipos p = {.x = 0, .y = 0};
+    ipos p = {0, 0};
     
     imapgenpos(map, &p, &code);
     
@@ -1205,7 +1205,7 @@ SP_CASE(imap, complexANDimapaddunitANDimapremoveunitANDimapgetnode) {
     SP_EQUAL(map->state.leafcount, 1);
     SP_EQUAL(map->state.unitcount, 3);
     
-    icode code = {.code={'A', 'A', 'A', 0}};
+    icode code = {{'A', 'A', 'A', 0}};
     
     inode *node = imapgetnode(map, &code, 0, EnumFindBehaviorAccurate);
     
@@ -1318,7 +1318,7 @@ SP_CASE(imap, imapupdateunit) {
     SP_EQUAL(map->state.unitcount, 0);
     
     imapaddunit(map, __getunitfor(0));
-    icode code = {.code={'A','A','A',0}};
+    icode code = {{'A','A','A',0}};
     
     /**
      |BBB| BBD| BDB| BDD| DBB| DBD| DDB| DDD|
@@ -1492,8 +1492,8 @@ SP_CASE(imap, imapupdateunit) {
 }
 
 SP_CASE(imap, imapmovecode) {
-    ipos pos = {.x=0, .y=0};
-    isize size = {.w=512, .h = 512};
+    ipos pos = {0, 0};
+    isize size = {512, 512};
     imap *xxmap = imapmake(&pos, &size, 24); 
 
     icode code;
@@ -1516,8 +1516,8 @@ SP_CASE(imap, imapmovecode) {
         pos.x = pos.x;
         pos.y += xxmap->nodesizes[24].h;
         imapgencode(xxmap, &pos, &xcode);
-        printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-        printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
+        //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
+        //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
 
         SP_EQUAL(code.pos.x, pos.x);
         SP_EQUAL(code.pos.y, pos.y);
@@ -1534,8 +1534,8 @@ SP_CASE(imap, imapmovecode) {
         pos.x = pos.x;
         pos.y -= xxmap->nodesizes[24].h;
         imapgencode(xxmap, &pos, &xcode);
-        printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-        printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
+        //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
+        //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
 
         SP_EQUAL(code.pos.x, pos.x);
         SP_EQUAL(code.pos.y, pos.y);
@@ -1552,8 +1552,8 @@ SP_CASE(imap, imapmovecode) {
         pos.x += xxmap->nodesizes[24].w;
         pos.y = pos.y;
         imapgencode(xxmap, &pos, &xcode);
-        printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-        printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
+        //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
+        //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
 
         SP_EQUAL(code.pos.x, pos.x);
         SP_EQUAL(code.pos.y, pos.y);
@@ -1570,8 +1570,8 @@ SP_CASE(imap, imapmovecode) {
         pos.x -= xxmap->nodesizes[24].w;
         pos.y = pos.y;
         imapgencode(xxmap, &pos, &xcode);
-        printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-        printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
+        //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
+        //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
 
         SP_EQUAL(code.pos.x, pos.x);
         SP_EQUAL(code.pos.y, pos.y);
@@ -1585,7 +1585,7 @@ SP_CASE(imap, imapmovecode) {
         pos.y = rand() % 512;
 
         imapgencode(xxmap, &pos, &xcode);
-        printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
+        //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
         if ( imapmovecode(xxmap, &xcode, EnumCodeMoveLeft) > 0 ) {
             pos.x -= xxmap->nodesizes[xxmap->divide].w;
 
@@ -1593,8 +1593,8 @@ SP_CASE(imap, imapmovecode) {
             SP_EQUAL(xcode.pos.y, pos.y);
 
             imapgencode(xxmap, &pos, &code);
-            printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-            printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
+            //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
+            //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
 
             SP_TRUE(strcmp(xcode.code, code.code) == 0);
         }
@@ -1613,8 +1613,8 @@ SP_CASE(imap, imapmovecode) {
             SP_EQUAL(xcode.pos.y, pos.y);
 
             imapgencode(xxmap, &pos, &code);
-            printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-            printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
+            //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
+            //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
 
             SP_TRUE(strcmp(xcode.code, code.code) == 0);
         }
@@ -1633,8 +1633,8 @@ SP_CASE(imap, imapmovecode) {
             SP_EQUAL(xcode.pos.y, pos.y);
 
             imapgencode(xxmap, &pos, &code);
-            printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-            printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
+            //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
+            //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
 
             SP_TRUE(strcmp(xcode.code, code.code) == 0);
         }
@@ -1653,8 +1653,8 @@ SP_CASE(imap, imapmovecode) {
             SP_EQUAL(xcode.pos.y, pos.y);
 
             imapgencode(xxmap, &pos, &code);
-            printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-            printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
+            //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
+            //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
 
             SP_TRUE(strcmp(xcode.code, code.code) == 0);
         }
@@ -1664,8 +1664,8 @@ SP_CASE(imap, imapmovecode) {
 }
 
 SP_CASE(imap, imapmovecodeedge) {
-    ipos p = {.x=0, .y=0};
-    isize s = {.w=512, .h=512};
+    ipos p = {0, 0};
+    isize s = {512, 512};
 
     imap *xxmap = imapmake(&p, &s, 10);
 
@@ -1705,15 +1705,16 @@ SP_CASE(imap, imapmovecodeedge) {
     }
     // Can Move up
     {
-    p.x = 0; p.y=0;
-    imapgencode(xxmap, &p, &code);
-    int move = imapmovecode(xxmap, &code, EnumCodeMoveUp);
-    SP_EQUAL(move, 1);
-    p.y += xxmap->nodesizes[xxmap->divide].h;
-    imapgencode(xxmap, &p, &xcode);
-    SP_TRUE(strcmp(code.code, xcode.code) == 0);
-    SP_EQUAL(code.pos.x, p.x);
-    SP_EQUAL(code.pos.y, p.y);
+	    int move;
+	    p.x = 0;
+	    imapgencode(xxmap, &p, &code);
+	    move = imapmovecode(xxmap, &code, EnumCodeMoveUp);
+	    SP_EQUAL(move, 1);
+	    p.y += xxmap->nodesizes[xxmap->divide].h;
+	    imapgencode(xxmap, &p, &xcode);
+	    SP_TRUE(strcmp(code.code, xcode.code) == 0);
+	    SP_EQUAL(code.pos.x, p.x);
+	    SP_EQUAL(code.pos.y, p.y);
     }
 
     imapfree(xxmap);
@@ -1741,29 +1742,29 @@ SP_CASE(ifilter, ifiltermake) {
 
 SP_CASE(ifilter, ifiltermake_circle) {
     
-    ipos pos = {.x=0, .y=0};
+    ipos pos = {0, 0};
     ifilter *filterrange = ifiltermake_circle(&pos, 2.0);
     
     SP_EQUAL(ifilterchecksum(map, filterrange) != 0, 1);
     
-    SP_EQUAL(filterrange->circle.radis, 2.0);
+    SP_EQUAL(filterrange->s.u.circle.radis, 2.0);
     
-    SP_EQUAL(filterrange->circle.pos.x, 0);
-    SP_EQUAL(filterrange->circle.pos.y, 0);
+    SP_EQUAL(filterrange->s.u.circle.pos.x, 0);
+    SP_EQUAL(filterrange->s.u.circle.pos.y, 0);
     
     ifilterfree(filterrange);
 }
 
 SP_CASE(ifilter, ifiltermake_rect) {
-    ipos pos = {.x=0, .y=0};
-    isize size = {.w=2, .h=2};
+    ipos pos = {0, 0};
+    isize size = {2, 2};
     ifilter *filterrect = ifiltermake_rect(&pos, &size);
     
     SP_EQUAL(ifilterchecksum(map, filterrect) != 0, 1);
-    SP_EQUAL(filterrect->rect.pos.x, 0);
-    SP_EQUAL(filterrect->rect.pos.y, 0);
-    SP_EQUAL(filterrect->rect.size.w, 2);
-    SP_EQUAL(filterrect->rect.size.h, 2);
+    SP_EQUAL(filterrect->s.u.rect.pos.x, 0);
+    SP_EQUAL(filterrect->s.u.rect.pos.y, 0);
+    SP_EQUAL(filterrect->s.u.rect.size.w, 2);
+    SP_EQUAL(filterrect->s.u.rect.size.h, 2);
     
     ifilterfree(filterrect);
 }
@@ -1771,7 +1772,7 @@ SP_CASE(ifilter, ifiltermake_rect) {
 SP_CASE(ifilter, ifilteradd) {
     ifilter *filter = ifiltermake();
     
-    ipos pos = {.x=0, .y=0};
+    ipos pos = {0, 0};
     ifilter *filterrange = ifiltermake_circle(&pos, 2.0);
     
     SP_EQUAL(ifilterchecksum(map, filter), 0);
@@ -1787,22 +1788,22 @@ SP_CASE(ifilter, ifilteradd) {
 SP_CASE(ifilter, ifilterremove) {
     ifilter *filter = ifiltermake();
     
-    ipos pos = {.x=0, .y=0};
+    ipos pos = {0, 0};
     ifilter *filterrange = ifiltermake_circle(&pos, 2.0);
     
     SP_EQUAL(ifilterchecksum(map, filter), 0);
     
-    SP_EQUAL(ireflistlen(filter->list), 0);
+    SP_EQUAL(ireflistlen(filter->s.list), 0);
     
     ifilteradd(filter, filterrange);
     
     SP_EQUAL(ifilterchecksum(map, filter) != 0, 1);
     
-    SP_EQUAL(ireflistlen(filter->list), 1);
+    SP_EQUAL(ireflistlen(filter->s.list), 1);
     
     ifilterremove(filter, filterrange);
     
-    SP_EQUAL(ireflistlen(filter->list), 0);
+    SP_EQUAL(ireflistlen(filter->s.list), 0);
     
     ifilterfree(filter);
     ifilterfree(filterrange);
@@ -1811,23 +1812,23 @@ SP_CASE(ifilter, ifilterremove) {
 SP_CASE(ifilter, ifilterclean) {
     ifilter *filter = ifiltermake();
     
-    ipos pos = {.x=0, .y=0};
+    ipos pos = {0, 0};
     ifilter *filterrange = ifiltermake_circle(&pos, 2.0);
     
     SP_EQUAL(ifilterchecksum(map, filter), 0);
     
-    SP_EQUAL(ireflistlen(filter->list), 0);
+    SP_EQUAL(ireflistlen(filter->s.list), 0);
     
     ifilteradd(filter, filterrange);
     ifilteradd(filter, filterrange);
     
     SP_EQUAL(ifilterchecksum(map, filter) != 0, 1);
     
-    SP_EQUAL(ireflistlen(filter->list), 2);
+    SP_EQUAL(ireflistlen(filter->s.list), 2);
     
     ifilterclean(filter);
     
-    SP_EQUAL(ireflistlen(filter->list), 0);
+    SP_EQUAL(ireflistlen(filter->s.list), 0);
     
     ifilterfree(filter);
     ifilterfree(filterrange);
@@ -1837,7 +1838,7 @@ int __filter_test_forid(imap *map, ifilter *filter, iunit *unit) {
     icheckret(filter, iino);
     icheckret(unit, iino);
     
-    if (unit->id == filter->id) {
+    if (unit->id == filter->s.u.id) {
         return iiok;
     }
     
@@ -1889,12 +1890,12 @@ SP_CASE(ifilter, ifilterrun) {
     ok = ifilterrun(map, filter, __getunitfor(2));
     SP_EQUAL(ok, iiok);
     
-    ipos pos = {.x=0, .y=0};
+    ipos pos = {0, 0};
     ifilter *filterrange = ifiltermake_circle(&pos, 1.0);
     
     SP_EQUAL(ifilterchecksum(map, filter), 0);
     
-    SP_EQUAL(ireflistlen(filter->list), 0);
+    SP_EQUAL(ireflistlen(filter->s.list), 0);
     
     ifilteradd(filter, filterrange);
     
@@ -1922,7 +1923,7 @@ SP_CASE(ifilter, ifilterrun) {
     // 过滤ID
     ok = ifilterrun(map, filter, __getunitfor(1));
     SP_EQUAL(ok, iiok);
-    filter->id = 2;
+    filter->s.u.id = 2;
     filter->entry = __filter_test_forid;
     ok = ifilterrun(map, filter, __getunitfor(1));
     SP_EQUAL(ok, iino);
@@ -1985,12 +1986,12 @@ SP_CASE(ifilter, imapcollectunit) {
     
     ifilter *filter = ifiltermake();
     
-    ipos pos = {.x=0, .y=0};
+    ipos pos = {0, 0};
     ifilter *filterrange = ifiltermake_circle(&pos, 1.0);
     
     SP_EQUAL(ifilterchecksum(map, filter), 0);
     
-    SP_EQUAL(ireflistlen(filter->list), 0);
+    SP_EQUAL(ireflistlen(filter->s.list), 0);
     
     ifilteradd(filter, filterrange);
     
@@ -1998,7 +1999,7 @@ SP_CASE(ifilter, imapcollectunit) {
     
     ireflist *list = ireflistmake();
     
-    icode code = {.code={'A', 'A', 0}};
+    icode code = {{'A', 'A', 0}};
     
     inode *node = imapgetnode(map, &code, 2, EnumFindBehaviorAccurate);
 
@@ -2007,14 +2008,14 @@ SP_CASE(ifilter, imapcollectunit) {
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (3: 1.5, 1.2) (4: 1.5, 0.2) (5: 1.0, 1.0)
     // ------------------------------------------------------------------------------------
     ireflist *snap = ireflistmake();
-    filterrange->circle.radis = __range(2.0);
+    filterrange->s.u.circle.radis = __range(2.0);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (3: 1.5, 1.2) (4: 1.5, 0.2) (5: 1.0, 1.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
     SP_EQUAL(ireflistlen(list), 6);
     
     ireflistremoveall(list);
-    filterrange->circle.radis = __range(0.1);
+    filterrange->s.u.circle.radis = __range(0.1);
     // (0: 0.1, 0.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2023,7 +2024,7 @@ SP_CASE(ifilter, imapcollectunit) {
     SP_EQUAL(icast(iunit, ireflistfirst(list)->value)->id, 0);
     
     ireflistremoveall(list);
-    filterrange->circle.radis = __range(0.5);
+    filterrange->s.u.circle.radis = __range(0.5);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2033,7 +2034,7 @@ SP_CASE(ifilter, imapcollectunit) {
     SP_EQUAL(ireflistfind(list, irefcast(__getunitfor(2))) != NULL, 1);
     
     ireflistremoveall(list);
-    filterrange->circle.radis = __range(1.5);
+    filterrange->s.u.circle.radis = __range(1.5);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (5: 1.0, 1.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2044,7 +2045,7 @@ SP_CASE(ifilter, imapcollectunit) {
     SP_EQUAL(ireflistfind(list, irefcast(__getunitfor(5))) != NULL, 1);
     
     ireflistremoveall(list);
-    filterrange->circle.radis = __range(1.7);
+    filterrange->s.u.circle.radis = __range(1.7);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (4: 1.5, 0.2) (5: 1.0, 1.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2172,8 +2173,8 @@ SP_CASE(searching, imapsearchfromposANDimapsearchfromnode) {
     SP_EQUAL(result->tick, 0);
     SP_EQUAL(result->checksum, 0);
     
-    ipos pos = {.x=0,.y=0};
-    icode code = {.code={'A','A','A',0}};
+    ipos pos = {0,0};
+    icode code = {{'A','A','A',0}};
     imapsearchfrompos(map, &pos, result, 0.1);
     int64_t ts = result->tick;
     int64_t checksum = result->checksum;
@@ -2392,7 +2393,7 @@ SP_CASE(searching, imapsearchfromunit) {
     // (0: 0.1, 0.0)    (1: 0.3, 0.4)   (2: 0.5, 0.0)   (3: 1.5, 1.2)   (4: 1.5, 0.2)
     // (5: 1.0, 0.0)
     // ------------------------------------------------------------------------------------
-    icode code = {.code={'A','A','A',0}};
+    icode code = {{'A','A','A',0}};
     imapsearchfromunit(map, __getunitfor(0), result, 0.45);
     int64_t ts = result->tick;
     int64_t checksum = result->checksum;
