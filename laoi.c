@@ -140,7 +140,7 @@ static int lua__map_gc(lua_State *L)
 static int lua__map_dump(lua_State *L)
 {
 	imap * map = CHECK_AOI_MAP(L, 1);
-	int require = luaL_optnumber(L, 2, EnumMapStateAll);
+	int require = luaL_optint(L, 2, EnumNodePrintStateAll);
 	_aoi_print(map, require);
 	return 0;
 }
