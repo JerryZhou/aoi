@@ -111,7 +111,7 @@ print("============ search_circle ============ ")
 for id, unit in pairs(map:search_circle(range, {cx, cy})) do
 	local x, y = unit:get_pos()
 	local dis = distance(x, y, cx, cy)
-	printf("search_circle,range=%d,%d(%d, %d),pos(%d, %d),dis=%f\n", range, id, x, y, cx, cy, dis)
+	printf("search_circle===> circle {range:%d, pos{%d, %d}}, unit{id: %d, pos: {%d, %d}}, dis=%f\n", range, cx, cy, id, x, y, dis)
 end
 
 print("============ unit_search ==============")
@@ -122,7 +122,8 @@ local range = 20
 for id, unit in pairs(map:unit_search(centerunit, range)) do
 	local x, y = unit:get_pos()
 	local dis = distance(x, y, cx, cy)
-	printf("unit_search,range=%d,%d(%d, %d),center=%d(%d, %d),dis=%f\n", range, id, x, y, cid, cx, cy, dis)
+	printf("unit_search====>  center {range:%d, unit{ id: %d, pos: {%d, %d}}},unit {id:%d, pos:{%d, %d}}, dis=%f\n", 
+        range, cid, cx, cy, id, x, y, dis)
 end
 
 printf("%s %s %s\n", splitstr, "del units from map", splitstr)
