@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include </usr/local/include/lua.h>
-#include </usr/local/include/lauxlib.h>
+#include <lua.h>
+#include <lauxlib.h>
 #include "aoi.h"
 
 /*

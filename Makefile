@@ -22,10 +22,12 @@ ENABLE_LUALIB = true
 
 LUA_LDFLAGS = 
 
+LUA_CFLAGS = -I /usr/local/include 
+
 ifeq ($(PLATFORM),Linux)
 else
         ifeq ($(PLATFORM), Darwin) 
-			LUA_LDFLAGS += -llua -I /usr/local/include -L /usr/local/lib
+			LUA_LDFLAGS += -llua -L /usr/local/lib 
         endif
 endif
 
@@ -57,8 +59,8 @@ main.o : aoi.o aoitest.h
 
 # compile
 %.o: %.c
-	$(CC) -c $(CFLAGS) $*.c -o $*.o
-	$(CC) -MM $(CFLAGS) $*.c > $*.d
+	$(CC) -c $(CFLAGS) $*.c -o $*.o $(LUA_CFLAGS)
+	$(CC) -MM $(CFLAGS) $*.c > $*.d $(LUA_CFLAGS)
 	@mv -f $*.d $*.d.tmp 
 	@sed -e 's|.*:|$*.o:|' < $*.d.tmp > $*.d
 	@sed -e 's/.*://' -e 's/\\$$//' < $*.d.tmp | fmt -1 | \
