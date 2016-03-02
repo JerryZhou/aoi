@@ -150,7 +150,7 @@ static int lua__map_dumpstate(lua_State *L)
 	imap * map = CHECK_AOI_MAP(L, 1);
 	const char * intag = luaL_optstring(L, 2, "tag");
 	const char * inhead = luaL_optstring(L, 3, "head");
-	int require = luaL_optnumber(L, 4, EnumNodePrintStateMap);
+	int require = luaL_optint(L, 4, EnumMapStateAll);
 	imapstatedesc(map, require, intag, inhead);
 	return 0;
 }
