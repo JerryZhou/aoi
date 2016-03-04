@@ -22,7 +22,7 @@ static __argmap* _aoi_argmap_new(int argc, char* argv[]) {
     __argmap *map = (__argmap *)icalloc(1, sizeof(__argmap));
 
 	int divide = 8;/*10; */
-	int randcount = 200;
+	int randcount = 2000;
     int i = 0;
 
 	iunused(argc);
@@ -43,7 +43,7 @@ static __argmap* _aoi_argmap_new(int argc, char* argv[]) {
     map->unitcnt = randcount;
 
 	for (i=0; i<randcount; ++i) {
-		map->units[i] = imakeunit((iid)i, (ireal)i, (ireal)i);
+        map->units[i] = imakeunit((iid)i, (ireal)(rand()%512), (ireal)(rand()%512));
 		imapaddunit(map->map, map->units[i]);
 	}
 
@@ -112,12 +112,13 @@ static void aoi_prof_unitadd(__argmap *map) {
         imapremoveunit(map->map, u);
     }
     ifreeunit(u);
-    __End("aoi_prof_unitadd: 平均一个单元耗时 %f micros\n", 1.0 * t / base );
+    __End("aoi_prof_unitadd: 平均一个单元耗时 %f micros\n\n", 1.0 * t / base );
 }
 
 /*
  * 性能测试imapupdateunit
  * */
+static ireal _g_t_unitupdate = 0; 
 static void aoi_prof_unitupdate(__argmap *map) {
     __Begin;
     int base = 100 * 10000;
@@ -134,7 +135,8 @@ static void aoi_prof_unitupdate(__argmap *map) {
     }
     imapremoveunit(map->map, u);
     ifreeunit(u);
-    __End("aoi_prof_unitupdate: 平均一个单元耗时 %f micros\n", 1.0 * t / base );
+
+    __End("aoi_prof_unitupdate: 平均一个单元耗时 %f micros\n\n", (_g_t_unitupdate = 1.0 * t / base, _g_t_unitupdate) );
 }
 
 typedef struct minmaxrange {
@@ -153,18 +155,55 @@ static void minmaxrange_add(minmaxrange *r , ireal i) {
 }
 
 /*
+ * 性能测试imapsearchfromunit
+ * */
+static void aoi_prof_unitsearchfromunit(__argmap *map) {
+    __Begin;
+    int base = 10 * 10000;
+    int i=0;
+    ireal range = 0;
+    minmaxrange xr = {512, 0, 0};
+    minmaxrange nr = {1000000, 0, 0};
+    iunit *u = NULL;
+
+    printf("开始测试%d 单元的地图搜索操作的耗时\n", base);
+    u = imakeunit(i + base, (ireal)(rand()%512), (ireal)(rand()%512));
+    imapaddunit(map->map, u);
+    for(;i<base; ++i) {
+        u->pos.x = (ireal)(rand()%512);
+        u->pos.y = (ireal)(rand()%512);
+        imapupdateunit(map->map, u);
+
+        range = (ireal)(rand()%32 + 10);
+        imapsearchfromunit(map->map, u, map->result, range);
+        minmaxrange_add(&xr, range);
+        minmaxrange_add(&nr, (ireal)(ireflistlen(map->result->units)));
+    }
+    imapremoveunit(map->map, u);
+    ifreeunit(u);
+    __End("aoi_prof_unitsearchfromunit: 平均一次搜索耗时 %f micros \n"
+            "搜索范围均值 %.2f, 平均每次的搜索到 %.2f 单元\n" 
+            "搜索范围最大值 %.2f, 搜索范围最小值 %.2f \n" 
+            "搜索结果的最多单元数 %.2f, 搜索结果的最少单元数 %.2f \n\n", 
+            1.0 * t / base - _g_t_unitupdate, /*减掉测到的单元平均更新耗时*/ 
+            xr.total/base, nr.total/base,
+            xr.max, xr.min,
+            nr.max, nr.min);
+}
+
+/*
  * 性能测试imapsearchfrompos
  * */
 static void aoi_prof_unitsearchfrompos(__argmap *map) {
     __Begin;
-    int base = 100 * 10000;
+    int base = 10 * 10000;
     int i=0;
     ipos pos = {0, 0};
     ireal range = 0;
     minmaxrange xr = {512, 0, 0};
     minmaxrange nr = {1000000, 0, 0};
 
-    printf("开始测试%d 单元的地图更新操作的耗时\n", base);
+    printf("开始测试%d 单元的地图搜索操作的耗时\n", base);
     for(;i<base; ++i) {
         pos.x = (ireal)(rand()%512);
         pos.y = (ireal)(rand()%512);
@@ -176,7 +215,7 @@ static void aoi_prof_unitsearchfrompos(__argmap *map) {
     __End("aoi_prof_unitsearchfrompos: 平均一次搜索耗时 %f micros \n"
             "搜索范围均值 %.2f, 平均每次的搜索到 %.2f 单元\n" 
             "搜索范围最大值 %.2f, 搜索范围最小值 %.2f \n" 
-            "搜索结果的最多单元数 %.2f, 搜索结果的最少单元数 %.2f \n", 
+            "搜索结果的最多单元数 %.2f, 搜索结果的最少单元数 %.2f \n\n", 
             1.0 * t / base , 
             xr.total/base, nr.total/base,
             xr.max, xr.min,
@@ -188,6 +227,7 @@ static int aoi_prof(int argc, char *argv[]) {
 
     aoi_prof_unitadd(map);
     aoi_prof_unitupdate(map);
+    aoi_prof_unitsearchfromunit(map);
     aoi_prof_unitsearchfrompos(map);
 
     _aoi_argmap_free(map);
