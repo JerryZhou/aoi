@@ -1492,29 +1492,32 @@ SP_CASE(imap, imapupdateunit) {
 }
 
 SP_CASE(imap, imapmovecode) {
+    int divide = 20;
+    int randmove = 1024;
+    int maxmove = (int)pow(2, divide) - 1;
     ipos pos = {0, 0};
     isize size = {512, 512};
-    imap *xxmap = imapmake(&pos, &size, 24); 
+    imap *xxmap = imapmake(&pos, &size, divide); 
 
     icode code;
     imapgencode(xxmap, &pos, &code);
 
     printf("code: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-    SP_EQUAL(strlen(code.code), 24);
+    SP_EQUAL(strlen(code.code), xxmap->divide);
 
     icode xcode;
     printf("map divide precisions: %f, %f \n", 
-            xxmap->nodesizes[24].w, 
-            xxmap->nodesizes[24].h);
+            xxmap->nodesizes[xxmap->divide].w, 
+            xxmap->nodesizes[xxmap->divide].h);
 
-    // pow(2, 24) Up
-    printf("Move Up\n");
-    for(int i=0; i<1024; ++i) {
+    // maxmove Up
+    printf("Move Up ( step %d)\n", maxmove);
+    for(int i=0; i<maxmove; ++i) {
 
         imapmovecode(xxmap, &code, EnumCodeMoveUp);
 
         pos.x = pos.x;
-        pos.y += xxmap->nodesizes[24].h;
+        pos.y += xxmap->nodesizes[xxmap->divide].h;
         imapgencode(xxmap, &pos, &xcode);
         //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
         //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
@@ -1526,13 +1529,13 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // Down
-    printf("Move Down\n");
-    for(int i=0; i<1024; ++i) {
+    printf("Move Down ( step %d)\n", maxmove);
+    for(int i=0; i<maxmove; ++i) {
 
         imapmovecode(xxmap, &code, EnumCodeMoveDown);
 
         pos.x = pos.x;
-        pos.y -= xxmap->nodesizes[24].h;
+        pos.y -= xxmap->nodesizes[xxmap->divide].h;
         imapgencode(xxmap, &pos, &xcode);
         //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
         //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
@@ -1544,12 +1547,12 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // Right
-    printf("Move Right\n");
-    for(int i=0; i<1024; ++i) {
+    printf("Move Right ( step %d)\n", maxmove);
+    for(int i=0; i<maxmove; ++i) {
 
         imapmovecode(xxmap, &code, EnumCodeMoveRight);
 
-        pos.x += xxmap->nodesizes[24].w;
+        pos.x += xxmap->nodesizes[xxmap->divide].w;
         pos.y = pos.y;
         imapgencode(xxmap, &pos, &xcode);
         //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
@@ -1562,12 +1565,12 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // Left
-    printf("Move Left\n");
-    for(int i=0; i<1024; ++i) {
+    printf("Move Left ( step %d)\n", maxmove);
+    for(int i=0; i<maxmove; ++i) {
 
         imapmovecode(xxmap, &code, EnumCodeMoveLeft);
 
-        pos.x -= xxmap->nodesizes[24].w;
+        pos.x -= xxmap->nodesizes[xxmap->divide].w;
         pos.y = pos.y;
         imapgencode(xxmap, &pos, &xcode);
         //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
@@ -1580,7 +1583,8 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // 随机左移
-    for (int i=0; i<1024; ++i) {
+    printf("Rand Move Left ( step %d)\n", randmove);
+    for (int i=0; i<randmove; ++i) {
         pos.x = rand() % 512;
         pos.y = rand() % 512;
 
@@ -1601,7 +1605,8 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // 随机右移
-    for (int i=0; i<1024; ++i) {
+    printf("Rand Move Right ( step %d)\n", randmove);
+    for (int i=0; i<randmove; ++i) {
         pos.x = rand() % 512;
         pos.y = rand() % 512;
 
@@ -1621,7 +1626,8 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // 随机上移
-    for (int i=0; i<1024; ++i) {
+    printf("Rand Move Up ( step %d)\n", randmove);
+    for (int i=0; i<randmove; ++i) {
         pos.x = rand() % 512;
         pos.y = rand() % 512;
 
@@ -1641,7 +1647,8 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // 随机下移
-    for (int i=0; i<1024; ++i) {
+    printf("Rand Move Down ( step %d)\n", randmove);
+    for (int i=0; i<randmove; ++i) {
         pos.x = rand() % 512;
         pos.y = rand() % 512;
 

@@ -1122,7 +1122,7 @@ int imapgenpos(imap *map, ipos *pos, icode *code) {
 typedef struct movestep {
 	char from;
 	char to;
-	int next;
+	int next; /*iiok 代表还需要继续往父级节点移动*/
 }movestep;
 /**
   |BBB| BBD| BDB| BDD| DBB| DBD| DDB| DDD|
@@ -1184,12 +1184,16 @@ static int gmoveposstep[][2] = {
 /*	边缘部分是不能进行某些操作的 */
 static int gmoveforbid[][4] = {
 	/* EnumCodeMoveLeft */
+    /* C && D Can Be Moved Left*/
 	{'A',	'B',	0,		0},
 	/* EnumCodeMoveRight */
+    /* A && B Can Be Moved Right*/
 	{0,		0,		'C',	'D'},
 	/* EnumCodeMoveDown */
+    /* B && D Can Be Moved Down*/
 	{'A',	0,		'C',	0}, 
 	/* EnumCodeMoveUp */
+    /* A && C Can Be Moved Up*/
 	{0,		'B',	0,		'D'},
 };
 
