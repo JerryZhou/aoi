@@ -284,9 +284,11 @@ static int aoi_prof(int argc, char *argv[]) {
     aoi_prof_unitsearchfromunit(map);
     aoi_prof_unitsearchfrompos(map);
     if (open_log_profile == 0) {
-        printf("divide: %2d node: %6lld, leaf %6lld, unit: %6lld "
-                "=> add: %3.2f up: %3.2f spos: %5.2f sunit: %5.2f srange %3.2f snum %4.2f\n",
+        printf("d:%2d (%6.2f %6.2f) n:%6lld l:%6lld u:%6lld "
+                "=> add:%3.2f up:%3.2f spos:%7.2f sunit:%7.2f srange:%3.2f snum:%4.2f\n",
                 map->map->divide,
+                map->map->nodesizes[map->map->divide].w,
+                map->map->nodesizes[map->map->divide].h,
                 map->map->state.nodecount,
                 map->map->state.leafcount,
                 map->map->state.unitcount,
