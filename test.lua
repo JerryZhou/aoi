@@ -91,8 +91,8 @@ end
 printf("%s %s %s\n", splitstr, "unit tick", splitstr)
 print("tick", unit:get_tick())
 print("getcurtick", laoi.getcurtick())
-print("getcurnano", laoi.getcurnano())
-print("getnextnano", laoi.getnextnano())
+print("getcurmicro", laoi.getcurmicro())
+print("getnextmicro", laoi.getnextmicro())
 
 -- get range
 printf("%s %s %s\n", splitstr, "unit_search", splitstr)

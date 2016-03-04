@@ -182,17 +182,17 @@ SP_CASE(imeta, iaoiistype) {
 // time
 SP_SUIT(time);
 
-SP_CASE(time, igetcurnanoandigetcurtick) {
-    int64_t nano = igetcurnano();
+SP_CASE(time, igetcurmicroandigetcurtick) {
+    int64_t micro = igetcurmicro();
     int64_t ticks = igetcurtick();
-    SP_EQUAL((nano - ticks * 1000 < 1000), 1);
+    SP_EQUAL((micro - ticks * 1000 < 1000), 1);
 }
 
-SP_CASE(time, igetnextnano) {
-    int64_t nano0 = igetnextnano();
-    int64_t nano1 = igetnextnano();
+SP_CASE(time, igetnextmicro) {
+    int64_t micro0 = igetnextmicro();
+    int64_t micro1 = igetnextmicro();
     
-    SP_EQUAL(nano0 != nano1, 1);
+    SP_EQUAL(micro0 != micro1, 1);
 }
 
 // **********************************************************************************

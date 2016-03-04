@@ -216,8 +216,8 @@ void iaoimemorystate() {
 
 #endif
 
-/* 获取当前系统的纳秒数 */
-int64_t igetcurnano() {
+/* 获取当前系统的微秒数 */
+int64_t igetcurmicro() {
 	struct timeval tv;
 
 	gettimeofday(&tv, NULL);
@@ -226,13 +226,13 @@ int64_t igetcurnano() {
 
 /* 获取当前系统的毫秒数 */
 int64_t igetcurtick() {
-	return igetcurnano()/1000;
+	return igetcurmicro()/1000;
 }
 
 /* 获取系统的下一个唯一的事件纳秒数 */
-int64_t igetnextnano(){
+int64_t igetnextmicro(){
 	static int64_t gseq = 0;
-	int64_t curseq = igetcurnano();
+	int64_t curseq = igetcurmicro();
 	if (curseq > gseq) {
 		gseq = curseq;
 	}else {
@@ -356,11 +356,11 @@ int icirclerelation(icircle *con, icircle *c) {
 
 #define __Millis igetcurtick()
 
-#define __Nanos  igetcurnano()
+#define __Micros  igetcurmicro()
 
-#define __Since(t) (__Nanos - t)
+#define __Since(t) (__Micros - t)
 
-#define iplogwhen(t, when, ...) do { if(open_log_profile && t > when) {printf("[PROFILE] Take %lld nanos ", t); printf(__VA_ARGS__); } } while (0)
+#define iplogwhen(t, when, ...) do { if(open_log_profile && t > when) {printf("[PROFILE] Take %lld micros ", t); printf(__VA_ARGS__); } } while (0)
 
 #define iplog(t, ...) iplogwhen(t, __ProfileThreashold, __VA_ARGS__)
 
@@ -770,7 +770,7 @@ int justaddunit(imap *map, inode *node, iunit *unit){
 	icheckret(node->level == map->divide, iino);
 
 	unit->node = node;
-	unit->tick = igetnextnano();
+	unit->tick = igetnextmicro();
 
 	node->unitcnt++;
 	node->tick = unit->tick;
@@ -801,7 +801,7 @@ int justremoveunit(imap *map, inode *node, iunit *unit) {
 #endif
 
 	node->unitcnt--;
-	node->tick = igetnextnano();
+	node->tick = igetnextmicro();
 
 #if open_node_utick
 	node->utick = node->tick;
@@ -1379,7 +1379,7 @@ int imapgen(imap *map) {
 /* 增加一个单元到地图上 */
 int imapaddunit(imap *map, iunit *unit) {
 	int ok;
-	int64_t nano;
+	int64_t micro;
 
 	icheckret(unit, iino);
 	icheckret(map, iino);
@@ -1392,9 +1392,9 @@ int imapaddunit(imap *map, iunit *unit) {
 	ilog("[IMAP-Unit] Add Unit: %lld - (%.3f, %.3f) - %s\n",
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 #endif
-	nano = __Nanos;
+	micro = __Micros;
 	ok = imapaddunitto(map, map->root, unit, 0);
-	iplog(__Since(nano), "[IMAP-Unit] Add Unit: %lld - (%.3f, %.3f) - %s\n",
+	iplog(__Since(micro), "[IMAP-Unit] Add Unit: %lld - (%.3f, %.3f) - %s\n",
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 	return ok;
 }
@@ -1402,7 +1402,7 @@ int imapaddunit(imap *map, iunit *unit) {
 /* 从地图上移除一个单元 */
 int imapremoveunit(imap *map, iunit *unit) {
 	int ok;
-	int64_t nano;
+	int64_t micro;
 
 	icheckret(unit, iino);
 	icheckret(unit->node, iino);
@@ -1413,9 +1413,9 @@ int imapremoveunit(imap *map, iunit *unit) {
 	ilog("[IMAP-Unit] Remove Unit: %lld - (%.3f, %.3f) - %s\n",
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 #endif
-	nano = __Nanos;
+	micro = __Micros;
 	ok = imapremoveunitfrom(map, map->root, unit, 0, map->root);
-	iplog(__Since(nano), "[IMAP-Unit] Remove Unit: "
+	iplog(__Since(micro), "[IMAP-Unit] Remove Unit: "
 			"%lld - (%.3f, %.3f) - %s\n",
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 
@@ -1425,7 +1425,7 @@ int imapremoveunit(imap *map, iunit *unit) {
 
 /* 从地图上检索节点 */
 inode *imapgetnode(imap *map, icode *code, int level, int find) {
-	int64_t nano = __Nanos;
+	int64_t micro = __Micros;
 	inode *node = NULL;
 
 	icheckret(map, NULL);
@@ -1445,7 +1445,7 @@ inode *imapgetnode(imap *map, icode *code, int level, int find) {
 		}
 		node = node->childs[codei];
 	}
-	iplog(__Since(nano), "[IMAP-Node] Find Node (%d, %s) With Result %p\n",
+	iplog(__Since(micro), "[IMAP-Node] Find Node (%d, %s) With Result %p\n",
 			level, code->code, node);
 
 	/* 尽可能的返回 */
@@ -1472,7 +1472,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 	int ok;
 	int offset;
 	icode code;
-	int64_t nano;
+	int64_t micro;
 	inode *impact;
 	inode *removeimpact;
 	inode *addimpact;
@@ -1499,12 +1499,12 @@ int imapupdateunit(imap *map, iunit *unit) {
 		/* 如果需要支持utick 依然需要更新所有父级节点的utick */
 		/* 获取影响的顶级节,  更新父亲节点影响节点的utick点 */
 #if open_node_utick
-		imaprefreshutick(unit->node, igetnextnano());
+		imaprefreshutick(unit->node, igetnextmicro());
 #endif
 		return iiok;
 	}
 
-	nano = __Nanos;
+	micro = __Micros;
 	/* 生成新的编码 */
 	imapgencode(map, &unit->pos, &code);
 	/* 获取新编码的变更顶层节点位置, 并赋值新的编码 */
@@ -1521,7 +1521,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 		/* 获取影响的顶级节点 */
 		/* 更新父亲节点影响节点的utick */
 #if open_node_utick
-		imaprefreshutick(unit->node, igetnextnano());
+		imaprefreshutick(unit->node, igetnextmicro());
 #endif
 		return iiok;
 	}
@@ -1562,7 +1562,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 		imaprefreshutick(impact, utick);
 	}
 #endif
-	iplog(__Since(nano), "[MAP-Unit] Update  Unit(%lld) To (%s, %.3f, %.3f)\n",
+	iplog(__Since(micro), "[MAP-Unit] Update  Unit(%lld) To (%s, %.3f, %.3f)\n",
 			unit->id, code.code, code.pos.x, code.pos.y);
 
 	return ok;
@@ -1968,7 +1968,7 @@ void imapsearchfromnode(imap *map, inode *node,
 		isearchresult* result, ireflist *innodes) {
 	irefjoint *joint;
 	inode *searchnode;
-	int64_t nano = __Nanos;
+	int64_t micro = __Micros;
 	/* 校验码 */
 	int64_t maxtick;
 	int64_t maxutick;
@@ -2010,7 +2010,7 @@ void imapsearchfromnode(imap *map, inode *node,
 	/* 更新校验码 */
 	result->checksum = checksum;
 	/* 性能日志 */
-	iplog(__Since(nano),
+	iplog(__Since(micro),
 			"[MAP-Unit-Search] Search-Node "
 			"(%d, %s) --> Result: %d Units \n",
 			node->level, node->code.code, ireflistlen(result->units));
@@ -2092,7 +2092,7 @@ inode *imapcaculatesameparent(imap *map, ireflist *collects) {
 /* 从地图上搜寻单元 irect{pos, size{rangew, rangeh}}, 并附加条件 filter */
 void imapsearchfromrectwithfilter(imap *map, irect *rect,
 		isearchresult *result, ifilter *filter) {
-	int64_t nano = __Nanos;
+	int64_t micro = __Micros;
 	inode *node;
 	ireflist *collects;
 
@@ -2127,7 +2127,7 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 	ireflistfree(collects);
 
 	/* 性能日志 */
-	iplogwhen(__Since(nano), 10, "[MAP-Unit-Search] Search-Node-Range From: "
+	iplogwhen(__Since(micro), 10, "[MAP-Unit-Search] Search-Node-Range From: "
 			"(%d, %s: (%.3f, %.3f)) In Rect (%.3f, %.3f , %.3f, %.3f) "
 			"---> Result : %d Units \n",
 			node->level, node->code.code,
@@ -2181,32 +2181,32 @@ void imapsearchfromunit(imap *map, iunit *unit,
 /* 打印节点 */
 void _aoi_printnode(int require, inode *node, const char* prefix, int tail) {
 	/* 前面 */
-	printf("%s", prefix);
+	ilog("%s", prefix);
 	if (tail) {
-		printf("%s", "└── ");
+		ilog("%s", "└── ");
 	}else {
-		printf("%s", "├── ");
+		ilog("%s", "├── ");
 	}
 	/* 打印节点 */
-	printf("[%s]", node->code.code);
+	ilog("[%s]", node->code.code);
 	/* 打印节点时间戳 */
 	if (require & EnumNodePrintStateTick) {
-		printf(" tick(%lld", node->tick);
+		ilog(" tick(%lld", node->tick);
 #if open_node_utick
-		printf(",%lld", node->utick);
+		ilog(",%lld", node->utick);
 #endif
-		printf(")");
+		ilog(")");
 	}
 	/* 打印节点单元 */
 	if ((require & EnumNodePrintStateUnits) && node->units) {
 		iunit *u = node->units;
-		printf(" units(");
+		ilog(" units(");
 		while (u) {
-			printf("%lld%s", u->id, u->next ? ",":")");
+			ilog("%lld%s", u->id, u->next ? ",":")");
 			u= u->next;
 		}
 	}
-	printf("\n");
+	ilog("\n");
 
 	if (node->childcnt) {
 		int cur = 0;

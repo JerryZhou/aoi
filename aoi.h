@@ -96,12 +96,12 @@ typedef enum EnumFindBehavior {
     EnumFindBehaviorFuzzy,
 }EnumFindBehavior;
 
-/* 获取当前系统的纳秒数 */
-int64_t igetcurnano();
+/* 获取当前系统的微秒数 */
+int64_t igetcurmicro();
 /* 获取当前系统的毫秒数 */
 int64_t igetcurtick();
-/* 获取系统的下一个唯一的事件纳秒数 */
-int64_t igetnextnano();
+/* 获取系统的下一个唯一的事件微秒数 */
+int64_t igetnextmicro();
 
 /* 精度 */
 typedef double ireal;

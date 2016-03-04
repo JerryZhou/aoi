@@ -447,9 +447,9 @@ static int lua__meta_cache_clear(lua_State *L)
 }
 
 
-static int lua__getcurnano(lua_State *L)
+static int lua__getcurmicro(lua_State *L)
 {
-	int64_t ret = igetcurnano();
+	int64_t ret = igetcurmicro();
 	lua_pushnumber(L, ret);
 	return 1;
 }
@@ -461,9 +461,9 @@ static int lua__getcurtick(lua_State *L)
 	return 1;
 }
 
-static int lua__getnextnano(lua_State *L)
+static int lua__getnextmicro(lua_State *L)
 {
-	int64_t ret = igetnextnano();
+	int64_t ret = igetnextmicro();
 	lua_pushnumber(L, ret);
 	return 1;
 }
@@ -552,9 +552,9 @@ int luaopen_laoi(lua_State* L)
 		{"new_map", lua__map_new},
 		{"new_unit", lua__unit_new},
 		{"imeta_cache_clear", lua__meta_cache_clear},
-		{"getcurnano", lua__getcurnano},
+		{"getcurmicro", lua__getcurmicro},
 		{"getcurtick", lua__getcurtick},
-		{"getnextnano", lua__getnextnano},
+		{"getnextmicro", lua__getnextmicro},
 		{"dbg_dump_map", lua__map_dump},
 		{"dbg_dump_mapstate", lua__map_dumpstate},
 		{NULL, NULL},
