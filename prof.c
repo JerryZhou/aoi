@@ -4,9 +4,37 @@
 #define iunused(v) (void)(v)
 #endif
 
-#ifndef ilog 
-#define ilog(...) printf(__VA_ARGS__)
-#endif
+
+typedef struct minmaxrange {
+    ireal min;
+    ireal max;
+    ireal total;
+    int trys;
+} minmaxrange;
+
+static void minmaxrange_add(minmaxrange *r , ireal i) {
+    r->total += i;
+    if (r->min > i) {
+        r->min = i;
+    } else if (r->max < i) {
+        r->max = i;
+    }
+    ++r->trys;
+}
+
+typedef struct __argmap_profile {
+    ireal add;
+    ireal update;
+
+    ireal t_searchpos;
+    ireal t_searchunit;
+
+    minmaxrange nr_searchpos;
+    minmaxrange xr_searchpos;
+
+    minmaxrange nr_searchunit;
+    minmaxrange xr_searchunit;
+}__argmap_profile;
 
 typedef struct __argmap {
     iunit** units;
@@ -14,6 +42,13 @@ typedef struct __argmap {
 
     imap* map;
     isearchresult *result;
+
+    int minrange;
+    int maxrange;
+    int bench;
+
+    /* 性能相关数据 */
+    __argmap_profile profile;
 } __argmap;
 
 static __argmap* _aoi_argmap_new(int argc, char* argv[]) {
@@ -25,6 +60,10 @@ static __argmap* _aoi_argmap_new(int argc, char* argv[]) {
 	int randcount = 2000;
     int i = 0;
 
+    map->minrange = 5;
+    map->maxrange = 25;
+    map->bench = 10 * 10000;
+
 	iunused(argc);
 	iunused(argv);
 
@@ -34,6 +73,15 @@ static __argmap* _aoi_argmap_new(int argc, char* argv[]) {
 	if (argc >= 3) {
 		randcount = atoi(argv[2]);
 	}
+    if (argc >= 4) {
+        map->minrange = atoi(argv[3]);
+    }
+    if (argc >= 5) {
+        map->maxrange = atoi(argv[4]);
+    }
+    if (argc >= 6) {
+        map->bench = atoi(argv[5]);
+    }
 
 	srand((unsigned)time(NULL));
 
@@ -73,7 +121,7 @@ static void _aoi_argmap_free(__argmap* map) {
 
 /* copy from aoi.c */
 /* 一堆时间宏，常用来做性能日志 */
-#define open_log_profile	(1)
+static int open_log_profile	= 1;
 
 #define __ProfileThreashold 10
 
@@ -91,41 +139,49 @@ static void _aoi_argmap_free(__argmap* map) {
 
 #define __Begin int64_t t = __Micros
 
-#define __End(...) t = __Since(t); iplogwhen(t, __ProfileThreashold, __VA_ARGS__)
+#define __Stop  t = __Since(t)
 
-#define __EndBe(threshold, ...) t = __Since(t); iplogwhen(t, threshold, __VA_ARGS__)
+#define __End(...) iplogwhen(t, __ProfileThreashold, __VA_ARGS__)
 
+#define __EndBe(threshold, ...) iplogwhen(t, threshold, __VA_ARGS__)
+
+#ifndef ilog 
+#define ilog(...) if (open_log_profile) { printf(__VA_ARGS__); }
+#endif
 
 /*
  * 性能测试imapaddunit;imapremoveunit  
  * */
 static void aoi_prof_unitadd(__argmap *map) {
     __Begin;
-    int base = 100 * 10000;
+    int base = map->bench;
     int i=0;
     iunit *u = NULL;
 
-    printf("开始测试%d 单元的地图加入，退出操作的耗时\n", base);
+    ilog("开始测试%d 单元的地图加入，退出操作的耗时\n", base);
     u = imakeunit(i + base, (ireal)(rand()%512), (ireal)(rand()%512));
     for(;i<base; ++i) {
         imapaddunit(map->map, u);
         imapremoveunit(map->map, u);
     }
     ifreeunit(u);
-    __End("aoi_prof_unitadd: 平均一个单元耗时 %f micros\n\n", 1.0 * t / base );
+    __Stop;
+
+    map->profile.add = 1.0 * t / base; 
+
+    __End("aoi_prof_unitadd: 平均一个单元耗时 %f micros\n\n", map->profile.add);
 }
 
 /*
  * 性能测试imapupdateunit
  * */
-static ireal _g_t_unitupdate = 0; 
 static void aoi_prof_unitupdate(__argmap *map) {
     __Begin;
-    int base = 100 * 10000;
+    int base = map->bench;
     int i=0;
     iunit *u = NULL;
 
-    printf("开始测试%d 单元的地图更新操作的耗时\n", base);
+    ilog("开始测试%d 单元的地图更新操作的耗时\n", base);
     u = imakeunit(i + base, (ireal)(rand()%512), (ireal)(rand()%512));
     imapaddunit(map->map, u);
     for(;i<base; ++i) {
@@ -135,23 +191,10 @@ static void aoi_prof_unitupdate(__argmap *map) {
     }
     imapremoveunit(map->map, u);
     ifreeunit(u);
+    __Stop;
 
-    __End("aoi_prof_unitupdate: 平均一个单元耗时 %f micros\n\n", (_g_t_unitupdate = 1.0 * t / base, _g_t_unitupdate) );
-}
-
-typedef struct minmaxrange {
-    ireal min;
-    ireal max;
-    ireal total;
-} minmaxrange;
-
-static void minmaxrange_add(minmaxrange *r , ireal i) {
-    r->total += i;
-    if (r->min > i) {
-        r->min = i;
-    } else if (r->max < i) {
-        r->max = i;
-    }
+    map->profile.update = 1.0 * t / base; 
+    __End("aoi_prof_unitupdate: 平均一个单元耗时 %f micros\n\n", map->profile.update);
 }
 
 /*
@@ -159,14 +202,14 @@ static void minmaxrange_add(minmaxrange *r , ireal i) {
  * */
 static void aoi_prof_unitsearchfromunit(__argmap *map) {
     __Begin;
-    int base = 10 * 10000;
+    int base = map->bench / 100;
     int i=0;
     ireal range = 0;
-    minmaxrange xr = {512, 0, 0};
-    minmaxrange nr = {1000000, 0, 0};
+    minmaxrange xr = {512, 0, 0, 0};
+    minmaxrange nr = {1000000, 0, 0, 0};
     iunit *u = NULL;
 
-    printf("开始测试%d 单元的地图搜索操作的耗时\n", base);
+    ilog("开始测试%d 单元的地图搜索操作的耗时\n", base);
     u = imakeunit(i + base, (ireal)(rand()%512), (ireal)(rand()%512));
     imapaddunit(map->map, u);
     for(;i<base; ++i) {
@@ -174,21 +217,26 @@ static void aoi_prof_unitsearchfromunit(__argmap *map) {
         u->pos.y = (ireal)(rand()%512);
         imapupdateunit(map->map, u);
 
-        range = (ireal)(rand()%32 + 10);
+        range = (ireal)(rand()%map->maxrange + map->minrange);
         imapsearchfromunit(map->map, u, map->result, range);
         minmaxrange_add(&xr, range);
         minmaxrange_add(&nr, (ireal)(ireflistlen(map->result->units)));
     }
     imapremoveunit(map->map, u);
     ifreeunit(u);
+    __Stop;
+
+    map->profile.t_searchunit = 1.0 * t / base - map->profile.update;
     __End("aoi_prof_unitsearchfromunit: 平均一次搜索耗时 %f micros \n"
             "搜索范围均值 %.2f, 平均每次的搜索到 %.2f 单元\n" 
             "搜索范围最大值 %.2f, 搜索范围最小值 %.2f \n" 
             "搜索结果的最多单元数 %.2f, 搜索结果的最少单元数 %.2f \n\n", 
-            1.0 * t / base - _g_t_unitupdate, /*减掉测到的单元平均更新耗时*/ 
+            map->profile.t_searchunit, /*减掉测到的单元平均更新耗时*/ 
             xr.total/base, nr.total/base,
             xr.max, xr.min,
             nr.max, nr.min);
+    map->profile.xr_searchunit = xr;
+    map->profile.nr_searchunit = nr;
 }
 
 /*
@@ -196,30 +244,35 @@ static void aoi_prof_unitsearchfromunit(__argmap *map) {
  * */
 static void aoi_prof_unitsearchfrompos(__argmap *map) {
     __Begin;
-    int base = 10 * 10000;
+    int base = map->bench / 100;
     int i=0;
     ipos pos = {0, 0};
     ireal range = 0;
-    minmaxrange xr = {512, 0, 0};
-    minmaxrange nr = {1000000, 0, 0};
+    minmaxrange xr = {512, 0, 0, 0};
+    minmaxrange nr = {1000000, 0, 0, 0};
 
-    printf("开始测试%d 单元的地图搜索操作的耗时\n", base);
+    ilog("开始测试%d 单元的地图搜索操作的耗时\n", base);
     for(;i<base; ++i) {
         pos.x = (ireal)(rand()%512);
         pos.y = (ireal)(rand()%512);
-        range = (ireal)(rand()%32 + 10);
+        range = (ireal)(rand()%map->maxrange + map->minrange);
         imapsearchfrompos(map->map, &pos, map->result, range);
         minmaxrange_add(&xr, range);
         minmaxrange_add(&nr, (ireal)(ireflistlen(map->result->units)));
     }
+    __Stop;
+
+    map->profile.t_searchpos=1.0 * t / base;
     __End("aoi_prof_unitsearchfrompos: 平均一次搜索耗时 %f micros \n"
             "搜索范围均值 %.2f, 平均每次的搜索到 %.2f 单元\n" 
             "搜索范围最大值 %.2f, 搜索范围最小值 %.2f \n" 
             "搜索结果的最多单元数 %.2f, 搜索结果的最少单元数 %.2f \n\n", 
-            1.0 * t / base , 
+            map->profile.t_searchpos, 
             xr.total/base, nr.total/base,
             xr.max, xr.min,
             nr.max, nr.min);
+    map->profile.xr_searchpos = xr;
+    map->profile.nr_searchpos = nr;
 }
 
 static int aoi_prof(int argc, char *argv[]) {
@@ -229,12 +282,71 @@ static int aoi_prof(int argc, char *argv[]) {
     aoi_prof_unitupdate(map);
     aoi_prof_unitsearchfromunit(map);
     aoi_prof_unitsearchfrompos(map);
+    if (open_log_profile == 0) {
+        printf("divide: %2d node: %6lld, leaf %6lld, unit: %6lld "
+                "=> add: %3.2f up: %3.2f spos: %5.2f sunit: %5.2f srange %3.2f snum %4.2f\n",
+                map->map->divide,
+                map->map->state.nodecount,
+                map->map->state.leafcount,
+                map->map->state.unitcount,
+                map->profile.add, 
+                map->profile.update,
+                map->profile.t_searchpos,
+                map->profile.t_searchunit,
+                map->profile.xr_searchpos.total/map->profile.xr_searchpos.trys,
+                map->profile.nr_searchpos.total/map->profile.nr_searchpos.trys
+                );
+    }
 
     _aoi_argmap_free(map);
     return 0;
 }
 
+#include <stdio.h>
+#include <stdlib.h>
+
+static int aoi_prof_array(int argc, char *argv[]) {
+    int divide = 8;/*10; */
+	int randcount = 2000;
+    int i = 1;
+    open_log_profile = 0;
+
+	iunused(argc);
+	iunused(argv);
+
+	if (argc >= 3) {
+		divide = atoi(argv[2]);
+	}
+	if (argc >= 4) {
+		randcount = atoi(argv[3]);
+	}
+
+    for (; i<= divide; i++) {
+        char sdivide[256] = {0};
+        char scount[256] = {0}; 
+        int offset = 0;
+
+        snprintf(sdivide, 256, "%d", i);
+        snprintf(scount, 256, "%d", randcount);
+        
+        char* args[6] = {
+            "aoi",
+            sdivide,
+            scount,
+            argc >= 5 ? (offset++, argv[4]) : NULL,
+            argc >= 6 ? (offset++, argv[5]) : NULL,
+            argc >= 7 ? (offset++, argv[6]) : NULL,
+        };
+        aoi_prof(3 + offset, args);
+    }
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
-	return aoi_prof(argc, argv);
+    if (argc >= 2 && argv[1][0] == 'c') {
+        return aoi_prof_array(argc, argv);
+    } else {
+	    return aoi_prof(argc, argv);
+    }
 }
