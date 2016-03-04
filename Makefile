@@ -1,13 +1,17 @@
 CXX = gcc -g -std=c++0x
 CC = gcc -g -std=c89
 AR = ar
-CFLAGS = -c -O3 -Wall -fPIC 
+CFLAGS = -c -O3 -Wall -fPIC
 PLATFORM = $(shell uname)
 PWD = $(shell pwd)
 
 CXXLDLIBS = -lstdc++
 
+# unit test
 APP = aoi
+
+# prof testing
+PROF = prof
 
 # for c
 STATIC_LIB = libaoi.a
@@ -37,10 +41,13 @@ endif
 
 OBJS = main.o aoi.o
 
-all : $(APP) $(ALL_LIBS)
+all : $(APP) $(PROF) $(ALL_LIBS)
 
 $(APP):$(OBJS)
 	$(CXX) -o $@ $^ $(CXXLDLIBS)
+
+$(PROF): prof.o aoi.o
+	$(CC) -o $@ $^ -pg
 
 $(STATIC_LIB) : aoi.o
 	$(AR) crs $@ $^
@@ -77,6 +84,6 @@ output:
 .PHONY : all clean	
 
 clean:
-	-rm -f $(APP) $(OBJS) $(LUA_STATIC_LIB) $(LUA_SHARED_LIB) $(STATIC_LIB) *.o *.d
+	-rm -f $(APP) $(OBJS) $(LUA_STATIC_LIB) $(LUA_SHARED_LIB) $(STATIC_LIB) $(PROF) *.o *.d
 	
 
