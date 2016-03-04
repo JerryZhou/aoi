@@ -25,6 +25,11 @@ make ENABLE_LUALIB=true
 msvc_build.bat
 ```
 
+# 性能测试
+通过提供的prof 工具测试获取自己需要的参数
+prof c [divide] [max-unit] [min-search-range] [max-rand-search-range] [benchtimes]
+[测试样例](http://dwgaga-image.qiniudn.com/more_img_1__Default__bash_.png)
+
 # 视野服务
 游戏服务器的AOI（area of interest)部分，位置有关的游戏实体一般都有一个视野或关心的范围
 
