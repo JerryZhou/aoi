@@ -1317,12 +1317,13 @@ void imapfree(imap *map) {
 #endif
 	/* 释放四叉树 */
 	ifreenodetree(map->root);
-	/* 释放节点缓冲区 */
-	irefcachefree(map->nodecache);
 	/* 释放叶子节点链表 */
 	while (map->leaf) {
 		justremoveleaf(map, map->leaf);
 	}
+    /* 释放节点缓冲区 */
+	irefcachefree(map->nodecache);
+
 	/* 释放地图本身 */
 	iobjfree(map);
 }
@@ -2108,6 +2109,8 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 	/* 没有任何潜在的节点 */
 	if (ireflistlen(collects) == 0) {
 		ireflistfree(collects);
+        /* 清理以前的搜索结果 */
+        isearchresultclean(result);
 		return;
 	}
 
