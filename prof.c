@@ -4,6 +4,7 @@
 #define iunused(v) (void)(v)
 #endif
 
+#define open_profc_main_entry (1)
 
 typedef struct minmaxrange {
     ireal min;
@@ -342,11 +343,19 @@ static int aoi_prof_array(int argc, char *argv[]) {
     return 0;
 }
 
-int main(int argc, char *argv[])
-{
+int iprof_main(int argc, char *argv[]) {
     if (argc >= 2 && argv[1][0] == 'c') {
         return aoi_prof_array(argc, argv);
     } else {
-	    return aoi_prof(argc, argv);
+        return aoi_prof(argc, argv);
     }
 }
+
+#if open_profc_main_entry
+
+int main(int argc, char *argv[])
+{
+    return iprof_main(argc, argv);
+}
+
+#endif

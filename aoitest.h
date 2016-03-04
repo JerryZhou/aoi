@@ -2596,4 +2596,84 @@ SP_CASE(autoreleasepool, autorelease) {
 
     SP_EQUAL(_autoreleasecount, 20);
 }
+
+SP_SUIT(searching_bench_right) ;
+
+static void silly_search(imap *map, iunit **units, int num, ipos *pos, ireal range, isearchresult *result) {
+    ifilter *filter = NULL;
+    
+    int i =0;
+    iunit *unit = NULL;
+    
+    filter = ifiltermake_circle(pos, range);
+    isearchresultclean(result);
+    
+    for (i=0; i<num; ++i) {
+        unit = units[i];
+        /* 是否满足条件 */
+        if (ifilterrun(map, filter, unit) == iiok) {
+            ireflistadd(result->units, irefcast(unit));
+        }
+    }
+}
+
+static int64_t silly_checksum(ireflist *units) {
+    irefjoint *joint = ireflistfirst(units);
+    iunit *unit = NULL;
+    int64_t sum = 0;
+    while (joint) {
+        unit = icast(iunit, joint->value);
+        sum += unit->id;
+        joint = joint->next;
+        
+        //printf("%4lld,", unit->id);
+    }
+    //printf("===>%9lld\n", sum);
+    return sum;
+}
+
+SP_CASE(searching_bench_right, searchpos){
+    
+    SP_TRUE(1);
+    
+    static const int MAX_COUNT = 2000;
+    static const int MAP_SIZE = 512;
+    ipos pos = {0, 0};
+    isize size = {MAP_SIZE, MAP_SIZE};
+    int divide = 10;
+    iunit *units[MAX_COUNT] = {};
+    int i = 0;
+    int maxunit = MAX_COUNT;
+    int bench = 10000;
+    int maxrange = 10;
+    int minrange = 5;
+    ireal range = 0;
+    isearchresult* resultlfs = isearchresultmake();
+    isearchresult* resultrfs = isearchresultmake();
+        imap *map = imapmake(&pos, &size, divide);
+    
+    for (i=0; i<maxunit; ++i) {
+        units[i] = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
+        imapaddunit(map, units[i]);
+    }
+    
+    //_aoi_print(map, 0xffffff);
+    
+    for(i=0;i<bench; ++i) {
+        pos.x = (ireal)(rand()%MAP_SIZE);
+        pos.y = (ireal)(rand()%MAP_SIZE);
+        range = (ireal)(rand()%maxrange + minrange);
+        imapsearchfrompos(map, &pos, resultlfs, range);
+        silly_search(map, units, MAX_COUNT, &pos, range, resultrfs);
+        
+        SP_EQUAL(ireflistlen(resultrfs->units), ireflistlen(resultlfs->units));
+        
+        SP_EQUAL(silly_checksum(resultrfs->units), silly_checksum(resultlfs->units));
+    }
+    
+    isearchresultfree(resultlfs);
+    isearchresultfree(resultrfs);
+    imapfree(map);
+}
+
 #endif
