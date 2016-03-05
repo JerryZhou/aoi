@@ -333,7 +333,7 @@ static int aoi_prof_array(int argc, char *argv[]) {
         snprintf(scount, 256, "%d", randcount);
         
         char* args[6] = {
-            "aoi",
+            NULL,
             sdivide,
             scount,
             argc >= 5 ? (offset++, argv[4]) : NULL,
