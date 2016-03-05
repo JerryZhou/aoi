@@ -276,13 +276,42 @@ int irectcontainspoint(irect *con, ipos *p) {
 	return iino;
 }
 
+/* 矩形与圆是否相交 */
+int irectintersect(irect *con, icircle *c) {
+    icheckret(con, iino);
+    icheckret(c, iiok);
+    
+    /* https://www.zhihu.com/question/24251545  */
+    /*
+     bool BoxCircleIntersect(Vector2 c, Vector2 h, Vector2 p, float r) {
+     Vector2 v = abs(p - c);    // 第1步：转换至第1象限
+     Vector2 u = max(v - h, 0); // 第2步：求圆心至矩形的最短距离矢量
+     return dot(u, u) <= r * r; // 第3步：长度平方与半径平方比较
+     }
+     
+     作者：Milo Yip
+     链接：https://www.zhihu.com/question/24251545/answer/27184960
+     */
+    /*
+     ivec2 c = {con->pos.x, con->pos.y};
+     ivec2 p = {c->pos.x, c->pos.y};
+     */
+    ivec2 v = {{{fabs(c->pos.x - con->pos.x), fabs(c->pos.y - con->pos.y)}}};
+    ivec2 h = {{{con->size.w, con->size.h}}};
+    ivec2 u =  {{{v.x - h.x, v.y - h.y}}};
+    u.x = u.x < 0 ? 0 : u.x;
+    u.y = u.y < 0 ? 0 : u.y;
+    
+    return u.x * u.x + u.y * u.y < c->radius * c->radius;
+}
+
 /* 圆形相交: iiok, iino */
 int icircleintersect(icircle *con, icircle *c) {
 	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(c, iiok);
 
-	ds = (con->radis + c->radis);
+	ds = (con->radius + c->radius);
 
 	if (idistancepow2(&con->pos, &c->pos) <= ds * ds) {
 		return iiok;
@@ -296,7 +325,7 @@ int icirclecontains(icircle *con, icircle *c) {
 	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(c, iiok);
-	ds = (con->radis - c->radis);
+	ds = (con->radius - c->radius);
 	icheckret(ds >= 0, iino);
 
 	if (idistancepow2(&con->pos, &c->pos) <= ds * ds) {
@@ -311,7 +340,7 @@ int icirclecontainspoint(icircle *con, ipos *p) {
 	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(p, iiok);
-	ds = (con->radis);
+	ds = (con->radius);
 	icheckret(ds >= 0, iino);
 
 	if (idistancepow2(&con->pos, p) <= ds * ds) {
@@ -332,8 +361,8 @@ int icirclerelation(icircle *con, icircle *c) {
 	icheckret(con, EnumCircleRelationBContainsA);
 	icheckret(c, EnumCircleRelationAContainsB);
 
-	minusds = con->radis - c->radis;
-	addds = con->radis + c->radis;
+	minusds = con->radius - c->radius;
+	addds = con->radius + c->radius;
 	ds = idistancepow2(&con->pos, &c->pos);
 
 	if (ds <= minusds * minusds) {
@@ -785,6 +814,9 @@ int justaddunit(imap *map, inode *node, iunit *unit){
 	list_add_front(node->units, unit);
 	/* add ref as we save units in list */
 	iretain(unit);
+    
+    /* refresh the radius to map */
+    imaprefreshunit(map, unit);
 
 	return iiok;
 }
@@ -931,12 +963,12 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
 		/* add unit */
 		justaddunit(map, node, unit);
 		/* log it */
-#if _print_unit_add
+#if open_log_unit_add
 		_print_unit_add(node, unit, idx);
-		i	/* log it */
+        /* log it */
 #endif
 
-			++map->state.unitcount;
+        ++map->state.unitcount;
 		ok = iiok;
 	}else {
 		/* 定位节点所在的子节点 */
@@ -1569,6 +1601,18 @@ int imapupdateunit(imap *map, iunit *unit) {
 	return ok;
 }
 
+/* 更新一个单元的附加信息到地图数据上：现阶段就只更新了单元的半径信息 */
+void imaprefreshunit(imap *map, iunit *unit) {
+    iunused(map);
+    iunused(unit);
+    
+#if iiradius
+    if (map->maxradius < unit->radius) {
+        map->maxradius = unit->radius;
+    }
+#endif
+}
+
 /* 对一个数字做Hash:Redis */
 void ihash(int64_t *hash, int64_t v) {
 	*hash += v;
@@ -1591,7 +1635,7 @@ int64_t _entryfilterchecksumdefault(imap *map, struct ifilter *d) {
 	/* circle */
 	ihash(&hash, __realint(d->s.u.circle.pos.x));
 	ihash(&hash, __realint(d->s.u.circle.pos.y));
-	ihash(&hash, __realint(d->s.u.circle.radis));
+	ihash(&hash, __realint(d->s.u.circle.radius));
 
 	/* rect */
 	ihash(&hash, __realint(d->s.u.rect.pos.x));
@@ -1723,16 +1767,31 @@ int _entryfilter_circle(imap *map, ifilter *filter, iunit* unit) {
 	icheckret(unit, iino);
 	iunused(map);
 
-	/* 距离超出范围 */
-	if (icirclecontainspoint(&filter->s.u.circle, &unit->pos) == iino) {
+#if iiradius
+    icircle ucircle = {unit->pos, unit->radius};
+    /* 距离超出范围 */
+    if (icircleintersect(&filter->s.u.circle, &ucircle) == iino) {
 #if open_log_filter
-		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) - (%.3f, %.3f: %.3f)\n",
-				unit->id,
-				unit->pos.x, unit->pos.y,
-				filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
-#endif
-		return iino;
-	}
+        ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f : %.3f) - (%.3f, %.3f: %.3f)\n",
+             unit->id,
+             unit->pos.x, unit->pos.y,
+             unit->radius,
+             filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
+#endif /* open_log_filter */
+        return iino;
+    }
+#else
+    /* 距离超出范围 */
+    if (icirclecontainspoint(&filter->s.u.circle, &unit->pos) == iino) {
+#if open_log_filter
+        ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) - (%.3f, %.3f: %.3f)\n",
+             unit->id,
+             unit->pos.x, unit->pos.y,
+             filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
+#endif /* open_log_filter */
+        return iino;
+    }
+#endif /* iiradius */
 
 	return iiok;
 }
@@ -1744,7 +1803,7 @@ int64_t _entryfilechecksum_circile(imap *map, ifilter *d) {
 	/* circle */
 	ihash(&hash, __realint(d->s.u.circle.pos.x));
 	ihash(&hash, __realint(d->s.u.circle.pos.y));
-	ihash(&hash, __realint(d->s.u.circle.radis));
+	ihash(&hash, __realint(d->s.u.circle.radius));
 	return hash;
 }
 
@@ -1752,7 +1811,7 @@ int64_t _entryfilechecksum_circile(imap *map, ifilter *d) {
 ifilter *ifiltermake_circle(ipos *pos, ireal range) {
 	ifilter *filter = ifiltermake();
 	filter->s.u.circle.pos = *pos;
-	filter->s.u.circle.radis = range;
+	filter->s.u.circle.radius = range;
 	filter->entry = _entryfilter_circle;
 	filter->entrychecksum = _entryfilechecksum_circile;
 	return filter;
@@ -1763,10 +1822,27 @@ int _entryfilter_rect(imap *map, ifilter *filter, iunit* unit) {
 	icheckret(unit, iino);
 	iunused(map);
 
+#if iiradius
+	/* 距离超出范围 */
+    icircle c = {unit->pos, unit->radius};
+	if (irectintersect(&filter->s.u.rect, &c) == iino) {
+#if open_log_filter
+		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f: %.3f)"
+                " Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
+				unit->id,
+				unit->pos.x, unit->pos.y, unit->radius,
+				filter->s.u.rect.pos.x, filter->s.u.rect.pos.y,
+				filter->s.u.rect.size.w, filter->s.u.rect.size.h);
+#endif
+		return iino;
+	}
+#else
+
 	/* 距离超出范围 */
 	if (irectcontainspoint(&filter->s.u.rect, &unit->pos) == iino) {
 #if open_log_filter
-		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
+		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f)"
+                " Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
 				unit->id,
 				unit->pos.x, unit->pos.y,
 				filter->s.u.rect.pos.x, filter->s.u.rect.pos.y,
@@ -1774,6 +1850,7 @@ int _entryfilter_rect(imap *map, ifilter *filter, iunit* unit) {
 #endif
 		return iino;
 	}
+#endif /* iiradius*/
 
 	return iiok;
 }
@@ -2142,9 +2219,10 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 /* 从地图上搜寻单元, 并附加条件 filter */
 void imapsearchfrompos(imap *map, ipos *pos,
 		isearchresult *result, ireal range) {
+    ireal rectrange = range + iiradius * map->maxradius; /* 扩大搜索区域，以支持单元的半径搜索 */
 	/* 目标矩形 */
-	/*irect rect = {.pos={.x=pos->x-range, .y=pos->y-range}, .size={.w=2*range, .h=2*range}};*/
-	irect rect = {{pos->x-range, pos->y-range}, {2*range, 2*range}};
+	/*irect rect = {.pos={.x=pos->x-rectrange, .y=pos->y-rectrange}, .size={.w=2*rectrange, .h=2*rectrange}};*/
+	irect rect = {{pos->x-rectrange, pos->y-rectrange}, {2*rectrange, 2*rectrange}};
 
 	ifilter *filter = NULL;
 

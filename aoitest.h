@@ -293,6 +293,37 @@ SP_CASE(irect, irectcontainspoint) {
     SP_EQUAL(irectcontainspoint(&r, &p), iino);
 }
 
+SP_CASE(irect, irectintersect) {
+    irect r = {{0,0}, {2,2}};
+    icircle c = {{0, 0}, 1};
+    
+    SP_EQUAL(irectintersect(&r, &c), iiok);
+    
+    c.pos.x = 3;
+    c.pos.y = 3;
+    SP_EQUAL(irectintersect(&r, &c), iino);
+    
+    c.pos.x = 2.5;
+    c.pos.y = 2.5;
+    SP_EQUAL(irectintersect(&r, &c), iiok);
+    
+    c.pos.x = 1;
+    c.pos.y = 3;
+    SP_EQUAL(irectintersect(&r, &c), iino);
+    
+    c.pos.x = 1;
+    c.pos.y = 3.5;
+    SP_EQUAL(irectintersect(&r, &c), iino);
+    
+    c.pos.x = 1;
+    c.pos.y = 2.5;
+    SP_EQUAL(irectintersect(&r, &c), iiok);
+    
+    c.pos.x = 1;
+    c.pos.y = 1;
+    SP_EQUAL(irectintersect(&r, &c), iiok);
+}
+
 // **********************************************************************************
 // icircle
 SP_SUIT(icircle);
@@ -300,7 +331,7 @@ SP_SUIT(icircle);
 SP_CASE(icircle, icircleintersect) {
     icircle c = {{0, 0}, 1.0};
     
-    SP_EQUAL(c.radis, 1.0);
+    SP_EQUAL(c.radius, 1.0);
     
     icircle c0 = {{0, 0}, 2.0};
     
@@ -310,7 +341,7 @@ SP_CASE(icircle, icircleintersect) {
 SP_CASE(icircle, icircleintersectYES) {
     icircle c = {{0, 0}, 1.0};
     
-    SP_EQUAL(c.radis, 1.0);
+    SP_EQUAL(c.radius, 1.0);
     
     icircle c0 = {{0, 3}, 2.0};
     
@@ -320,7 +351,7 @@ SP_CASE(icircle, icircleintersectYES) {
 SP_CASE(icircle, icircleintersectNo) {
     icircle c = {{0, 0}, 1.0};
     
-    SP_EQUAL(c.radis, 1.0);
+    SP_EQUAL(c.radius, 1.0);
     
     icircle c0 = {{3, 3}, 2.0};
     
@@ -1754,7 +1785,7 @@ SP_CASE(ifilter, ifiltermake_circle) {
     
     SP_EQUAL(ifilterchecksum(map, filterrange) != 0, 1);
     
-    SP_EQUAL(filterrange->s.u.circle.radis, 2.0);
+    SP_EQUAL(filterrange->s.u.circle.radius, 2.0);
     
     SP_EQUAL(filterrange->s.u.circle.pos.x, 0);
     SP_EQUAL(filterrange->s.u.circle.pos.y, 0);
@@ -2015,14 +2046,14 @@ SP_CASE(ifilter, imapcollectunit) {
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (3: 1.5, 1.2) (4: 1.5, 0.2) (5: 1.0, 1.0)
     // ------------------------------------------------------------------------------------
     ireflist *snap = ireflistmake();
-    filterrange->s.u.circle.radis = __range(2.0);
+    filterrange->s.u.circle.radius = __range(2.0);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (3: 1.5, 1.2) (4: 1.5, 0.2) (5: 1.0, 1.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
     SP_EQUAL(ireflistlen(list), 6);
     
     ireflistremoveall(list);
-    filterrange->s.u.circle.radis = __range(0.1);
+    filterrange->s.u.circle.radius = __range(0.1);
     // (0: 0.1, 0.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2031,7 +2062,7 @@ SP_CASE(ifilter, imapcollectunit) {
     SP_EQUAL(icast(iunit, ireflistfirst(list)->value)->id, 0);
     
     ireflistremoveall(list);
-    filterrange->s.u.circle.radis = __range(0.5);
+    filterrange->s.u.circle.radius = __range(0.5);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2041,7 +2072,7 @@ SP_CASE(ifilter, imapcollectunit) {
     SP_EQUAL(ireflistfind(list, irefcast(__getunitfor(2))) != NULL, 1);
     
     ireflistremoveall(list);
-    filterrange->s.u.circle.radis = __range(1.5);
+    filterrange->s.u.circle.radius = __range(1.5);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (5: 1.0, 1.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2052,7 +2083,7 @@ SP_CASE(ifilter, imapcollectunit) {
     SP_EQUAL(ireflistfind(list, irefcast(__getunitfor(5))) != NULL, 1);
     
     ireflistremoveall(list);
-    filterrange->s.u.circle.radis = __range(1.7);
+    filterrange->s.u.circle.radius = __range(1.7);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (4: 1.5, 0.2) (5: 1.0, 1.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2626,9 +2657,9 @@ static int64_t silly_checksum(ireflist *units) {
         sum += unit->id;
         joint = joint->next;
         
-        //printf("%4lld,", unit->id);
+        /* printf("%4lld,", unit->id); */
     }
-    //printf("===>%9lld\n", sum);
+    /* printf("===>%9lld\n", sum); */
     return sum;
 }
 
@@ -2647,6 +2678,7 @@ SP_CASE(searching_bench_right, searchpos){
     int bench = 10000;
     int maxrange = 10;
     int minrange = 5;
+    int maxunitrange = 2;
     ireal range = 0;
     isearchresult* resultlfs = isearchresultmake();
     isearchresult* resultrfs = isearchresultmake();
@@ -2654,10 +2686,12 @@ SP_CASE(searching_bench_right, searchpos){
     
     for (i=0; i<maxunit; ++i) {
         units[i] = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
+        /* 给单元加一个随机半径 */
+        units[i]->radius = (ireal)(rand()%100)/100*maxunitrange;
         imapaddunit(map, units[i]);
     }
     
-    //_aoi_print(map, 0xffffff);
+    /* _aoi_print(map, 0xffffff); */
     
     for(i=0;i<bench; ++i) {
         pos.x = (ireal)(rand()%MAP_SIZE);
