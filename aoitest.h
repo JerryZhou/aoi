@@ -2628,6 +2628,50 @@ SP_CASE(autoreleasepool, autorelease) {
     SP_EQUAL(_autoreleasecount, 20);
 }
 
+
+#if iiradius
+
+SP_SUIT(unit_radius);
+
+SP_CASE(unit_radius, radius) {
+    SP_TRUE(1);
+    
+    static const int MAX_COUNT = 2000;
+    static const int MAP_SIZE = 512;
+    ipos pos = {0, 0};
+    isize size = {MAP_SIZE, MAP_SIZE};
+    int divide = 10;
+    imap *map = imapmake(&pos, &size, divide);
+    SP_EQUAL(map->maxradius, 0);
+    int i = 0;
+    int maxunit = MAX_COUNT;
+    iunit *u = NULL;
+    int maxunitrange = 2;
+    ireal maxradius = 0;
+    
+    for (i=0; i<maxunit; ++i) {
+        u = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
+        /* 给单元加一个随机半径 */
+        u->radius = (ireal)(rand()%100)/100*maxunitrange;
+        imapaddunit(map, u);
+        
+        if (maxradius < u->radius) {
+            maxradius = u->radius;
+        }
+        
+        ifreeunit(u);
+    }
+    SP_EQUAL(map->maxradius, maxradius);
+    
+    u->radius = maxradius * 2;
+    imaprefreshunit(map, u);
+    SP_EQUAL(map->maxradius, u->radius);
+    
+    imapfree(map);
+}
+
+#endif
+
 SP_SUIT(searching_bench_right) ;
 
 static void silly_search(imap *map, iunit **units, int num, ipos *pos, ireal range, isearchresult *result) {
@@ -2682,7 +2726,7 @@ SP_CASE(searching_bench_right, searchpos){
     ireal range = 0;
     isearchresult* resultlfs = isearchresultmake();
     isearchresult* resultrfs = isearchresultmake();
-        imap *map = imapmake(&pos, &size, divide);
+    imap *map = imapmake(&pos, &size, divide);
     
     for (i=0; i<maxunit; ++i) {
         units[i] = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
