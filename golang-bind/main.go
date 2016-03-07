@@ -85,7 +85,7 @@ func main() {
 	}
 	defer glfw.Terminate()
 	width, height = 800, 800
-	window, err := glfw.CreateWindow(width, height, "Show RoundedRect", nil, nil)
+	window, err := glfw.CreateWindow(width, height, "AOI-Golang", nil, nil)
 	if err != nil {
 		panic(err)
 	}
