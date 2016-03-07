@@ -84,7 +84,7 @@ func main() {
 		panic(err)
 	}
 	defer glfw.Terminate()
-	width, height = 800, 600
+	width, height = 800, 800
 	window, err := glfw.CreateWindow(width, height, "Show RoundedRect", nil, nil)
 	if err != nil {
 		panic(err)

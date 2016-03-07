@@ -12,6 +12,7 @@ import (
 	"github.com/llgcode/draw2d/draw2dgl"
 	"github.com/llgcode/draw2d/draw2dkit"
 	"image/color"
+	"math/rand"
 	//"os"
 	"runtime"
 	//"strconv"
@@ -50,7 +51,7 @@ func NewAoiUnit(uniqueId C.iid, x, y C.ireal) *AoiUnit {
 // 绘制
 func (u *AoiUnit) Draw(gc *draw2dgl.GraphicContext) {
 	gc.BeginPath()
-	draw2dkit.Circle(gc, float64(u.U.pos.x), float64(u.U.pos.x), float64(u.U.radius))
+	draw2dkit.Circle(gc, float64(u.U.pos.x), float64(u.U.pos.y), float64(u.U.radius))
 	gc.SetFillColor(color.RGBA{uint8(0), uint8(128), uint8(0), uint8(255)})
 	gc.Fill()
 
@@ -123,6 +124,14 @@ func DrawGrid(gc *draw2dgl.GraphicContext, x0, y0, x1, y1, dividew, divideh floa
 	}
 }
 
+// Draw a rect
+func DrawRect(gc *draw2dgl.GraphicContext, x0, y0, x1, y1 float64) {
+	gc.BeginPath()
+	draw2dkit.Rectangle(gc, x0, y0, x1, y1)
+	gc.SetFillColor(color.RGBA{uint8(0), uint8(0), uint8(128), uint8(255)})
+	gc.Fill()
+}
+
 // 绘制
 func (m *AoiMap) Draw(gc *draw2dgl.GraphicContext) {
 	// 先绘制地图本身
@@ -133,9 +142,21 @@ func (m *AoiMap) Draw(gc *draw2dgl.GraphicContext) {
 		float64(m.M.nodesizes[m.M.divide].h),
 	)
 
+	// 搞一条线，清晰一点
 	DrawLine(gc, float64(m.M.pos.x), float64(m.M.pos.y),
 		float64(m.M.pos.x)+float64(m.M.size.w),
 		float64(m.M.pos.y)+float64(m.M.size.h))
+
+	// 叶子节点
+	leaf := m.M.leaf
+	for ; leaf != nil; leaf = leaf.next {
+		size := m.M.nodesizes[leaf.level]
+		pos := leaf.code.pos
+		DrawRect(gc, float64(pos.x),
+			float64(pos.y),
+			float64(pos.x+size.w),
+			float64(pos.y+size.h))
+	}
 
 	// 绘制在地图上的所有单元
 	for _, u := range m.Units {
@@ -169,15 +190,17 @@ func aoi_init(width, height float64) {
 	pos := C.struct_ipos{x: C.ireal(offsetx), y: C.ireal(offsety)}
 	size := C.struct_isize{w: C.ireal(sizew), h: C.ireal(sizeh)}
 	fmt.Println("values:", width, height, pos, size)
-	xmap = NewAoiMap(&pos, &size, 3)
+	xmap = NewAoiMap(&pos, &size, 5)
 
-	u := NewAoiUnit(0, C.ireal(offsetx), C.ireal(offsety))
-	xmap.AddUnit(u)
-	xmap.Print(0xffff)
+	for i := 0; i < 100; i++ {
+		u := NewAoiUnit(C.iid(i),
+			C.ireal(offsetx+float64(rand.Int31n(int32(sizew)))),
+			C.ireal(offsety+float64(rand.Int31n(int32(sizeh)))),
+		)
+		xmap.AddUnit(u)
+	}
 
-	u.U.pos.x = u.U.pos.x + 100
-	u.U.pos.y = u.U.pos.y + 100
-	xmap.UpdateUnit(u)
+	// xmap.UpdateUnit(u)
 	xmap.Print(0xffff)
 }
 
