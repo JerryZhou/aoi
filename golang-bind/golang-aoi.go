@@ -33,7 +33,7 @@ type AoiMap struct {
 
 // New Map
 func NewAoiMap(p *C.struct_ipos, s *C.struct_isize, divide int) *AoiMap {
-	m := &AoiMap{M: C.imapmake(p, s, 5), Units: make(map[int64]*AoiUnit)}
+	m := &AoiMap{M: C.imapmake(p, s, C.int(divide)), Units: make(map[int64]*AoiUnit)}
 	runtime.SetFinalizer(m, (*AoiMap).Free)
 	return m
 }
@@ -41,17 +41,30 @@ func NewAoiMap(p *C.struct_ipos, s *C.struct_isize, divide int) *AoiMap {
 // New Unit
 func NewAoiUnit(uniqueId C.iid, x, y C.ireal) *AoiUnit {
 	u := &AoiUnit{U: C.imakeunit(uniqueId, x, y)}
+	u.U.radius = 5
+
 	runtime.SetFinalizer(u, (*AoiUnit).Free)
 	return u
 }
 
+// 绘制
+func (u *AoiUnit) Draw(gc *draw2dgl.GraphicContext) {
+	gc.BeginPath()
+	draw2dkit.Circle(gc, float64(u.U.pos.x), float64(u.U.pos.x), float64(u.U.radius))
+	gc.SetFillColor(color.RGBA{uint8(0), uint8(128), uint8(0), uint8(255)})
+	gc.Fill()
+
+	fmt.Println("u-pos", u.U.pos)
+	fmt.Println("u-radius", u.U.radius)
+}
+
 // 释放对象
-func (m *AoiUnit) Free() {
-	if m.U == nil {
+func (u *AoiUnit) Free() {
+	if u.U == nil {
 		return
 	}
-	C.ifreeunit(m.U)
-	m.U = nil
+	C.ifreeunit(u.U)
+	u.U = nil
 	fmt.Println("AoiUnit finalizer")
 }
 
@@ -83,7 +96,6 @@ func (m *AoiMap) RemoveUnitById(id int64) bool {
 		C.imapremoveunit(m.M, u.U)
 		delete(m.Units, id)
 		return true
-
 	}
 	return false
 }
@@ -91,6 +103,46 @@ func (m *AoiMap) RemoveUnitById(id int64) bool {
 // 更新单元位置
 func (m *AoiMap) UpdateUnit(u *AoiUnit) {
 	C.imapupdateunit(m.M, u.U)
+}
+
+// Draw vertically spaced lines
+func DrawLine(gc *draw2dgl.GraphicContext, x0, y0, x1, y1 float64) {
+	// Draw a line
+	gc.MoveTo(x0, y0)
+	gc.LineTo(x1, y1)
+	gc.Stroke()
+}
+
+// Draw a grid
+func DrawGrid(gc *draw2dgl.GraphicContext, x0, y0, x1, y1, dividew, divideh float64) {
+	for w := x0; w <= x1; w = w + dividew {
+		DrawLine(gc, w, y0, w, y1)
+	}
+	for h := y0; h <= y1; h = h + divideh {
+		DrawLine(gc, x0, h, x1, h)
+	}
+}
+
+// 绘制
+func (m *AoiMap) Draw(gc *draw2dgl.GraphicContext) {
+	// 先绘制地图本身
+	DrawGrid(gc, float64(m.M.pos.x), float64(m.M.pos.y),
+		float64(m.M.pos.x)+float64(m.M.size.w),
+		float64(m.M.pos.y)+float64(m.M.size.h),
+		float64(m.M.nodesizes[m.M.divide].w),
+		float64(m.M.nodesizes[m.M.divide].h),
+	)
+
+	DrawLine(gc, float64(m.M.pos.x), float64(m.M.pos.y),
+		float64(m.M.pos.x)+float64(m.M.size.w),
+		float64(m.M.pos.y)+float64(m.M.size.h))
+
+	// 绘制在地图上的所有单元
+	for _, u := range m.Units {
+		u.Draw(gc)
+	}
+	fmt.Println("m-pos", m.M.pos)
+	fmt.Println("m-size", m.M.size)
 }
 
 // 释放地图
@@ -106,24 +158,27 @@ func (m *AoiMap) Free() {
 
 var xmap *AoiMap
 
-func aoi_init() {
-	n := C.igetcurtick()
-	fmt.Println("C.igetcurtick", n)
+func aoi_init(width, height float64) {
 
-	pos := C.struct_ipos{x: 0, y: 0}
-	size := C.struct_isize{w: 512, h: 512}
-	xmap = NewAoiMap(&pos, &size, 5)
+	factor := 1.0 * 3 / 4
+	sizeh := height * factor
+	sizew := width * factor
+	offsetx := (width - sizew) / 2
+	offsety := (height - sizeh) / 2
 
-	u := NewAoiUnit(0, C.ireal(1.0), C.ireal(1.2))
+	pos := C.struct_ipos{x: C.ireal(offsetx), y: C.ireal(offsety)}
+	size := C.struct_isize{w: C.ireal(sizew), h: C.ireal(sizeh)}
+	fmt.Println("values:", width, height, pos, size)
+	xmap = NewAoiMap(&pos, &size, 3)
+
+	u := NewAoiUnit(0, C.ireal(offsetx), C.ireal(offsety))
 	xmap.AddUnit(u)
 	xmap.Print(0xffff)
 
-	u.U.pos.x = 200
-	u.U.pos.y = 100
+	u.U.pos.x = u.U.pos.x + 100
+	u.U.pos.y = u.U.pos.y + 100
 	xmap.UpdateUnit(u)
 	xmap.Print(0xffff)
-
-	xmap = nil
 }
 
 func aoi_draw(gc *draw2dgl.GraphicContext) {
@@ -133,14 +188,5 @@ func aoi_draw(gc *draw2dgl.GraphicContext) {
 		b, _ := strconv.ParseInt(os.Args[3], 10, 0)
 		a, _ := strconv.ParseInt(os.Args[4], 10, 0)
 	*/
-	r := 255
-	g := 0
-	b := 0
-	a := 255
-
-	gc.BeginPath()
-	//draw2dkit.RoundedRectangle(gc, 200, 200, 600, 600, 100, 100)
-	draw2dkit.Rectangle(gc, 200, 200, 600, 600)
-	gc.SetFillColor(color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
-	gc.Fill()
+	xmap.Draw(gc)
 }

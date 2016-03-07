@@ -36,9 +36,9 @@ func reshape(window *glfw.Window, w, h int) {
 	/* Map abstract coords directly to window coords. */
 	gl.Ortho(0, float64(w), 0, float64(h), -1, 1)
 	/* Invert Y axis so increasing Y goes down. */
-	gl.Scalef(1, -1, 1)
+	gl.Scalef(1, 1, 1)
 	/* Shift origin up to upper-left corner. */
-	gl.Translatef(0, float32(-h), 0)
+	//gl.Translatef(0, float32(h), 0)
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	gl.Disable(gl.DEPTH_TEST)
@@ -54,7 +54,7 @@ func invalidate() {
 func display() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-	gl.LineWidth(1)
+	gl.LineWidth(2)
 	gc := draw2dgl.NewGraphicContext(width, height)
 	gc.SetFontData(draw2d.FontData{
 		Name:   "luxi",
@@ -89,6 +89,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	width, height = window.GetFramebufferSize()
 
 	window.MakeContextCurrent()
 	window.SetSizeCallback(reshape)
@@ -102,7 +103,7 @@ func main() {
 		panic(err)
 	}
 
-	aoi_init()
+	aoi_init(float64(width), float64(height))
 
 	reshape(window, width, height)
 	for !window.ShouldClose() {
