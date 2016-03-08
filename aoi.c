@@ -1641,7 +1641,7 @@ void imaprefreshunit(imap *map, iunit *unit) {
 /* 建议 divide 不要大于 10*/
 /* 加载位图阻挡信息 sizeof(blocks) == (divide*divide + 7 ) / 8 */
 void imaploadblocks(imap *map, char* blocks) {
-    // new memory
+    /* new memory */
     size_t size = (map->divide*map->divide + 7)/8;
     if (map->blocks == NULL) {
         map->blocks = icalloc(1, size);
