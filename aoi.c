@@ -216,8 +216,8 @@ void iaoimemorystate() {
 
 #endif
 
-/* 获取当前系统的纳秒数 */
-int64_t igetcurnano() {
+/* 获取当前系统的微秒数 */
+int64_t igetcurmicro() {
 	struct timeval tv;
 
 	gettimeofday(&tv, NULL);
@@ -226,13 +226,13 @@ int64_t igetcurnano() {
 
 /* 获取当前系统的毫秒数 */
 int64_t igetcurtick() {
-	return igetcurnano()/1000;
+	return igetcurmicro()/1000;
 }
 
 /* 获取系统的下一个唯一的事件纳秒数 */
-int64_t igetnextnano(){
+int64_t igetnextmicro(){
 	static int64_t gseq = 0;
-	int64_t curseq = igetcurnano();
+	int64_t curseq = igetcurmicro();
 	if (curseq > gseq) {
 		gseq = curseq;
 	}else {
@@ -276,13 +276,42 @@ int irectcontainspoint(irect *con, ipos *p) {
 	return iino;
 }
 
+/* 矩形与圆是否相交 */
+int irectintersect(irect *con, icircle *c) {
+    icheckret(con, iino);
+    icheckret(c, iiok);
+    
+    /* https://www.zhihu.com/question/24251545  */
+    /*
+     bool BoxCircleIntersect(Vector2 c, Vector2 h, Vector2 p, float r) {
+     Vector2 v = abs(p - c);    // 第1步：转换至第1象限
+     Vector2 u = max(v - h, 0); // 第2步：求圆心至矩形的最短距离矢量
+     return dot(u, u) <= r * r; // 第3步：长度平方与半径平方比较
+     }
+     
+     作者：Milo Yip
+     链接：https://www.zhihu.com/question/24251545/answer/27184960
+     */
+    /*
+     ivec2 c = {con->pos.x, con->pos.y};
+     ivec2 p = {c->pos.x, c->pos.y};
+     */
+    ivec2 v = {{{fabs(c->pos.x - con->pos.x), fabs(c->pos.y - con->pos.y)}}};
+    ivec2 h = {{{con->size.w, con->size.h}}};
+    ivec2 u =  {{{v.x - h.x, v.y - h.y}}};
+    u.x = u.x < 0 ? 0 : u.x;
+    u.y = u.y < 0 ? 0 : u.y;
+    
+    return u.x * u.x + u.y * u.y < c->radius * c->radius;
+}
+
 /* 圆形相交: iiok, iino */
 int icircleintersect(icircle *con, icircle *c) {
 	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(c, iiok);
 
-	ds = (con->radis + c->radis);
+	ds = (con->radius + c->radius);
 
 	if (idistancepow2(&con->pos, &c->pos) <= ds * ds) {
 		return iiok;
@@ -296,7 +325,7 @@ int icirclecontains(icircle *con, icircle *c) {
 	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(c, iiok);
-	ds = (con->radis - c->radis);
+	ds = (con->radius - c->radius);
 	icheckret(ds >= 0, iino);
 
 	if (idistancepow2(&con->pos, &c->pos) <= ds * ds) {
@@ -311,7 +340,7 @@ int icirclecontainspoint(icircle *con, ipos *p) {
 	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(p, iiok);
-	ds = (con->radis);
+	ds = (con->radius);
 	icheckret(ds >= 0, iino);
 
 	if (idistancepow2(&con->pos, p) <= ds * ds) {
@@ -332,8 +361,8 @@ int icirclerelation(icircle *con, icircle *c) {
 	icheckret(con, EnumCircleRelationBContainsA);
 	icheckret(c, EnumCircleRelationAContainsB);
 
-	minusds = con->radis - c->radis;
-	addds = con->radis + c->radis;
+	minusds = con->radius - c->radius;
+	addds = con->radius + c->radius;
 	ds = idistancepow2(&con->pos, &c->pos);
 
 	if (ds <= minusds * minusds) {
@@ -356,11 +385,11 @@ int icirclerelation(icircle *con, icircle *c) {
 
 #define __Millis igetcurtick()
 
-#define __Nanos  igetcurnano()
+#define __Micros  igetcurmicro()
 
-#define __Since(t) (__Nanos - t)
+#define __Since(t) (__Micros - t)
 
-#define iplogwhen(t, when, ...) do { if(open_log_profile && t > when) {printf("[PROFILE] Take %lld nanos ", t); printf(__VA_ARGS__); } } while (0)
+#define iplogwhen(t, when, ...) do { if(open_log_profile && t > when) {printf("[PROFILE] Take %lld micros ", t); printf(__VA_ARGS__); } } while (0)
 
 #define iplog(t, ...) iplogwhen(t, __ProfileThreashold, __VA_ARGS__)
 
@@ -770,7 +799,7 @@ int justaddunit(imap *map, inode *node, iunit *unit){
 	icheckret(node->level == map->divide, iino);
 
 	unit->node = node;
-	unit->tick = igetnextnano();
+	unit->tick = igetnextmicro();
 
 	node->unitcnt++;
 	node->tick = unit->tick;
@@ -785,6 +814,9 @@ int justaddunit(imap *map, inode *node, iunit *unit){
 	list_add_front(node->units, unit);
 	/* add ref as we save units in list */
 	iretain(unit);
+    
+    /* refresh the radius to map */
+    imaprefreshunit(map, unit);
 
 	return iiok;
 }
@@ -801,7 +833,7 @@ int justremoveunit(imap *map, inode *node, iunit *unit) {
 #endif
 
 	node->unitcnt--;
-	node->tick = igetnextnano();
+	node->tick = igetnextmicro();
 
 #if open_node_utick
 	node->utick = node->tick;
@@ -931,12 +963,12 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
 		/* add unit */
 		justaddunit(map, node, unit);
 		/* log it */
-#if _print_unit_add
+#if open_log_unit_add
 		_print_unit_add(node, unit, idx);
-		i	/* log it */
+        /* log it */
 #endif
 
-			++map->state.unitcount;
+        ++map->state.unitcount;
 		ok = iiok;
 	}else {
 		/* 定位节点所在的子节点 */
@@ -1122,7 +1154,7 @@ int imapgenpos(imap *map, ipos *pos, icode *code) {
 typedef struct movestep {
 	char from;
 	char to;
-	int next;
+	int next; /*iiok 代表还需要继续往父级节点移动*/
 }movestep;
 /**
   |BBB| BBD| BDB| BDD| DBB| DBD| DDB| DDD|
@@ -1184,12 +1216,16 @@ static int gmoveposstep[][2] = {
 /*	边缘部分是不能进行某些操作的 */
 static int gmoveforbid[][4] = {
 	/* EnumCodeMoveLeft */
+    /* C && D Can Be Moved Left*/
 	{'A',	'B',	0,		0},
 	/* EnumCodeMoveRight */
+    /* A && B Can Be Moved Right*/
 	{0,		0,		'C',	'D'},
 	/* EnumCodeMoveDown */
+    /* B && D Can Be Moved Down*/
 	{'A',	0,		'C',	0}, 
 	/* EnumCodeMoveUp */
+    /* A && C Can Be Moved Up*/
 	{0,		'B',	0,		'D'},
 };
 
@@ -1313,12 +1349,13 @@ void imapfree(imap *map) {
 #endif
 	/* 释放四叉树 */
 	ifreenodetree(map->root);
-	/* 释放节点缓冲区 */
-	irefcachefree(map->nodecache);
 	/* 释放叶子节点链表 */
 	while (map->leaf) {
 		justremoveleaf(map, map->leaf);
 	}
+    /* 释放节点缓冲区 */
+	irefcachefree(map->nodecache);
+
 	/* 释放地图本身 */
 	iobjfree(map);
 }
@@ -1375,7 +1412,7 @@ int imapgen(imap *map) {
 /* 增加一个单元到地图上 */
 int imapaddunit(imap *map, iunit *unit) {
 	int ok;
-	int64_t nano;
+	int64_t micro;
 
 	icheckret(unit, iino);
 	icheckret(map, iino);
@@ -1388,9 +1425,9 @@ int imapaddunit(imap *map, iunit *unit) {
 	ilog("[IMAP-Unit] Add Unit: %lld - (%.3f, %.3f) - %s\n",
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 #endif
-	nano = __Nanos;
+	micro = __Micros;
 	ok = imapaddunitto(map, map->root, unit, 0);
-	iplog(__Since(nano), "[IMAP-Unit] Add Unit: %lld - (%.3f, %.3f) - %s\n",
+	iplog(__Since(micro), "[IMAP-Unit] Add Unit: %lld - (%.3f, %.3f) - %s\n",
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 	return ok;
 }
@@ -1398,7 +1435,7 @@ int imapaddunit(imap *map, iunit *unit) {
 /* 从地图上移除一个单元 */
 int imapremoveunit(imap *map, iunit *unit) {
 	int ok;
-	int64_t nano;
+	int64_t micro;
 
 	icheckret(unit, iino);
 	icheckret(unit->node, iino);
@@ -1409,9 +1446,9 @@ int imapremoveunit(imap *map, iunit *unit) {
 	ilog("[IMAP-Unit] Remove Unit: %lld - (%.3f, %.3f) - %s\n",
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 #endif
-	nano = __Nanos;
+	micro = __Micros;
 	ok = imapremoveunitfrom(map, map->root, unit, 0, map->root);
-	iplog(__Since(nano), "[IMAP-Unit] Remove Unit: "
+	iplog(__Since(micro), "[IMAP-Unit] Remove Unit: "
 			"%lld - (%.3f, %.3f) - %s\n",
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 
@@ -1421,7 +1458,7 @@ int imapremoveunit(imap *map, iunit *unit) {
 
 /* 从地图上检索节点 */
 inode *imapgetnode(imap *map, icode *code, int level, int find) {
-	int64_t nano = __Nanos;
+	int64_t micro = __Micros;
 	inode *node = NULL;
 
 	icheckret(map, NULL);
@@ -1441,7 +1478,7 @@ inode *imapgetnode(imap *map, icode *code, int level, int find) {
 		}
 		node = node->childs[codei];
 	}
-	iplog(__Since(nano), "[IMAP-Node] Find Node (%d, %s) With Result %p\n",
+	iplog(__Since(micro), "[IMAP-Node] Find Node (%d, %s) With Result %p\n",
 			level, code->code, node);
 
 	/* 尽可能的返回 */
@@ -1468,7 +1505,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 	int ok;
 	int offset;
 	icode code;
-	int64_t nano;
+	int64_t micro;
 	inode *impact;
 	inode *removeimpact;
 	inode *addimpact;
@@ -1495,12 +1532,12 @@ int imapupdateunit(imap *map, iunit *unit) {
 		/* 如果需要支持utick 依然需要更新所有父级节点的utick */
 		/* 获取影响的顶级节,  更新父亲节点影响节点的utick点 */
 #if open_node_utick
-		imaprefreshutick(unit->node, igetnextnano());
+		imaprefreshutick(unit->node, igetnextmicro());
 #endif
 		return iiok;
 	}
 
-	nano = __Nanos;
+	micro = __Micros;
 	/* 生成新的编码 */
 	imapgencode(map, &unit->pos, &code);
 	/* 获取新编码的变更顶层节点位置, 并赋值新的编码 */
@@ -1517,7 +1554,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 		/* 获取影响的顶级节点 */
 		/* 更新父亲节点影响节点的utick */
 #if open_node_utick
-		imaprefreshutick(unit->node, igetnextnano());
+		imaprefreshutick(unit->node, igetnextmicro());
 #endif
 		return iiok;
 	}
@@ -1558,10 +1595,22 @@ int imapupdateunit(imap *map, iunit *unit) {
 		imaprefreshutick(impact, utick);
 	}
 #endif
-	iplog(__Since(nano), "[MAP-Unit] Update  Unit(%lld) To (%s, %.3f, %.3f)\n",
+	iplog(__Since(micro), "[MAP-Unit] Update  Unit(%lld) To (%s, %.3f, %.3f)\n",
 			unit->id, code.code, code.pos.x, code.pos.y);
 
 	return ok;
+}
+
+/* 更新一个单元的附加信息到地图数据上：现阶段就只更新了单元的半径信息 */
+void imaprefreshunit(imap *map, iunit *unit) {
+    iunused(map);
+    iunused(unit);
+    
+#if iiradius
+    if (map->maxradius < unit->radius) {
+        map->maxradius = unit->radius;
+    }
+#endif
 }
 
 /* 对一个数字做Hash:Redis */
@@ -1586,7 +1635,7 @@ int64_t _entryfilterchecksumdefault(imap *map, struct ifilter *d) {
 	/* circle */
 	ihash(&hash, __realint(d->s.u.circle.pos.x));
 	ihash(&hash, __realint(d->s.u.circle.pos.y));
-	ihash(&hash, __realint(d->s.u.circle.radis));
+	ihash(&hash, __realint(d->s.u.circle.radius));
 
 	/* rect */
 	ihash(&hash, __realint(d->s.u.rect.pos.x));
@@ -1718,16 +1767,31 @@ int _entryfilter_circle(imap *map, ifilter *filter, iunit* unit) {
 	icheckret(unit, iino);
 	iunused(map);
 
-	/* 距离超出范围 */
-	if (icirclecontainspoint(&filter->s.u.circle, &unit->pos) == iino) {
+#if iiradius
+    icircle ucircle = {unit->pos, unit->radius};
+    /* 距离超出范围 */
+    if (icircleintersect(&filter->s.u.circle, &ucircle) == iino) {
 #if open_log_filter
-		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) - (%.3f, %.3f: %.3f)\n",
-				unit->id,
-				unit->pos.x, unit->pos.y,
-				filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
-#endif
-		return iino;
-	}
+        ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f : %.3f) - (%.3f, %.3f: %.3f)\n",
+             unit->id,
+             unit->pos.x, unit->pos.y,
+             unit->radius,
+             filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
+#endif /* open_log_filter */
+        return iino;
+    }
+#else
+    /* 距离超出范围 */
+    if (icirclecontainspoint(&filter->s.u.circle, &unit->pos) == iino) {
+#if open_log_filter
+        ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) - (%.3f, %.3f: %.3f)\n",
+             unit->id,
+             unit->pos.x, unit->pos.y,
+             filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
+#endif /* open_log_filter */
+        return iino;
+    }
+#endif /* iiradius */
 
 	return iiok;
 }
@@ -1739,7 +1803,7 @@ int64_t _entryfilechecksum_circile(imap *map, ifilter *d) {
 	/* circle */
 	ihash(&hash, __realint(d->s.u.circle.pos.x));
 	ihash(&hash, __realint(d->s.u.circle.pos.y));
-	ihash(&hash, __realint(d->s.u.circle.radis));
+	ihash(&hash, __realint(d->s.u.circle.radius));
 	return hash;
 }
 
@@ -1747,7 +1811,7 @@ int64_t _entryfilechecksum_circile(imap *map, ifilter *d) {
 ifilter *ifiltermake_circle(ipos *pos, ireal range) {
 	ifilter *filter = ifiltermake();
 	filter->s.u.circle.pos = *pos;
-	filter->s.u.circle.radis = range;
+	filter->s.u.circle.radius = range;
 	filter->entry = _entryfilter_circle;
 	filter->entrychecksum = _entryfilechecksum_circile;
 	return filter;
@@ -1758,10 +1822,27 @@ int _entryfilter_rect(imap *map, ifilter *filter, iunit* unit) {
 	icheckret(unit, iino);
 	iunused(map);
 
+#if iiradius
+	/* 距离超出范围 */
+    icircle c = {unit->pos, unit->radius};
+	if (irectintersect(&filter->s.u.rect, &c) == iino) {
+#if open_log_filter
+		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f: %.3f)"
+                " Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
+				unit->id,
+				unit->pos.x, unit->pos.y, unit->radius,
+				filter->s.u.rect.pos.x, filter->s.u.rect.pos.y,
+				filter->s.u.rect.size.w, filter->s.u.rect.size.h);
+#endif
+		return iino;
+	}
+#else
+
 	/* 距离超出范围 */
 	if (irectcontainspoint(&filter->s.u.rect, &unit->pos) == iino) {
 #if open_log_filter
-		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
+		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f)"
+                " Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
 				unit->id,
 				unit->pos.x, unit->pos.y,
 				filter->s.u.rect.pos.x, filter->s.u.rect.pos.y,
@@ -1769,6 +1850,7 @@ int _entryfilter_rect(imap *map, ifilter *filter, iunit* unit) {
 #endif
 		return iino;
 	}
+#endif /* iiradius*/
 
 	return iiok;
 }
@@ -1964,7 +2046,7 @@ void imapsearchfromnode(imap *map, inode *node,
 		isearchresult* result, ireflist *innodes) {
 	irefjoint *joint;
 	inode *searchnode;
-	int64_t nano = __Nanos;
+	int64_t micro = __Micros;
 	/* 校验码 */
 	int64_t maxtick;
 	int64_t maxutick;
@@ -2006,7 +2088,7 @@ void imapsearchfromnode(imap *map, inode *node,
 	/* 更新校验码 */
 	result->checksum = checksum;
 	/* 性能日志 */
-	iplog(__Since(nano),
+	iplog(__Since(micro),
 			"[MAP-Unit-Search] Search-Node "
 			"(%d, %s) --> Result: %d Units \n",
 			node->level, node->code.code, ireflistlen(result->units));
@@ -2088,7 +2170,7 @@ inode *imapcaculatesameparent(imap *map, ireflist *collects) {
 /* 从地图上搜寻单元 irect{pos, size{rangew, rangeh}}, 并附加条件 filter */
 void imapsearchfromrectwithfilter(imap *map, irect *rect,
 		isearchresult *result, ifilter *filter) {
-	int64_t nano = __Nanos;
+	int64_t micro = __Micros;
 	inode *node;
 	ireflist *collects;
 
@@ -2104,6 +2186,8 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 	/* 没有任何潜在的节点 */
 	if (ireflistlen(collects) == 0) {
 		ireflistfree(collects);
+        /* 清理以前的搜索结果 */
+        isearchresultclean(result);
 		return;
 	}
 
@@ -2123,7 +2207,7 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 	ireflistfree(collects);
 
 	/* 性能日志 */
-	iplogwhen(__Since(nano), 10, "[MAP-Unit-Search] Search-Node-Range From: "
+	iplogwhen(__Since(micro), 10, "[MAP-Unit-Search] Search-Node-Range From: "
 			"(%d, %s: (%.3f, %.3f)) In Rect (%.3f, %.3f , %.3f, %.3f) "
 			"---> Result : %d Units \n",
 			node->level, node->code.code,
@@ -2135,9 +2219,10 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 /* 从地图上搜寻单元, 并附加条件 filter */
 void imapsearchfrompos(imap *map, ipos *pos,
 		isearchresult *result, ireal range) {
+    ireal rectrange = range + iiradius * map->maxradius; /* 扩大搜索区域，以支持单元的半径搜索 */
 	/* 目标矩形 */
-	/*irect rect = {.pos={.x=pos->x-range, .y=pos->y-range}, .size={.w=2*range, .h=2*range}};*/
-	irect rect = {{pos->x-range, pos->y-range}, {2*range, 2*range}};
+	/*irect rect = {.pos={.x=pos->x-rectrange, .y=pos->y-rectrange}, .size={.w=2*rectrange, .h=2*rectrange}};*/
+	irect rect = {{pos->x-rectrange, pos->y-rectrange}, {2*rectrange, 2*rectrange}};
 
 	ifilter *filter = NULL;
 
@@ -2177,32 +2262,32 @@ void imapsearchfromunit(imap *map, iunit *unit,
 /* 打印节点 */
 void _aoi_printnode(int require, inode *node, const char* prefix, int tail) {
 	/* 前面 */
-	printf("%s", prefix);
+	ilog("%s", prefix);
 	if (tail) {
-		printf("%s", "└── ");
+		ilog("%s", "└── ");
 	}else {
-		printf("%s", "├── ");
+		ilog("%s", "├── ");
 	}
 	/* 打印节点 */
-	printf("[%s]", node->code.code);
+	ilog("[%s]", node->code.code);
 	/* 打印节点时间戳 */
 	if (require & EnumNodePrintStateTick) {
-		printf(" tick(%lld", node->tick);
+		ilog(" tick(%lld", node->tick);
 #if open_node_utick
-		printf(",%lld", node->utick);
+		ilog(",%lld", node->utick);
 #endif
-		printf(")");
+		ilog(")");
 	}
 	/* 打印节点单元 */
 	if ((require & EnumNodePrintStateUnits) && node->units) {
 		iunit *u = node->units;
-		printf(" units(");
+		ilog(" units(");
 		while (u) {
-			printf("%lld%s", u->id, u->next ? ",":")");
+			ilog("%lld%s", u->id, u->next ? ",":")");
 			u= u->next;
 		}
 	}
-	printf("\n");
+	ilog("\n");
 
 	if (node->childcnt) {
 		int cur = 0;

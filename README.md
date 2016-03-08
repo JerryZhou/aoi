@@ -1,5 +1,17 @@
 # aoi
-area of interest(AOI)
+area of interest(AOI) 
+* 适用于大批量的对象管理和查询
+* 采用四叉树来进行管理，可以通过少量改动支持3D
+* 动态节点回收管理，减少内存, 节点的数量不会随着四叉树的层次变得不可控，与对象数量成线性关系
+* 缓存搜索上下文，减少无效搜索，对于零变更的区域，搜索会快速返回
+* 整个搜索过程，支持自定义过滤器进行单元过滤
+* AOI 支持对象的内存缓冲区管理
+* 线程不安全
+* 支持单位半径，不同单位可以定义不同的半径(开启半径感知，会损失一部分性能)
+* 只提供了搜索结构，不同单位的视野区域可以定义不一样
+
+*提高内存访问，建议启用 iimeta (1)*
+*如果不需要单位半径感知 建议关闭 iiradius (0)*
 
 # How to Build
 
@@ -24,6 +36,11 @@ make ENABLE_LUALIB=true
 ```
 msvc_build.bat
 ```
+
+# 性能测试
+通过提供的prof 工具测试获取自己需要的参数
+prof c [divide] [max-unit] [min-search-range] [max-rand-search-range] [benchtimes]
+![测试样例](http://dwgaga-image.qiniudn.com/more_img_1__Default__bash_.png)
 
 # 视野服务
 游戏服务器的AOI（area of interest)部分，位置有关的游戏实体一般都有一个视野或关心的范围

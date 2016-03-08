@@ -182,17 +182,17 @@ SP_CASE(imeta, iaoiistype) {
 // time
 SP_SUIT(time);
 
-SP_CASE(time, igetcurnanoandigetcurtick) {
-    int64_t nano = igetcurnano();
+SP_CASE(time, igetcurmicroandigetcurtick) {
+    int64_t micro = igetcurmicro();
     int64_t ticks = igetcurtick();
-    SP_EQUAL((nano - ticks * 1000 < 1000), 1);
+    SP_EQUAL((micro - ticks * 1000 < 1000), 1);
 }
 
-SP_CASE(time, igetnextnano) {
-    int64_t nano0 = igetnextnano();
-    int64_t nano1 = igetnextnano();
+SP_CASE(time, igetnextmicro) {
+    int64_t micro0 = igetnextmicro();
+    int64_t micro1 = igetnextmicro();
     
-    SP_EQUAL(nano0 != nano1, 1);
+    SP_EQUAL(micro0 != micro1, 1);
 }
 
 // **********************************************************************************
@@ -293,6 +293,37 @@ SP_CASE(irect, irectcontainspoint) {
     SP_EQUAL(irectcontainspoint(&r, &p), iino);
 }
 
+SP_CASE(irect, irectintersect) {
+    irect r = {{0,0}, {2,2}};
+    icircle c = {{0, 0}, 1};
+    
+    SP_EQUAL(irectintersect(&r, &c), iiok);
+    
+    c.pos.x = 3;
+    c.pos.y = 3;
+    SP_EQUAL(irectintersect(&r, &c), iino);
+    
+    c.pos.x = 2.5;
+    c.pos.y = 2.5;
+    SP_EQUAL(irectintersect(&r, &c), iiok);
+    
+    c.pos.x = 1;
+    c.pos.y = 3;
+    SP_EQUAL(irectintersect(&r, &c), iino);
+    
+    c.pos.x = 1;
+    c.pos.y = 3.5;
+    SP_EQUAL(irectintersect(&r, &c), iino);
+    
+    c.pos.x = 1;
+    c.pos.y = 2.5;
+    SP_EQUAL(irectintersect(&r, &c), iiok);
+    
+    c.pos.x = 1;
+    c.pos.y = 1;
+    SP_EQUAL(irectintersect(&r, &c), iiok);
+}
+
 // **********************************************************************************
 // icircle
 SP_SUIT(icircle);
@@ -300,7 +331,7 @@ SP_SUIT(icircle);
 SP_CASE(icircle, icircleintersect) {
     icircle c = {{0, 0}, 1.0};
     
-    SP_EQUAL(c.radis, 1.0);
+    SP_EQUAL(c.radius, 1.0);
     
     icircle c0 = {{0, 0}, 2.0};
     
@@ -310,7 +341,7 @@ SP_CASE(icircle, icircleintersect) {
 SP_CASE(icircle, icircleintersectYES) {
     icircle c = {{0, 0}, 1.0};
     
-    SP_EQUAL(c.radis, 1.0);
+    SP_EQUAL(c.radius, 1.0);
     
     icircle c0 = {{0, 3}, 2.0};
     
@@ -320,7 +351,7 @@ SP_CASE(icircle, icircleintersectYES) {
 SP_CASE(icircle, icircleintersectNo) {
     icircle c = {{0, 0}, 1.0};
     
-    SP_EQUAL(c.radis, 1.0);
+    SP_EQUAL(c.radius, 1.0);
     
     icircle c0 = {{3, 3}, 2.0};
     
@@ -1492,29 +1523,32 @@ SP_CASE(imap, imapupdateunit) {
 }
 
 SP_CASE(imap, imapmovecode) {
+    int divide = 20;
+    int randmove = 1024;
+    int maxmove = (int)pow(2, divide) - 1;
     ipos pos = {0, 0};
     isize size = {512, 512};
-    imap *xxmap = imapmake(&pos, &size, 24); 
+    imap *xxmap = imapmake(&pos, &size, divide); 
 
     icode code;
     imapgencode(xxmap, &pos, &code);
 
     printf("code: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
-    SP_EQUAL(strlen(code.code), 24);
+    SP_EQUAL(strlen(code.code), xxmap->divide);
 
     icode xcode;
     printf("map divide precisions: %f, %f \n", 
-            xxmap->nodesizes[24].w, 
-            xxmap->nodesizes[24].h);
+            xxmap->nodesizes[xxmap->divide].w, 
+            xxmap->nodesizes[xxmap->divide].h);
 
-    // pow(2, 24) Up
-    printf("Move Up\n");
-    for(int i=0; i<1024; ++i) {
+    // maxmove Up
+    printf("Move Up ( step %d)\n", maxmove);
+    for(int i=0; i<maxmove; ++i) {
 
         imapmovecode(xxmap, &code, EnumCodeMoveUp);
 
         pos.x = pos.x;
-        pos.y += xxmap->nodesizes[24].h;
+        pos.y += xxmap->nodesizes[xxmap->divide].h;
         imapgencode(xxmap, &pos, &xcode);
         //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
         //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
@@ -1526,13 +1560,13 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // Down
-    printf("Move Down\n");
-    for(int i=0; i<1024; ++i) {
+    printf("Move Down ( step %d)\n", maxmove);
+    for(int i=0; i<maxmove; ++i) {
 
         imapmovecode(xxmap, &code, EnumCodeMoveDown);
 
         pos.x = pos.x;
-        pos.y -= xxmap->nodesizes[24].h;
+        pos.y -= xxmap->nodesizes[xxmap->divide].h;
         imapgencode(xxmap, &pos, &xcode);
         //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
         //printf("xcode: %s, %f, %f\n", xcode.code, xcode.pos.x, xcode.pos.y);
@@ -1544,12 +1578,12 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // Right
-    printf("Move Right\n");
-    for(int i=0; i<1024; ++i) {
+    printf("Move Right ( step %d)\n", maxmove);
+    for(int i=0; i<maxmove; ++i) {
 
         imapmovecode(xxmap, &code, EnumCodeMoveRight);
 
-        pos.x += xxmap->nodesizes[24].w;
+        pos.x += xxmap->nodesizes[xxmap->divide].w;
         pos.y = pos.y;
         imapgencode(xxmap, &pos, &xcode);
         //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
@@ -1562,12 +1596,12 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // Left
-    printf("Move Left\n");
-    for(int i=0; i<1024; ++i) {
+    printf("Move Left ( step %d)\n", maxmove);
+    for(int i=0; i<maxmove; ++i) {
 
         imapmovecode(xxmap, &code, EnumCodeMoveLeft);
 
-        pos.x -= xxmap->nodesizes[24].w;
+        pos.x -= xxmap->nodesizes[xxmap->divide].w;
         pos.y = pos.y;
         imapgencode(xxmap, &pos, &xcode);
         //printf("icode: %s, %f, %f\n", code.code, code.pos.x, code.pos.y);
@@ -1580,7 +1614,8 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // 随机左移
-    for (int i=0; i<1024; ++i) {
+    printf("Rand Move Left ( step %d)\n", randmove);
+    for (int i=0; i<randmove; ++i) {
         pos.x = rand() % 512;
         pos.y = rand() % 512;
 
@@ -1601,7 +1636,8 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // 随机右移
-    for (int i=0; i<1024; ++i) {
+    printf("Rand Move Right ( step %d)\n", randmove);
+    for (int i=0; i<randmove; ++i) {
         pos.x = rand() % 512;
         pos.y = rand() % 512;
 
@@ -1621,7 +1657,8 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // 随机上移
-    for (int i=0; i<1024; ++i) {
+    printf("Rand Move Up ( step %d)\n", randmove);
+    for (int i=0; i<randmove; ++i) {
         pos.x = rand() % 512;
         pos.y = rand() % 512;
 
@@ -1641,7 +1678,8 @@ SP_CASE(imap, imapmovecode) {
     }
 
     // 随机下移
-    for (int i=0; i<1024; ++i) {
+    printf("Rand Move Down ( step %d)\n", randmove);
+    for (int i=0; i<randmove; ++i) {
         pos.x = rand() % 512;
         pos.y = rand() % 512;
 
@@ -1747,7 +1785,7 @@ SP_CASE(ifilter, ifiltermake_circle) {
     
     SP_EQUAL(ifilterchecksum(map, filterrange) != 0, 1);
     
-    SP_EQUAL(filterrange->s.u.circle.radis, 2.0);
+    SP_EQUAL(filterrange->s.u.circle.radius, 2.0);
     
     SP_EQUAL(filterrange->s.u.circle.pos.x, 0);
     SP_EQUAL(filterrange->s.u.circle.pos.y, 0);
@@ -2008,14 +2046,14 @@ SP_CASE(ifilter, imapcollectunit) {
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (3: 1.5, 1.2) (4: 1.5, 0.2) (5: 1.0, 1.0)
     // ------------------------------------------------------------------------------------
     ireflist *snap = ireflistmake();
-    filterrange->s.u.circle.radis = __range(2.0);
+    filterrange->s.u.circle.radius = __range(2.0);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (3: 1.5, 1.2) (4: 1.5, 0.2) (5: 1.0, 1.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
     SP_EQUAL(ireflistlen(list), 6);
     
     ireflistremoveall(list);
-    filterrange->s.u.circle.radis = __range(0.1);
+    filterrange->s.u.circle.radius = __range(0.1);
     // (0: 0.1, 0.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2024,7 +2062,7 @@ SP_CASE(ifilter, imapcollectunit) {
     SP_EQUAL(icast(iunit, ireflistfirst(list)->value)->id, 0);
     
     ireflistremoveall(list);
-    filterrange->s.u.circle.radis = __range(0.5);
+    filterrange->s.u.circle.radius = __range(0.5);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2034,7 +2072,7 @@ SP_CASE(ifilter, imapcollectunit) {
     SP_EQUAL(ireflistfind(list, irefcast(__getunitfor(2))) != NULL, 1);
     
     ireflistremoveall(list);
-    filterrange->s.u.circle.radis = __range(1.5);
+    filterrange->s.u.circle.radius = __range(1.5);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (5: 1.0, 1.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2045,7 +2083,7 @@ SP_CASE(ifilter, imapcollectunit) {
     SP_EQUAL(ireflistfind(list, irefcast(__getunitfor(5))) != NULL, 1);
     
     ireflistremoveall(list);
-    filterrange->s.u.circle.radis = __range(1.7);
+    filterrange->s.u.circle.radius = __range(1.7);
     // (0: 0.1, 0.0) (1: 0.3, 0.4) (2: 0.5, 0.0) (4: 1.5, 0.2) (5: 1.0, 1.0)
     imapcollectunit(map, node, list, filter, snap);
     imapcollectcleanunittag(map, snap);
@@ -2589,4 +2627,131 @@ SP_CASE(autoreleasepool, autorelease) {
 
     SP_EQUAL(_autoreleasecount, 20);
 }
+
+
+#if iiradius
+
+SP_SUIT(unit_radius);
+
+SP_CASE(unit_radius, radius) {
+    SP_TRUE(1);
+    
+    static const int MAX_COUNT = 2000;
+    static const int MAP_SIZE = 512;
+    ipos pos = {0, 0};
+    isize size = {MAP_SIZE, MAP_SIZE};
+    int divide = 10;
+    imap *map = imapmake(&pos, &size, divide);
+    SP_EQUAL(map->maxradius, 0);
+    int i = 0;
+    int maxunit = MAX_COUNT;
+    iunit *u = NULL;
+    int maxunitrange = 2;
+    ireal maxradius = 0;
+    
+    for (i=0; i<maxunit; ++i) {
+        u = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
+        /* 给单元加一个随机半径 */
+        u->radius = (ireal)(rand()%100)/100*maxunitrange;
+        imapaddunit(map, u);
+        
+        if (maxradius < u->radius) {
+            maxradius = u->radius;
+        }
+        
+        ifreeunit(u);
+    }
+    SP_EQUAL(map->maxradius, maxradius);
+    
+    u->radius = maxradius * 2;
+    imaprefreshunit(map, u);
+    SP_EQUAL(map->maxradius, u->radius);
+    
+    imapfree(map);
+}
+
+#endif
+
+SP_SUIT(searching_bench_right) ;
+
+static void silly_search(imap *map, iunit **units, int num, ipos *pos, ireal range, isearchresult *result) {
+    ifilter *filter = NULL;
+    
+    int i =0;
+    iunit *unit = NULL;
+    
+    filter = ifiltermake_circle(pos, range);
+    isearchresultclean(result);
+    
+    for (i=0; i<num; ++i) {
+        unit = units[i];
+        /* 是否满足条件 */
+        if (ifilterrun(map, filter, unit) == iiok) {
+            ireflistadd(result->units, irefcast(unit));
+        }
+    }
+}
+
+static int64_t silly_checksum(ireflist *units) {
+    irefjoint *joint = ireflistfirst(units);
+    iunit *unit = NULL;
+    int64_t sum = 0;
+    while (joint) {
+        unit = icast(iunit, joint->value);
+        sum += unit->id;
+        joint = joint->next;
+        
+        /* printf("%4lld,", unit->id); */
+    }
+    /* printf("===>%9lld\n", sum); */
+    return sum;
+}
+
+SP_CASE(searching_bench_right, searchpos){
+    
+    SP_TRUE(1);
+    
+    static const int MAX_COUNT = 2000;
+    static const int MAP_SIZE = 512;
+    ipos pos = {0, 0};
+    isize size = {MAP_SIZE, MAP_SIZE};
+    int divide = 10;
+    iunit *units[MAX_COUNT] = {};
+    int i = 0;
+    int maxunit = MAX_COUNT;
+    int bench = 10000;
+    int maxrange = 10;
+    int minrange = 5;
+    int maxunitrange = 2;
+    ireal range = 0;
+    isearchresult* resultlfs = isearchresultmake();
+    isearchresult* resultrfs = isearchresultmake();
+    imap *map = imapmake(&pos, &size, divide);
+    
+    for (i=0; i<maxunit; ++i) {
+        units[i] = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
+        /* 给单元加一个随机半径 */
+        units[i]->radius = (ireal)(rand()%100)/100*maxunitrange;
+        imapaddunit(map, units[i]);
+    }
+    
+    /* _aoi_print(map, 0xffffff); */
+    
+    for(i=0;i<bench; ++i) {
+        pos.x = (ireal)(rand()%MAP_SIZE);
+        pos.y = (ireal)(rand()%MAP_SIZE);
+        range = (ireal)(rand()%maxrange + minrange);
+        imapsearchfrompos(map, &pos, resultlfs, range);
+        silly_search(map, units, MAX_COUNT, &pos, range, resultrfs);
+        
+        SP_EQUAL(ireflistlen(resultrfs->units), ireflistlen(resultlfs->units));
+        
+        SP_EQUAL(silly_checksum(resultrfs->units), silly_checksum(resultlfs->units));
+    }
+    
+    isearchresultfree(resultlfs);
+    isearchresultfree(resultrfs);
+    imapfree(map);
+}
+
 #endif

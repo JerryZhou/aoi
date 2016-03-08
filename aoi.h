@@ -67,8 +67,11 @@ static int gettimeofday(struct timeval *tp, void *tzp)
  * 4. 整个搜索过程，支持自定义过滤器进行单元过滤
  * 5. AOI 支持对象的内存缓冲区管理
  * 6. 线程不安全
+ * 7. 支持单位半径，不同单位可以定义不同的半径(开启半径感知，会损失一部分性能)
+ * 8. 只提供了搜索结构，不同单位的视野区域可以定义不一样
  * 
- * 建议启用 iimeta (1)
+ * 提高内存访问，建议启用 iimeta (1)
+ * 如果不需要单位半径感知 建议关闭 iiradius (0)
  */
 
 /* Set up for C function definitions, even when using C++ */
@@ -78,6 +81,9 @@ extern "C" {
     
 /* 是否启动元信息： 记录类型对象的内存使用情况, 并加一层对象的内存缓冲区 */
 #define iimeta (1)
+    
+/* 是否启动单位半径支持 */
+#define iiradius (1)
 
 /* 常用布尔宏 */
 #define iiyes 1
@@ -96,12 +102,12 @@ typedef enum EnumFindBehavior {
     EnumFindBehaviorFuzzy,
 }EnumFindBehavior;
 
-/* 获取当前系统的纳秒数 */
-int64_t igetcurnano();
+/* 获取当前系统的微秒数 */
+int64_t igetcurmicro();
 /* 获取当前系统的毫秒数 */
 int64_t igetcurtick();
-/* 获取系统的下一个唯一的事件纳秒数 */
-int64_t igetnextnano();
+/* 获取系统的下一个唯一的事件微秒数 */
+int64_t igetnextmicro();
 
 /* 精度 */
 typedef double ireal;
@@ -116,6 +122,16 @@ typedef struct ipos {
     
 /* 计算距离的平方 */
 ireal idistancepow2(ipos *p, ipos *t);
+    
+/* 向量 TODO: 完善基本的数学方法 */
+typedef struct ivec2 {
+    union {
+        ireal values[2];
+        struct {
+            ireal x, y;
+        };
+    };
+}ivec2;
     
 /* 大小 */
 typedef struct isize {
@@ -136,7 +152,7 @@ int irectcontainspoint(irect *con, ipos *p);
 /* 圆形 */
 typedef struct icircle {
     ipos pos;
-    ireal radis;
+    ireal radius;
 }icircle;
 
 /*圆形的关系 */
@@ -158,6 +174,9 @@ int icirclecontainspoint(icircle *con, ipos *p);
 /*    EnumCircleRelationIntersect(相交), */
 /*    EnumCircleRelationNoIntersect(相离) */
 int icirclerelation(icircle *con, icircle *c);
+    
+/* 矩形与圆是否相交 */
+int irectintersect(irect *con, icircle *c);
 
 /* 名字的最大长度 */
 #define IMaxNameLength 32
@@ -499,6 +518,11 @@ typedef struct iunit {
     ipos  pos;
     icode code;
     
+#if iiradius
+    /* 半径 */
+    ireal radius;
+#endif
+    
     /* 用户数据 */
     iuserdata userdata;
     
@@ -598,6 +622,11 @@ typedef struct imap {
     /* 地图基本信息，世界坐标系统的位置，以及大小 */
     ipos  pos;
     isize size;
+    
+#if iiradius
+    /* 单位的最大半径 */
+    ireal maxradius;
+#endif
     
     /* 地图分割的层 */
     /* 512 的地图分割24 次以后的精度为：0.00003052 */
@@ -700,6 +729,10 @@ inode *imapgetnode(imap *map, icode *code, int level, int find);
 
 /* 更新一个单元在地图上的数据 */
 int imapupdateunit(imap *map, iunit *unit);
+    
+/* 更新一个单元的附加信息到地图数据上：现阶段就只更新了单元的半径信息 */
+/* 如果单元改变了半径，需要调用这个函数刷新一下，才回立刻生效，不然等单位移动单元格后才生效*/
+void imaprefreshunit(imap *map, iunit *unit);
 
 /* 前置声明 */
 struct ifilter;
@@ -840,8 +873,10 @@ typedef enum EnumNodePrintState {
     EnumNodePrintStateAll = 0xFFFFFFFF,
 }EnumNodePrintState;
     
-/* 打印节点树 */
+/* 打印地图 */
 void _aoi_print(imap *map, int require);
+/* 打印指定的节点*/
+void _aoi_printnode(int require, inode *node, const char* prefix, int tail);
     
 /* 测试 */
 int _aoi_test(int argc, char** argv);
