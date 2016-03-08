@@ -19,10 +19,11 @@ func init() {
 
 var (
 	// global rotation
-	rotate        int
-	width, height int
-	redraw        = true
-	font          draw2d.FontData
+	rotate         int
+	width, height  int
+	scalex, scaley float64
+	redraw         = true
+	font           draw2d.FontData
 )
 
 func reshape(window *glfw.Window, w, h int) {
@@ -78,6 +79,24 @@ func onKey(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods 
 	}
 }
 
+func onMouseBtn(
+	w *glfw.Window,
+	button glfw.MouseButton,
+	action glfw.Action,
+	mod glfw.ModifierKey) {
+	x, y := w.GetCursorPos()
+	if action == glfw.Release {
+		aoi_mouse_press(x, y)
+	}
+}
+
+func onMouseMove(w *glfw.Window, xpos float64, ypos float64) {
+	action := w.GetMouseButton(glfw.MouseButtonLeft)
+	if action == glfw.Press {
+		aoi_mouse_move(xpos, ypos)
+	}
+}
+
 func main() {
 	err := glfw.Init()
 	if err != nil {
@@ -89,12 +108,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	width, height = window.GetFramebufferSize()
+	swidth, sheight := window.GetFramebufferSize()
+	scalex = float64(swidth) / float64(width)
+	scaley = float64(sheight) / float64(height)
+	width = swidth
+	height = sheight
 
 	window.MakeContextCurrent()
 	window.SetSizeCallback(reshape)
 	window.SetKeyCallback(onKey)
 	window.SetCharCallback(onChar)
+	window.SetMouseButtonCallback(onMouseBtn)
+	window.SetCursorPosCallback(onMouseMove)
 
 	glfw.SwapInterval(1)
 

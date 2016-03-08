@@ -19,6 +19,16 @@ import (
 	"unsafe"
 )
 
+var (
+	ColorUnit         = color.RGBA{0, 128, 0, 255}
+	ColorUnitAim      = color.RGBA{126, 12, 77, 233}
+	ColorRect         = color.RGBA{uint8(0), uint8(0), uint8(128), uint8(255)}
+	ColorSearchCircle = color.RGBA{55, 105, 12, 128}
+
+	UnitRadius           = 10
+	SearchRadius float64 = 200.0
+)
+
 // wrap for iunit
 type AoiUnit struct {
 	U     *C.struct_iunit
@@ -36,6 +46,12 @@ type AoiMap struct {
 // wrap search result
 type AoiSearchResult struct {
 	S *C.struct_isearchresult
+
+	X      float64
+	Y      float64
+	Radius float64
+
+	M *AoiMap
 }
 
 // New Search Result
@@ -51,6 +67,7 @@ func (s *AoiSearchResult) Free() {
 	}
 	C.isearchresultfree(s.S)
 	s.S = nil
+	s.M = nil
 }
 
 func (s *AoiSearchResult) Clean() {
@@ -61,14 +78,26 @@ func (s *AoiSearchResult) Len() int {
 	return int(C.ireflistlen(s.S.units))
 }
 
+func (s *AoiSearchResult) MarkUnits(c color.RGBA) {
+	units := search.Units()
+	for _, v := range units {
+		v.Color = c
+	}
+}
+
+func (s *AoiSearchResult) Draw(gc *draw2dgl.GraphicContext) {
+	DrawCircle(gc, ColorSearchCircle, s.X, s.Y, s.Radius)
+	units := search.Units()
+	for _, v := range units {
+		v.Draw(gc)
+	}
+}
+
 func (s *AoiSearchResult) Units() []*AoiUnit {
 	units := []*AoiUnit{}
 	for first := C.ireflistfirst(s.S.units); first != nil; first = first.next {
-		C.irefretain(first.value)
-		u := &AoiUnit{U: (*C.struct_iunit)(unsafe.Pointer(first.value))}
-		runtime.SetFinalizer(u, (*AoiUnit).Free)
-
-		units = append(units, u)
+		u := (*C.struct_iunit)(unsafe.Pointer(first.value))
+		units = append(units, s.M.Units[(int64)(u.id)])
 	}
 	return units
 }
@@ -83,8 +112,8 @@ func NewAoiMap(p *C.struct_ipos, s *C.struct_isize, divide int) *AoiMap {
 // New Unit
 func NewAoiUnit(uniqueId C.iid, x, y C.ireal) *AoiUnit {
 	u := &AoiUnit{U: C.imakeunit(uniqueId, x, y)}
-	u.U.radius = 10
-	u.Color = color.RGBA{0, 128, 0, 255}
+	u.U.radius = C.ireal(int(rand.Int31n(int32(UnitRadius/2))) + UnitRadius/2)
+	u.Color = ColorUnit
 
 	runtime.SetFinalizer(u, (*AoiUnit).Free)
 	return u
@@ -146,9 +175,17 @@ func (m *AoiMap) RemoveUnitById(id int64) bool {
 }
 
 // 搜索
-func (m *AoiMap) Search(result *AoiSearchResult, x, y, xrange float64) int {
+func (m *AoiMap) Search(result *AoiSearchResult, x, y, radius float64) int {
+	result.MarkUnits(ColorUnit)
+
 	pos := C.struct_ipos{C.ireal(x), C.ireal(y)}
-	C.imapsearchfrompos(m.M, &pos, result.S, C.ireal(xrange))
+	C.imapsearchfrompos(m.M, &pos, result.S, C.ireal(radius))
+	result.M = m
+	result.X = x
+	result.Y = y
+	result.Radius = radius
+	result.MarkUnits(ColorUnitAim)
+
 	return result.Len()
 }
 
@@ -196,7 +233,7 @@ func DrawGridC(gc *draw2dgl.GraphicContext,
 func DrawRect(gc *draw2dgl.GraphicContext, x0, y0, x1, y1 float64) {
 	gc.BeginPath()
 	draw2dkit.Rectangle(gc, x0, y0, x1, y1)
-	gc.SetFillColor(color.RGBA{uint8(0), uint8(0), uint8(128), uint8(255)})
+	gc.SetFillColor(ColorRect)
 	gc.Fill()
 }
 
@@ -274,12 +311,7 @@ func aoi_init(width, height float64) {
 	}
 
 	search = NewAoiSearchResult()
-	xmap.Search(search, 800, 800, 300)
-	units := search.Units()
-	for _, v := range units {
-		v.Color = color.RGBA{128, 128, 128, 255}
-		fmt.Println(v)
-	}
+	xmap.Search(search, 800, 800, SearchRadius)
 
 	// xmap.UpdateUnit(u)
 	// xmap.Print(0xffff)
@@ -293,10 +325,21 @@ func aoi_draw(gc *draw2dgl.GraphicContext) {
 		a, _ := strconv.ParseInt(os.Args[4], 10, 0)
 	*/
 	xmap.Draw(gc)
-	DrawCircle(gc, color.RGBA{55, 105, 12, 128}, 800, 800, 300)
-	units := search.Units()
-	for _, v := range units {
-		v.Color = color.RGBA{126, 12, 77, 233}
-		v.Draw(gc)
-	}
+	search.Draw(gc)
+}
+
+func aoi_mouse_press(x, y float64) {
+	x, y = aoi_mouse_translate(x, y)
+	xmap.Search(search, x, y, SearchRadius)
+	redraw = true
+}
+
+func aoi_mouse_move(x, y float64) {
+	x, y = aoi_mouse_translate(x, y)
+	xmap.Search(search, x, y, SearchRadius)
+	redraw = true
+}
+
+func aoi_mouse_translate(x, y float64) (float64, float64) {
+	return scalex * x, float64(height) - scaley*y
 }
