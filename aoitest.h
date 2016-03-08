@@ -1286,6 +1286,8 @@ SP_CASE(imap, complexANDimapaddunitANDimapremoveunitANDimapgetnode) {
                      && node->code.code[3] == 0, 1);
     
     SP_EQUAL(node, __getunitfor(3)->node);
+    SP_EQUAL(node->x, 1);
+    SP_EQUAL(node->y, 1);
     
     code.code[0] = 'D';
     node = imapgetnode(map, &code, 3, EnumFindBehaviorAccurate);
@@ -1350,6 +1352,7 @@ SP_CASE(imap, imapupdateunit) {
     
     imapaddunit(map, __getunitfor(0));
     icode code = {{'A','A','A',0}};
+    inode *node = NULL;
     
     /**
      |BBB| BBD| BDB| BDD| DBB| DBD| DDB| DDD|
@@ -1400,8 +1403,12 @@ SP_CASE(imap, imapupdateunit) {
     SP_EQUAL(map->state.nodecount, 3);
     SP_EQUAL(map->state.leafcount, 1);
     SP_EQUAL(map->state.unitcount, 1);
-    SP_EQUAL(imapgetnode(map, &code, 3, EnumFindBehaviorAccurate),
-                     __getunitfor(0)->node);
+    node = imapgetnode(map, &code, 3, EnumFindBehaviorAccurate);
+    SP_EQUAL(node, __getunitfor(0)->node);
+    
+    SP_EQUAL(node->x, 0);
+    SP_EQUAL(node->y, 0);
+    
     
     
     /**
@@ -1760,6 +1767,86 @@ SP_CASE(imap, imapmovecodeedge) {
     SP_TRUE(1)
 }
 
+SP_CASE(imap, nodepos) {
+    ipos p = {0, 0};
+    isize s = {8, 8};
+    
+    imap *xxmap = imapmake(&p, &s, 3);
+    
+    SP_EQUAL(xxmap->root->x, 0);
+    SP_EQUAL(xxmap->root->y, 0);
+    
+    /**
+     |BBB| BBD| BDB| BDD| DBB| DBD| DDB| DDD|
+     |_______________________________________
+     |BBA| BBC| BDA| BDC| DBA| DBC| DDA| DDC|
+     |_______________________________________
+     |BAB| BAD| BCB| BCD| DAB| DAD| DCB| DCD|
+     |_______________________________________
+     |BAA| BAC| BCA| BCC| DAA| DAC| DCA| DCC|
+     |_______________________________________
+     |ABB| ABD| ADB| ADD:[0]| CBB| CBD| CDB| CDD|
+     |_______________________________________
+     |ABA| ABC| ADA| ADC| CBA| CBC| CDA| CDC|
+     |_______________________________________
+     |AAB| AAD| ACB| ACD| CAB| CAD| CCB| CCD|
+     |_______________________________________
+     |AAA:[1]| AAC| ACA| ACC| CAA| CAC| CCA| CCC|
+     |_______________________________________
+     */
+    iunit* u0 = imakeunit(0, 1, 1);
+    imapaddunit(xxmap, u0);
+    icode code = {{'A', 'A', 'D', 0}};
+    inode *node = imapgetnode(xxmap, &code, 3, EnumFindBehaviorAccurate);
+    SP_EQUAL(node->x, 1);
+    SP_EQUAL(node->y, 1);
+    
+    u0->pos.x = 7;
+    u0->pos.y = 0;
+    imapupdateunit(xxmap, u0);
+    code.code[0] = 'C';
+    code.code[1] = 'C';
+    code.code[2] = 'C';
+    node = imapgetnode(xxmap, &code, 3, EnumFindBehaviorAccurate);
+    SP_EQUAL(node->x, 7);
+    SP_EQUAL(node->y, 0);
+    
+    u0->pos.x = 0;
+    u0->pos.y = 7;
+    imapupdateunit(xxmap, u0);
+    code.code[0] = 'B';
+    code.code[1] = 'B';
+    code.code[2] = 'B';
+    node = imapgetnode(xxmap, &code, 3, EnumFindBehaviorAccurate);
+    SP_EQUAL(node->x, 0);
+    SP_EQUAL(node->y, 7);
+    
+    u0->pos.x = 7;
+    u0->pos.y = 7;
+    imapupdateunit(xxmap, u0);
+    code.code[0] = 'D';
+    code.code[1] = 'D';
+    code.code[2] = 'D';
+    node = imapgetnode(xxmap, &code, 3, EnumFindBehaviorAccurate);
+    SP_EQUAL(node->x, 7);
+    SP_EQUAL(node->y, 7);
+    
+    u0->pos.x = 4;
+    u0->pos.y = 5;
+    imapupdateunit(xxmap, u0);
+    code.code[0] = 'D';
+    code.code[1] = 'A';
+    code.code[2] = 'B';
+    node = imapgetnode(xxmap, &code, 3, EnumFindBehaviorAccurate);
+    SP_EQUAL(node->x, 4);
+    SP_EQUAL(node->y, 5);
+    
+    
+    ifreeunit(u0);
+    
+    imapfree(xxmap);
+}
+
 SP_CASE(imap, end) {
     SP_TRUE(1);
 }
@@ -2040,6 +2127,8 @@ SP_CASE(ifilter, imapcollectunit) {
     icode code = {{'A', 'A', 0}};
     
     inode *node = imapgetnode(map, &code, 2, EnumFindBehaviorAccurate);
+    SP_EQUAL(node->x, 0);
+    SP_EQUAL(node->y, 0);
 
 #define __range(x) (x)
     // ------------------------------------------------------------------------------------

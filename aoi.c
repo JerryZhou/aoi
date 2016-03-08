@@ -869,6 +869,18 @@ int justremoveunit(imap *map, inode *node, iunit *unit) {
 				unit->id, unit->code.code, unit->code.pos.x, unit->code.pos.y, node->level, node->code.code, node);\
 	}while(0)
 
+/* 节点坐标生成 */
+typedef struct ipos2i {
+        int x, y;
+}ipos2i;
+static ipos2i __node_offset[] =
+{
+    {0, 0},
+    {0, 1},
+    {1, 0},
+    {1, 1}
+};
+
 /* 加入新的节点 */
 inode* addnodetoparent(imap *map, inode *node, int codei, int idx, icode *code) {
 	/* 创造一个节点 */
@@ -876,6 +888,14 @@ inode* addnodetoparent(imap *map, inode *node, int codei, int idx, icode *code) 
 	child->level = idx+1;
 	child->parent = node;
 	child->codei = codei;
+    /* y */
+    /* ^ */
+    /* | ((0, 1) , (1, 1)) */
+    /* | ((0, 0) , (1, 0)) */
+    /* -----------> x
+     */
+    child->x = node->x * 2 + __node_offset[codei].x;
+    child->y = node->y * 2 + __node_offset[codei].y;
 
 	/* 生成节点编码信息 */
 	copycode(child->code, (*code), child->level);
@@ -1355,6 +1375,11 @@ void imapfree(imap *map) {
 	}
     /* 释放节点缓冲区 */
 	irefcachefree(map->nodecache);
+    
+    /* 释放阻挡位图 */
+    if (map->blocks) {
+        ifree(map->blocks);
+    }
 
 	/* 释放地图本身 */
 	iobjfree(map);
@@ -1472,7 +1497,7 @@ inode *imapgetnode(imap *map, icode *code, int level, int find) {
 		if (!(codei>=0 && codei<IMaxChilds)) {
 			break;
 		}
-		/* 尽可能的返回更节点 */
+		/* 尽可能的返回根节点 */
 		if (node->childs[codei] == NULL) {
 			break;
 		}
@@ -1611,6 +1636,37 @@ void imaprefreshunit(imap *map, iunit *unit) {
         map->maxradius = unit->radius;
     }
 #endif
+}
+
+/* 建议 divide 不要大于 10*/
+/* 加载位图阻挡信息 sizeof(blocks) == (divide*divide + 7 ) / 8 */
+void imaploadblocks(imap *map, char* blocks) {
+    // new memory
+    size_t size = (map->divide*map->divide + 7)/8;
+    if (map->blocks == NULL) {
+        map->blocks = icalloc(1, size);
+    }
+    memcpy(map->blocks, blocks, size);
+}
+
+/* 设置块的状态 */
+void imapsetblock(imap *map, int x, int y, int state) {
+    int cur = x * map->divide + y;
+    int idx = cur / 8;
+    int offset = cur & 8;
+    if (state == iiok) {
+        map->blocks[idx] = map->blocks[idx] | (1<<offset);
+    } else {
+        map->blocks[idx] = map->blocks[idx] & (~(1<<offset));
+    }
+}
+
+/* 获取块的状态 */
+int imapgetblock(imap *map, int x, int y) {
+    int cur = x * map->divide + y;
+    int idx = cur / 8;
+    int offset = cur & 8;
+    return (map->blocks[idx] >> offset) & 0x01;
 }
 
 /* 对一个数字做Hash:Redis */
