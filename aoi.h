@@ -555,16 +555,18 @@ void ifreeunitlist(iunit *unit);
 /* 节点的状态 */
 typedef enum EnumNodeState {
     EnumNodeStateNone = 0,
-    /* 查找标记，在搜索的时候回短暂的标记 */
-    EnumNodeStateSearching = 1<<11,
+    /* 查找标记，在搜索的时候会短暂的标记 */
+    EnumNodeStateSearching = 1<<5,
 
     /* 寻路的时候代表不可走，需要避开 */
     EnumNodeStateNoWalkingAble = 1<<12,
+    /* 寻路的时候代表整个可以走 */
+    EnumNodeStateWalkingAble = 1<<13,
 
     /* 节点需要Hold 住，不能释放 */
-    EnumNodeStateStatic = 1<<13,
+    EnumNodeStateStatic = 1<<23,
     /* 节点可不可以附加单元 */
-    EnumNodeStateNoUnit = 1<<14, 
+    EnumNodeStateNoUnit = 1<<24,
 }EnumNodeState;
 
 /* 是否追踪更新时间戳 */
