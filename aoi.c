@@ -2228,6 +2228,13 @@ void imapsearchcollectnode(imap *map, irect *rect, ireflist *collects) {
 	inode *tnode = NULL;
 	int i;
 	int level = map->divide;
+    int step;
+    /*
+     *^
+     *|(1)(2)
+     *|(0)(3)
+     *|__________>
+     */
 	ireal offsets[] = {rect->pos.x, rect->pos.y,
 		rect->pos.x, rect->pos.y + rect->size.h,
 		rect->pos.x + rect->size.w, rect->pos.y + rect->size.h,
@@ -2253,8 +2260,8 @@ void imapsearchcollectnode(imap *map, irect *rect, ireflist *collects) {
 			continue;
 		}
 
+        /* TODO: can use the imapmovecode to optimaze*/
 		imapgencode(map, &tpos, &code);
-
 		tnode = imapgetnode(map, &code, level, EnumFindBehaviorAccurate);
 		if (tnode && !_state_is(tnode->state, EnumNodeStateSearching)) {
 			_state_add(tnode->state, EnumNodeStateSearching);
