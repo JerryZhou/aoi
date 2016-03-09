@@ -748,14 +748,14 @@ void ifreeunitlist(iunit *unit) {
 /* 析构函数 */
 static void _ientryfree_node(struct iref* ref) {
 	iobjfree(ref);
-    // TODO: do some check if neighbors == NULL and units == NULL
+    /* TODO: do some check if neighbors == NULL and units == NULL */
 }
 
 /* 节点内存管理 */
 inode * imakenode(){
 	inode *node = iobjmalloc(inode);
 	iretain(node);
-    // 析构函数在这里
+    /* 析构函数在这里  */
     node->free = _ientryfree_node;
 
 	return node;
@@ -944,7 +944,7 @@ void ineighborsclean(inode *node) {
     inode *neighbor = NULL;
     icheck(node);
     
-    // disconnect to others
+    /* disconnect to others */
     joint = ireflistfirst(node->neighbors_walkable);
     while (joint) {
         neighbor = icast(inode, joint->value);
@@ -954,7 +954,7 @@ void ineighborsclean(inode *node) {
     ireflistfree(node->neighbors_walkable);
     node->neighbors_walkable = NULL;
     
-    // disconnect from others
+    /* disconnect from others */
     joint = ireflistfirst(node->neighbors);
     while (joint) {
         neighbor = icast(inode, joint->value);
