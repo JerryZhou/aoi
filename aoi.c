@@ -744,10 +744,19 @@ void ifreeunitlist(iunit *unit) {
 #define DimensionW 0
 #define DimensionH 1
 
+
+/* 析构函数 */
+static void _ientryfree_node(struct iref* ref) {
+	iobjfree(ref);
+    // TODO: do some check if neighbors == NULL and units == NULL
+}
+
 /* 节点内存管理 */
 inode * imakenode(){
 	inode *node = iobjmalloc(inode);
 	iretain(node);
+    // 析构函数在这里
+    node->free = _ientryfree_node;
 
 	return node;
 }
@@ -760,6 +769,10 @@ void ifreenode(inode *node){
 /* 释放节点包含的单元 */
 void ifreenodekeeper(inode *node) {
 	ifreeunitlist(node->units);
+    node->units = NULL;
+    node->unitcnt = 0;
+    
+    ineighborsclean(node);
 	ifreenode(node);
 }
 
@@ -923,6 +936,56 @@ inode* addnodetoparent(imap *map, inode *node, int codei, int idx, icode *code) 
 	return child;
 }
 
+/* 
+ * 把节点从 有向图里面拿出来， 没有任何一个节点可以到他
+ */
+void ineighborsclean(inode *node) {
+    irefjoint* joint = NULL;
+    inode *neighbor = NULL;
+    icheck(node);
+    
+    // disconnect to others
+    // walkable
+    ireflistfree(node->neighbors_walkable);
+    node->neighbors_walkable = NULL;
+    
+    // connected
+    icheck(node->neighbors);
+    // disconnect from others
+    joint = ireflistfirst(node->neighbors);
+    while (joint) {
+        neighbor = icast(inode, joint->value);
+        ireflistremove(neighbor->neighbors_walkable, irefcast(node));
+        joint = joint->next;
+    }
+    ireflistfree(node->neighbors);
+    node->neighbors = NULL;
+}
+
+/* 
+ * 没有做重复性的检查
+ * 让 node ==> to
+ */
+void ineighborsadd(inode *node, inode *to) {
+    if (!node->neighbors_walkable) {
+        node->neighbors_walkable = ireflistmake();
+    }
+    ireflistadd(node->neighbors_walkable, irefcast(to));
+    if (!to->neighbors) {
+        to->neighbors = ireflistmake();
+    }
+    ireflistadd(to->neighbors, irefcast(node));
+}
+
+/* 
+ * 没有做重复性的检查 
+ * 让 node !==> to
+ */
+void ineighborsdel(inode *node, inode *to) {
+    ireflistremove(node->neighbors_walkable, irefcast(to));
+    ireflistremove(to->neighbors, irefcast(node));
+}
+
 /* 移除节点 */
 int removenodefromparent(imap *map, inode *node) {
 	icheckret(node, iino);
@@ -948,6 +1011,11 @@ int removenodefromparent(imap *map, inode *node) {
 	node->codei = 0;
 	node->code.code[0] = 0;
 	node->tick = 0;
+    node->x = node->y = 0;
+    node->state = 0;
+    
+    /* 清理 邻居 节点*/
+    ineighborsclean(node);
 
 #if open_node_utick
 	node->utick = 0;

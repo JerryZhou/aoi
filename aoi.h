@@ -609,6 +609,14 @@ typedef struct inode {
     /* 维护一个有序的叶子节点列表非常有用 */
     struct inode *pre;
     struct inode *next;
+    
+    /*
+     * 构成了一个有向图，可在联通上做单向通行
+     * */
+    /* 所有可以到达当前节点的邻居 other ===> this */
+    ireflist *neighbors;
+    /* 可走的列表 this ===> other */
+    ireflist *neighbors_walkable;
 }inode;
 
 /* 地图状态信息，统计数据 */
@@ -660,6 +668,15 @@ typedef struct imap {
 
 /* 节点内存管理 */
 inode * imakenode();
+    
+/* 从节点数里面移除 */
+void ineighborsclean(inode *node);
+    
+/* 在有向图上加上一单向边 */
+void ineighborsadd(inode *node, inode *to);
+    
+/* 在有向图上移除一条单向边 */
+void ineighborsdel(inode *node, inode *to);
 
 /* 释放节点本身 */
 void ifreenode(inode *node);
