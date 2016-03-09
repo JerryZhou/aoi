@@ -945,12 +945,15 @@ void ineighborsclean(inode *node) {
     icheck(node);
     
     // disconnect to others
-    // walkable
+    joint = ireflistfirst(node->neighbors_walkable);
+    while (joint) {
+        neighbor = icast(inode, joint->value);
+        ireflistremove(neighbor->neighbors, irefcast(node));
+        joint = joint->next;
+    }
     ireflistfree(node->neighbors_walkable);
     node->neighbors_walkable = NULL;
     
-    // connected
-    icheck(node->neighbors);
     // disconnect from others
     joint = ireflistfirst(node->neighbors);
     while (joint) {
