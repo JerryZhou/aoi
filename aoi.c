@@ -1637,6 +1637,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 	/* 生成新的编码 */
 	imapgencode(map, &unit->pos, &code);
 	/* 获取新编码的变更顶层节点位置, 并赋值新的编码 */
+    /* 这里只能从0级别开始，code 可能后部分一致，但是前部不一致 */
 	for(offset=0; offset<map->divide; ++offset) {
 		if (code.code[offset] != unit->code.code[offset]) {
 			break;
@@ -2118,8 +2119,7 @@ void isearchresultrefreshfromsnap(imap *map, isearchresult *result) {
 	for (;joint;joint=joint->next) {
 		iunit *unit = icast(iunit, joint->value);
 		/* 是否已经处理过 */
-		int havestate = _state_is(unit->state, EnumUnitStateSearching);
-		if (havestate) {
+		if (_state_is(unit->state, EnumUnitStateSearching)) {
 			continue;
 		}
 		/* 是否满足条件 */
@@ -2221,7 +2221,7 @@ void imapsearchfromnode(imap *map, inode *node,
 			node->level, node->code.code, ireflistlen(result->units));
 }
 
-/* 收集包含指定矩形局域的节点(最多4个) */
+/* 收集包含指定矩形区域的节点(最多4个) */
 void imapsearchcollectnode(imap *map, irect *rect, ireflist *collects) {
 	icode code;
 	ipos tpos;

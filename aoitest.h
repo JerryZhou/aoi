@@ -1689,6 +1689,38 @@ SP_CASE(imap, imapupdateunit) {
     SP_EQUAL(map->state.unitcount, 0);
 }
 
+SP_CASE(imap, imapmovecodeAndimapgencode) {
+    int divide = 20;
+    //int randmove = 1024;
+    int maxmove = (int)pow(2, divide) - 1;
+    ipos pos = {0, 0};
+    isize size = {512, 512};
+    imap *xxmap = imapmake(&pos, &size, divide);
+    
+    icode code;
+    imapgencode(xxmap, &pos, &code);
+    
+    int64_t t0 = igetcurmicro();
+    for (int i=0; i <maxmove; ++i) {
+        imapmovecode(xxmap, &code, EnumCodeMoveUp);
+    }
+    int64_t e0 = igetcurmicro() - t0;
+    
+    int64_t t1 = igetcurmicro();
+    for (int i=0; i <maxmove; ++i) {
+        imapgencode(xxmap, &pos, &code);
+    }
+    int64_t e1 = igetcurmicro() - t1;
+    
+    printf("move-code:%lld , gen-code:%lld \n ", e0, e1);
+    
+    imapfree(xxmap);
+    // move code is more fast
+    SP_TRUE(e1 > e0);
+    
+    SP_TRUE(1);
+}
+
 SP_CASE(imap, imapmovecode) {
     int divide = 20;
     int randmove = 1024;
