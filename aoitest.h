@@ -929,6 +929,166 @@ SP_CASE(iunit, ifreeunitlist) {
 // inode
 SP_SUIT(inode);
 
+typedef struct node_graphics {
+    inode *A;
+    inode *B;
+    inode *C;
+    inode *D;
+    inode *E;   
+}node_graphics;
+
+static void _inode_prepare_graphics(node_graphics *g) {
+    g->A = imakenode();
+    g->A->code.code[0] = 'A';
+    
+    g->B = imakenode();
+    g->B->code.code[0] = 'B';
+    
+    g->C = imakenode();
+    g->C->code.code[0] = 'C';
+    
+    g->D = imakenode();
+    g->D->code.code[0] = 'D';
+    
+    g->E = imakenode();
+    g->E->code.code[0] = 'E';
+}
+
+static void _inode_free_graphics(node_graphics *g) {
+    ifreenodekeeper(g->A);
+    ifreenodekeeper(g->B);
+    ifreenodekeeper(g->C);
+    ifreenodekeeper(g->D);
+    ifreenodekeeper(g->E);
+}
+
+/*
+ * A ---> B ---> C ---> D
+ *        B ---> E
+ * A ---> D
+ *                      D ---> B
+ *                                  E ---> B
+ */
+SP_CASE(inode, neighborsadd) {
+    node_graphics g;
+    _inode_prepare_graphics(&g);
+    
+    ineighborsadd(g.A, g.B);
+    
+    SP_EQUAL(g.A->neighbors, NULL);
+    SP_EQUAL(g.B->neighbors_walkable, NULL);
+    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.B->neighbors), 1);
+    SP_EQUAL(ireflistfirst(g.B->neighbors)->value, irefcast(g.A));
+    SP_EQUAL(ireflistfirst(g.A->neighbors_walkable)->value, irefcast(g.B));
+    
+    ineighborsadd(g.A, g.D);
+    ineighborsadd(g.B, g.C);
+    ineighborsadd(g.B, g.E);
+    ineighborsadd(g.C, g.D);
+    ineighborsadd(g.D, g.B);
+    ineighborsadd(g.E, g.B);
+    
+    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 2)
+    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    
+    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors), 3);
+    
+    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors), 1);
+    
+    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    
+    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.E->neighbors), 1);
+    
+    _inode_free_graphics(&g);
+}
+
+SP_CASE(inode, ineighborsdel) {
+    
+    node_graphics g;
+    _inode_prepare_graphics(&g);
+    ineighborsadd(g.A, g.B);
+    ineighborsadd(g.A, g.D);
+    ineighborsadd(g.B, g.C);
+    ineighborsadd(g.B, g.E);
+    ineighborsadd(g.C, g.D);
+    ineighborsadd(g.D, g.B);
+    ineighborsadd(g.E, g.B);
+    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 2)
+    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    
+    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors), 3);
+    
+    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors), 1);
+    
+    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    
+    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.E->neighbors), 1);
+    
+    ineighborsdel(g.A, g.B);
+    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    
+    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors), 2);
+    
+    
+    _inode_free_graphics(&g);
+}
+
+SP_CASE(inode, ineighborsclean) {
+    node_graphics g;
+    _inode_prepare_graphics(&g);
+    ineighborsadd(g.A, g.B);
+    ineighborsadd(g.A, g.D);
+    ineighborsadd(g.B, g.C);
+    ineighborsadd(g.B, g.E);
+    ineighborsadd(g.C, g.D);
+    ineighborsadd(g.D, g.B);
+    ineighborsadd(g.E, g.B);
+    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 2)
+    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    
+    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors), 3);
+    
+    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors), 1);
+    
+    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    
+    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.E->neighbors), 1);
+    
+    ineighborsclean(g.B);
+    
+    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    
+    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 0)
+    SP_EQUAL(ireflistlen(g.B->neighbors), 0);
+    
+    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors), 0);
+    
+    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 0)
+    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    
+    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 0)
+    SP_EQUAL(ireflistlen(g.E->neighbors), 0);
+    
+    _inode_free_graphics(&g);
+}
+
 SP_CASE(inode, nothing) {
     inode *node = imakenode();
     ifreenodekeeper(node);
@@ -1303,7 +1463,7 @@ SP_CASE(imap, complexANDimapaddunitANDimapremoveunitANDimapgetnode) {
     node = imapgetnode(map, &code, 3, EnumFindBehaviorFuzzy);
     SP_EQUAL(node, map->root->childs[0]);
     
-    _aoi_print(map, EnumNodePrintStateAll);
+    // _aoi_print(map, EnumNodePrintStateAll);
     
     imapremoveunit(map, __getunitfor(3));
     SP_EQUAL(map->state.nodecount, 3);
@@ -2537,16 +2697,16 @@ SP_CASE(searching, imapsearchfromunit) {
     
     isearchresultfree(result);
     
-    _aoi_print(map, EnumNodePrintStateNode);
+    // _aoi_print(map, EnumNodePrintStateNode);
     
     __setu(5, 1.0, 0.3);
     imapupdateunit(map, __getunitfor(5));
     
-    _aoi_print(map, EnumNodePrintStateNode);
+    // _aoi_print(map, EnumNodePrintStateNode);
     
     __setu(5, 1.0, -2.0);
     imapupdateunit(map, __getunitfor(5));
-    _aoi_print(map, EnumNodePrintStateNode);
+    // _aoi_print(map, EnumNodePrintStateNode);
     
     // remove all unit
     for (int i=0; i<=20; ++i) {
@@ -2590,7 +2750,7 @@ SP_CASE(searching, utick) {
     
     __setu(5, 5, 5);
     
-    _aoi_print(map, EnumNodePrintStateNode);
+    // _aoi_print(map, EnumNodePrintStateNode);
     
     isearchresult *result = isearchresultmake();
     
@@ -2602,7 +2762,7 @@ SP_CASE(searching, utick) {
     
     __setu(1, 1.1, 1.1);
     imapupdateunit(map, __getunitfor(1));
-    _aoi_print(map, EnumNodePrintStateNode);
+    // _aoi_print(map, EnumNodePrintStateNode);
     
     // AAA ->tick
     imapsearchfromunit(map, __getunitfor(0), result, 0.4);
@@ -2619,7 +2779,7 @@ SP_CASE(searching, utick) {
     
     __setu(2, 2.2, 2.2);
     imapupdateunit(map, __getunitfor(2));
-    _aoi_print(map, EnumNodePrintStateNode);
+    // _aoi_print(map, EnumNodePrintStateNode);
     
     imapsearchfromunit(map, __getunitfor(0), result, 0.8);
     SP_EQUAL(result->tick, __getnode(__getunitfor(0)->code, 2)->utick);
@@ -2650,7 +2810,7 @@ SP_CASE(searching, utick) {
         
         __setu(5, 4.2, 4.2);
         imapaddunit(map, __getunitfor(5));
-        _aoi_print(map, EnumNodePrintStateNode);
+        // _aoi_print(map, EnumNodePrintStateNode);
         
         uts = __getnode(__getunitfor(0)->code, 0)->utick;
         ts = __getnode(__getunitfor(0)->code, 0)->tick;
@@ -2661,7 +2821,7 @@ SP_CASE(searching, utick) {
         
         __setu(5, 0.5, 0.5);
         imapupdateunit(map, __getunitfor(5));
-        _aoi_print(map, EnumNodePrintStateNode);
+        // _aoi_print(map, EnumNodePrintStateNode);
         
         uts = __getnode(__getunitfor(0)->code, 0)->utick;
         ts = __getnode(__getunitfor(0)->code, 0)->tick;
