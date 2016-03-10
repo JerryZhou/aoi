@@ -896,10 +896,16 @@ int imapupdateunit(imap *map, iunit *unit);
     
 /* 更新一个单元的附加信息到地图数据上：现阶段就只更新了单元的半径信息 */
 /* 如果单元改变了半径，需要调用这个函数刷新一下，才回立刻生效，不然等单位移动单元格后才生效*/
-void imaprefreshunit(imap *map, iunit *unit);
+void imaprefreshunit(imap *map, const iunit *unit);
     
+/* 设置块的状态 */
+void imapsetblock(imap *map, int x, int y, int state);
+
 /* 加载位图阻挡信息 sizeof(blocks) == (divide*divide + 7 ) / 8 */
 void imaploadblocks(imap *map, char* blocks);
+
+/* 获取块的状态 */
+int imapgetblock(const imap *map, int x, int y);
     
 /*************************************************************/
 /* ifilter                                                   */
@@ -914,10 +920,10 @@ typedef enum EnumFilterBehavior {
 }EnumFilterBehavior;
 
 /* 过滤器入口函数 */
-typedef int (*ientryfilter)(imap *map, struct ifilter *filter, iunit* unit);
+typedef int (*ientryfilter)(imap *map, const struct ifilter *filter, const iunit* unit);
 
 /* 过滤器指纹入口 */
-typedef int64_t (*ientryfilterchecksum)(imap *map, struct ifilter *filter);
+typedef int64_t (*ientryfilterchecksum)(imap *map, const struct ifilter *filter);
 
 /* 过滤器上下文 */
 typedef struct ifilter {
@@ -944,7 +950,7 @@ typedef struct ifilter {
 }ifilter;
 
 /* 指纹识别 */
-int64_t ifilterchecksum(imap *map, ifilter *d);
+int64_t ifilterchecksum(imap *map, const ifilter *d);
 
 /* 释放节点o */
 void ifilterfree(ifilter *filter); 
@@ -962,13 +968,13 @@ void ifilterremove(ifilter *filter, ifilter *sub);
 void ifilterclean(ifilter *filter);
 
 /* 通用过滤器入口 */
-int ifilterrun(imap *map, ifilter *filter, iunit *unit); 
+int ifilterrun(imap *map, const ifilter *filter, const iunit *unit); 
 
 /* circle 过滤器 */
-ifilter *ifiltermake_circle(ipos *pos, ireal range);
+ifilter *ifiltermake_circle(const ipos *pos, ireal range);
     
 /* rect 过滤器 */
-ifilter *ifiltermake_rect(ipos *pos, isize *size);
+ifilter *ifiltermake_rect(const ipos *pos, const isize *size);
 
 /* 搜集树上的所有单元, 调用完后必须调用imapcollectcleanunittag */
 void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ireflist *snap);
