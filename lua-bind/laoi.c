@@ -1,9 +1,28 @@
+/*
+ * lua-binding for libaoi
+ *
+ * Copyright (C) 2016, zhupeng<rocaltair@gmail.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "lua.h"
 #include "lauxlib.h"
 #include "aoi.h"
+
 /*
  * #define ENABLE_LAOI_DEBUG
  */
@@ -13,7 +32,7 @@
 # define DLOG(...)
 #endif
 
-#if LUA_VERSION_NUM < 502
+#if (LUA_VERSION_NUM < 502 && !defined(luaL_newlib))
 #  define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))
 #endif
 
@@ -63,7 +82,7 @@ static void luac__map_getfield(lua_State *L, int mapidx, const char * fieldname)
 	lua_replace(L, -2);
 }
 
-static void luac__map_setfield(lua_State *L, int mapidx, const char* fieldname) 
+static void luac__map_setfield(lua_State *L, int mapidx, const char* fieldname)
 {
 	/* bind a fenv table onto map, to save units */
 	lua_newtable(L);
@@ -76,18 +95,19 @@ static void luac__map_setfield(lua_State *L, int mapidx, const char* fieldname)
 #else
 static void luac__map_getfield(lua_State *L, int mapidx, const char * fieldname)
 {
-    lua_getuservalue(L, mapidx);
+	lua_getuservalue(L, mapidx);
 }
 
-static void luac__map_setfield(lua_State *L, int mapidx, const char* fieldname) 
+static void luac__map_setfield(lua_State *L, int mapidx, const char* fieldname)
 {
 	lua_newtable(L);
-    lua_setuservalue(L, -2);
+	lua_setuservalue(L, -2);
 }
 #endif
 
 
 /* {{ map */
+
 static int lua__map_new(lua_State *L)
 {
 	imap *map = NULL;
@@ -117,10 +137,8 @@ static int lua__map_new(lua_State *L)
 	}
 	LUA_BIND_META(L, imap, map, AOI_MAP);
 
-    /*
-     * */
 	/* bind a fenv table onto map, to save units */
-luac__map_setfield(L, -1, AOI_UNITS_MAP_NAME); 
+	luac__map_setfield(L, -1, AOI_UNITS_MAP_NAME);
 
 	DLOG("new map,map=%p\n", map);
 	return 1;
@@ -213,7 +231,7 @@ static int lua__map_unit_del_byid(lua_State *L)
 	lua_pushnumber(L, id);
 	lua_rawget(L, -2);
 	if (lua_isnoneornil(L, -1)) {
-		/* fprintf(stderr, "%s,id=%lld not found\n", __FUNCTION__, id); */
+		DLOG("%s,id=%lld not found\n", __FUNCTION__, id);
 		return 0;
 	}
 
@@ -223,6 +241,7 @@ static int lua__map_unit_del_byid(lua_State *L)
 	lua_pushnumber(L, id);
 	lua_pushnil(L);
 	lua_rawset(L, 3);
+	DLOG("%s,id=%lld removed\n", __FUNCTION__, id);
 	/* fprintf(stderr, "%s,id=%lld removed\n", __FUNCTION__, id); */
 
 	return 0;
@@ -386,26 +405,26 @@ static int lua__unit_new(lua_State *L)
 
 static int lua__unit_new_with_radius(lua_State *L)
 {
-    iunit *u = NULL;
-    lua_Number x, y, radius;
-    iid id = (iid)luaL_checknumber(L, 1);
-    luaL_checktype(L, 2, LUA_TTABLE);
-    lua_rawgeti(L, 2, 1);
-    x = luaL_checknumber(L, -1);
-    
-    lua_rawgeti(L, 2, 2);
-    y = luaL_checknumber(L, -1);
-    
-    lua_rawgeti(L, 2, 3);
-    radius = luaL_checknumber(L, -1);
-    
-    u = imakeunitwithradius(id, (ireal)x, (ireal)y, (ireal)radius);
-    if (u == NULL) {
-        return 0;
-    }
-    LUA_BIND_META(L, iunit, u, AOI_UNIT);
-    DLOG("new unit,id=%lld\n", id);
-    return 1;
+	iunit *u = NULL;
+	lua_Number x, y, radius;
+	iid id = (iid)luaL_checknumber(L, 1);
+	luaL_checktype(L, 2, LUA_TTABLE);
+	lua_rawgeti(L, 2, 1);
+	x = luaL_checknumber(L, -1);
+
+	lua_rawgeti(L, 2, 2);
+	y = luaL_checknumber(L, -1);
+
+	lua_rawgeti(L, 2, 3);
+	radius = luaL_checknumber(L, -1);
+
+	u = imakeunitwithradius(id, (ireal)x, (ireal)y, (ireal)radius);
+	if (u == NULL) {
+		return 0;
+	}
+	LUA_BIND_META(L, iunit, u, AOI_UNIT);
+	DLOG("new unit,id=%lld\n", id);
+	return 1;
 }
 
 static int lua__unit_gc(lua_State *L)
@@ -508,7 +527,7 @@ static int opencls__map(lua_State *L)
 		{NULL, NULL},
 	};
 	luaL_newmetatable(L, AOI_MAP);
-    luaL_newlib(L, lmethods);
+	luaL_newlib(L, lmethods);
 	lua_setfield(L, -2, "__index");
 	lua_pushcfunction (L, lua__map_gc);
 	lua_setfield (L, -2, "__gc");
@@ -525,7 +544,7 @@ static int opencls__unit(lua_State *L)
 		{NULL, NULL},
 	};
 	luaL_newmetatable(L, AOI_UNIT);
-    luaL_newlib(L, lmethods);
+	luaL_newlib(L, lmethods);
 	lua_setfield(L, -2, "__index");
 	lua_pushcfunction (L, lua__unit_gc);
 	lua_setfield (L, -2, "__gc");
@@ -575,7 +594,7 @@ int luaopen_laoi(lua_State* L)
 	luaL_Reg lfuncs[] = {
 		{"new_map", lua__map_new},
 		{"new_unit", lua__unit_new},
-        {"new_unit_with_radius", lua__unit_new_with_radius},
+		{"new_unit_with_radius", lua__unit_new_with_radius},
 		{"imeta_cache_clear", lua__meta_cache_clear},
 		{"getcurmicro", lua__getcurmicro},
 		{"getcurtick", lua__getcurtick},

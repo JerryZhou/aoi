@@ -8,7 +8,7 @@ create a map userdata "cls{aoi_map}"
 ##### Params
 ```size``` : {width, height}, size of map
 
-```divide``` : number, see [aoi.c](https://github.com/rocaltair/aoi/blob/master/aoi.c)
+```divide``` : number, see [aoi.c](https://github.com/JerryZhou/aoi/blob/master/aoi.c)
 
 ```pos``` : {x, y}, option({0, 0} default)
 
