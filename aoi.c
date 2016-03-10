@@ -927,8 +927,8 @@ void iarraytruncate(iarray *arr, size_t len) {
 
     icheck(arr);
     icheck(arr->len > len);
-    for(i=arr->len-1; i>=len; --i) {
-        iarrayremove(arr, i);
+    for(i=arr->len; i>len; i--) {
+        iarrayremove(arr, i-1);
     }
 }
 
