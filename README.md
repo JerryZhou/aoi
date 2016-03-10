@@ -1,5 +1,6 @@
-# aoi
-area of interest(AOI) 
+# 视野服务 area of interest(AOI)
+游戏服务器的AOI（area of interest)部分，位置有关的游戏实体一般都有一个视野或关心的范围
+ 
 * 适用于大批量的对象管理和查询
 * 采用四叉树来进行管理，可以通过少量改动支持3D
 * 动态节点回收管理，减少内存, 节点的数量不会随着四叉树的层次变得不可控，与对象数量成线性关系
@@ -13,37 +14,29 @@ area of interest(AOI)
 *提高内存访问，建议启用 iimeta (1)*
 *如果不需要单位半径感知 建议关闭 iiradius (0)*
 
-# How to Build
+# How to Build (CMake Tools)
 
-### on Linux/Mac OSX
-
-###### to make libaoi.a for c:
-
-```
-make
-```
-
-###### make laoi.so and laoi.a for lua
-
-```
-make ENABLE_LUALIB=true
-```
-
-### on Windows
-
-##### see msvc_build.bat
-
-```
-msvc_build.bat
-```
+    ```
+    mkdir build
+    cd build
+    cmake ../
+    make
+    ```
 
 # 性能测试
 通过提供的prof 工具测试获取自己需要的参数
-prof c [divide] [max-unit] [min-search-range] [max-rand-search-range] [benchtimes]
+aoi-prof c [divide] [max-unit] [min-search-range] [max-rand-search-range] [benchtimes]
 ![测试样例](http://dwgaga-image.qiniudn.com/more_img_1__Default__bash_.png)
 
-# 视野服务
-游戏服务器的AOI（area of interest)部分，位置有关的游戏实体一般都有一个视野或关心的范围
+# 单元测试
+aoi-test
+
+# lua Test
+build first and then:
+
+```
+lua test.lua
+```
 
 
 # 效率案例
@@ -87,13 +80,7 @@ prof c [divide] [max-unit] [min-search-range] [max-rand-search-range] [benchtime
     isearchresultfree(result)
     ```
 
-# lua Test
 
-build first and then:
-
-```
-lua test.lua
-```
 # wiki
 主要是维护实体区域，并维护对象的AOI列表
 
