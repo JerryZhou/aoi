@@ -115,6 +115,10 @@ typedef double ireal;
 /* 编号 */
 typedef int64_t iid;
 
+/*************************************************************/
+/* ipos                                                      */
+/*************************************************************/
+
 /* 坐标 */
 typedef struct ipos {
     ireal x, y;
@@ -123,6 +127,10 @@ typedef struct ipos {
 /* 计算距离的平方 */
 ireal idistancepow2(ipos *p, ipos *t);
     
+/*************************************************************/
+/* ivec2                                                     */
+/*************************************************************/
+
 /* 向量 TODO: 完善基本的数学方法 */
 typedef struct ivec2 {
     union {
@@ -132,12 +140,48 @@ typedef struct ivec2 {
         };
     };
 }ivec2;
+
+/* 两点相减得到向量 */
+ivec2 ivec2subtractpoint(ipos *p0, ipos *p1);
+
+/* 点积 */
+ireal ivec2dot(ivec2 *l, ivec2 *r);
+
+/* 乘积 : 二维向量不存在叉积 
+ * ivec2 ivec2cross(ivec2 *l, ivec2 *r);
+ * */
+
+/* 减法 */
+ivec2 ivec2subtract(ivec2 *l, ivec2 *r);
+
+/* 加法*/
+ivec2 ivec2add(ivec2 *l, ivec2 *r);
+
+/* 乘法 */
+ivec2 ivec2multipy(ivec2 *l, ireal a);
+
+/* 绝对值 */
+ivec2 ivec2abs(ivec2* l);
+
+/* 长度的平方 */
+ireal ivec2lengthsqr(ivec2 *l);
+
+/* 长度 */
+ireal ivec2length(ivec2 *l);
     
+/*************************************************************/
+/* isize                                                     */
+/*************************************************************/
+
 /* 大小 */
 typedef struct isize {
     ireal w, h;
 }isize;
-    
+
+/*************************************************************/
+/* irect                                                    */
+/*************************************************************/
+
 /* 矩形 */
 typedef struct irect {
     ipos pos;
@@ -149,6 +193,11 @@ int irectcontains(irect *con, irect *r);
 /* 矩形包含: iiok, iino */
 int irectcontainspoint(irect *con, ipos *p);
     
+/*************************************************************/
+/* icircle                                                   */
+/*************************************************************/
+
+
 /* 圆形 */
 typedef struct icircle {
     ipos pos;
@@ -181,11 +230,19 @@ int irectintersect(irect *con, icircle *c);
 /* 名字的最大长度 */
 #define IMaxNameLength 32
     
+/*************************************************************/
+/* iname                                                     */
+/*************************************************************/
+
 /* 名字 */
 typedef struct iname {
     char name[IMaxNameLength+1];
 }iname;
    
+/*************************************************************/
+/* imeta                                                     */
+/*************************************************************/
+
 /* 内存操作 */
 #define icalloc(n, size) calloc(n, size)
 #define ifree(p) free(p)
@@ -302,6 +359,10 @@ void iaoimemorystate() ;
     
 #endif  /* #if iimeta */
 
+/*************************************************************/
+/* iref                                                      */
+/*************************************************************/
+
 /* 定义引用计数，基础对象 */
 #define irefdeclare volatile int ref; struct irefcache* cache; ientryfree free; ientrywatch watch
 /* iref 转换成 target */
@@ -340,6 +401,10 @@ void irefrelease(iref *ref);
 /* 应用计数的赋值操作 */
 #define iassign(dst, src) do { if(src != dst) { irelease(dst); iretain(src); dst = src; } } while(0)
 
+/*************************************************************/
+/* irefautoreleasepool                                       */
+/*************************************************************/
+
 /* 前置声明 */
 struct ireflist;
 
@@ -368,6 +433,10 @@ iref *irefassistretain(iref *ref);
 #define _iautorelease(p) irefautorelease(pool, (iref*)p)
 
 #define _iautoreleaseall irefautoreleaseend(pool)
+
+/*************************************************************/
+/* ireflist                                                  */
+/*************************************************************/
 
 /* 节点 */
 typedef struct irefjoint {
@@ -429,6 +498,10 @@ void ireflistremoveall(ireflist *list);
 /* 释放列表 */
 void ireflistfree(ireflist *list); 
 
+/*************************************************************/
+/* irefcache                                                 */
+/*************************************************************/
+
 /* 构造函数 */
 typedef iref* (*icachenewentry)();
 
@@ -476,17 +549,29 @@ int irefcachesize(irefcache *cache);
 /* 最大的分割次数 */
 #define IMaxDivide 32
 
+/*************************************************************/
+/* icode                                                     */
+/*************************************************************/
+
 /* 编码, 以0结尾，c 风格字符串 */
 typedef struct icode {
     char code[IMaxDivide+1];
     ipos pos;
 }icode;
 
+/*************************************************************/
+/* iuserdata                                                 */
+/*************************************************************/
+
 /* 自定义数据 */
 typedef struct iuserdata {
     int u1, u2, u3, u4;
     void *up1, *up2, *up3, *up4;
 }iuserdata;
+
+/*************************************************************/
+/* iunit                                                     */
+/*************************************************************/
 
 /* 前置声明 */
 struct inode;
@@ -545,6 +630,10 @@ void ifreeunit(iunit *unit);
 
 /* 释放链表 */
 void ifreeunitlist(iunit *unit); 
+
+/*************************************************************/
+/* inode                                                     */
+/*************************************************************/
 
 /* 节点分割的次数 */
 #define IMaxChilds 4
@@ -622,6 +711,31 @@ typedef struct inode {
     ireflist *neighbors_walkable;
 }inode;
 
+/* 节点内存管理 */
+inode * imakenode();
+    
+/* 从节点数里面移除 */
+void ineighborsclean(inode *node);
+    
+/* 在有向图上加上一单向边 */
+void ineighborsadd(inode *node, inode *to);
+    
+/* 在有向图上移除一条单向边 */
+void ineighborsdel(inode *node, inode *to);
+
+/* 释放节点本身 */
+void ifreenode(inode *node);
+
+/* 释放节点以及节点关联的单元 */
+void ifreenodekeeper(inode *node); 
+
+/* 释放节点组成的树 */
+void ifreenodetree(inode *node);
+
+/*************************************************************/
+/* imap                                                     */
+/*************************************************************/
+
 /* 地图状态信息，统计数据 */
 typedef struct imapstate {
     int64_t nodecount;
@@ -668,27 +782,6 @@ typedef struct imap {
     /* 存储地图的原始阻挡的位图信息 bits-map*/
     char *blocks;
 }imap;
-
-/* 节点内存管理 */
-inode * imakenode();
-    
-/* 从节点数里面移除 */
-void ineighborsclean(inode *node);
-    
-/* 在有向图上加上一单向边 */
-void ineighborsadd(inode *node, inode *to);
-    
-/* 在有向图上移除一条单向边 */
-void ineighborsdel(inode *node, inode *to);
-
-/* 释放节点本身 */
-void ifreenode(inode *node);
-
-/* 释放节点以及节点关联的单元 */
-void ifreenodekeeper(inode *node); 
-
-/* 释放节点组成的树 */
-void ifreenodetree(inode *node);
 
 /* 节点加入地图 */
 int imapaddunitto(imap *map, inode *node, iunit *unit, int idx);
@@ -777,6 +870,9 @@ void imaprefreshunit(imap *map, iunit *unit);
 /* 加载位图阻挡信息 sizeof(blocks) == (divide*divide + 7 ) / 8 */
 void imaploadblocks(imap *map, char* blocks);
     
+/*************************************************************/
+/* ifilter                                                   */
+/*************************************************************/
 
 /* 前置声明 */
 struct ifilter;
@@ -850,6 +946,10 @@ void imapcollectcleanunittag(imap *map, ireflist *list);
 /* 清除搜索结果标记 */
 void imapcollectcleannodetag(imap *map, ireflist *list);
 
+/*************************************************************/
+/* isearchresult                                             */
+/*************************************************************/
+
 /* 搜索结果 */
 typedef struct isearchresult {
     /* 单元 */
@@ -907,6 +1007,10 @@ void imapsearchfromnode(imap *map, inode *node,
     
 /* 计算节点列表的指纹信息 */
 int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_t *maxutick);
+
+/*************************************************************/
+/* print helper                                              */
+/*************************************************************/
 
 /* 打印树的时候携带的信息 */
 typedef enum EnumNodePrintState {

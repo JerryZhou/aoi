@@ -12,6 +12,7 @@ Please see examples for more details.
 */
 
 #include "aoi.h"
+#include <math.h>
 
 /* 日志开关 */
 #define open_log_code		(0) /* 关于编码生成的日志 */
@@ -247,6 +248,64 @@ ireal idistancepow2(ipos *p, ipos *t) {
 	ireal dy = p->y - t->y;
 	return dx*dx + dy*dy;
 }
+
+/* 两点相减得到向量 */
+ivec2 ivec2subtractpoint(ipos *p0, ipos *p1) {
+    ivec2 vec;
+    vec.x = p1->x - p0->x;
+    vec.y = p1->y - p0->y;
+    return vec;
+}
+
+/* 点积 */
+ireal ivec2dot(ivec2 *l, ivec2 *r) {
+    icheckret(l, 0);
+    icheckret(r, 0);
+    return l->x * r->x + l->y + r->y;
+}
+
+/* 减法 */
+ivec2 ivec2subtract(ivec2 *l, ivec2 *r) {
+    ivec2 vec;
+    vec.x = r->x - l->x;
+    vec.y = r->y - l->y;
+    return vec;
+}
+
+/* 加法*/
+ivec2 ivec2add(ivec2 *l, ivec2 *r) {
+    ivec2 vec;
+    vec.x = r->x + l->x;
+    vec.y = r->y + l->y;
+    return vec;
+}
+
+/* 乘法 */
+ivec2 ivec2multipy(ivec2 *l, ireal a) {
+    ivec2 vec;
+    vec.x = l->x * a;
+    vec.y = l->y * a;
+    return vec;
+}
+
+/* 绝对值 */
+ivec2 ivec2abs(ivec2* l) {
+    ivec2 vec;
+    vec.x = fabs(l->x);
+    vec.y = fabs(l->y);
+    return vec;
+}
+
+/* 长度的平方 */
+ireal ivec2lengthsqr(ivec2 *l) {
+    return ivec2dot(l, l);
+}
+
+/* 长度 */
+ireal ivec2length(ivec2 *l) {
+    return sqrtf(ivec2dot(l, l));
+}
+    
 
 /* 判断矩形包含关系 */
 int irectcontains(irect *con, irect *r) {
