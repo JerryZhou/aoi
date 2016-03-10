@@ -1094,7 +1094,7 @@ static const ipos2i __node_offset[] =
 };
 
 /* 加入新的节点 */
-inode* addnodetoparent(imap *map, inode *node, int codei, int idx, icode *code) {
+static inode* _iaddnodetoparent(imap *map, inode *node, int codei, int idx, const icode *code) {
 	/* 创造一个节点 */
 	inode* child = icache(map->nodecache, inode);
 	child->level = idx+1;
@@ -1189,7 +1189,7 @@ void ineighborsdel(inode *node, inode *to) {
 }
 
 /* 移除节点 */
-int removenodefromparent(imap *map, inode *node) {
+static int _iremovenodefromparent(imap *map, inode *node) {
 	icheckret(node, iino);
 	icheckret(node->parent, iino);
 
@@ -1272,7 +1272,7 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
 #endif
 		if (child == NULL) {
 			/* 创造一个节点 */
-			child = addnodetoparent(map, node, codei, idx, &unit->code);
+			child = _iaddnodetoparent(map, node, codei, idx, &unit->code);
 		}
 
 		ok = imapaddunitto(map, child, unit, ++idx);
@@ -1340,14 +1340,14 @@ int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop
 				&& node->childcnt == 0 /* 孩子节点为0 */
 				&& node->unitcnt == 0 /* 上面绑定的单元节点也为空 */
 		   ) { 
-			removenodefromparent(map, node);
+			_iremovenodefromparent(map, node);
 		}
 	}
 	return ok;
 }
 
 /* 根据坐标生成code */
-int imapgencode(imap *map, ipos *pos, icode *code) {
+int imapgencode(const imap *map, const ipos *pos, icode *code) {
 	/* init value */
 	int i = 0;
 	int iw, ih;
@@ -1403,7 +1403,7 @@ int imapgencode(imap *map, ipos *pos, icode *code) {
 }
 
 /* 从编码生成坐标 */
-int imapgenpos(imap *map, ipos *pos, icode *code) {
+int imapgenpos(imap *map, ipos *pos, const icode *code) {
 	/* init value */
 	int i = 0;
 	/* ipos np = {.x=0, .y=0}; */
@@ -1520,7 +1520,7 @@ static int gmoveforbid[][4] = {
 };
 
 /* 移动编码 */
-int imapmovecode(imap *map, icode *code, int way) {
+int imapmovecode(const imap *map, icode *code, int way) {
 	int moves = 0;
 	size_t level = 0;
 	size_t when = 0;
@@ -1567,7 +1567,7 @@ int imapmovecode(imap *map, icode *code, int way) {
 }
 
 /* 生成一张地图数据 */
-imap *imapmake(ipos *pos, isize *size, int divide) {
+imap *imapmake(const ipos *pos, const isize *size, int divide) {
 	imap *map = iobjmalloc(imap);
 	map->pos = *pos;
 	map->size = *size;
@@ -1579,7 +1579,7 @@ imap *imapmake(ipos *pos, isize *size, int divide) {
 }
 
 /* 打印地图状态信息 */
-void imapstatedesc(imap *map, int require,
+void imapstatedesc(const imap *map, int require,
 		const char* intag, const char *inhead) {
 	/* 设置Tag */
 	const char* tag = "[IMAP-State]";
@@ -1752,7 +1752,7 @@ int imapremoveunit(imap *map, iunit *unit) {
 
 
 /* 从地图上检索节点 */
-inode *imapgetnode(imap *map, icode *code, int level, int find) {
+inode *imapgetnode(const imap *map, const icode *code, int level, int find) {
 	int64_t micro = __Micros;
 	inode *node = NULL;
 
@@ -1875,7 +1875,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 		codei = unit->code.code[offset]-'A';
 		addimpact = impact->childs[codei];
 		if (!addimpact) {
-			addimpact = addnodetoparent(map, impact, codei, impact->level, &code);
+			addimpact = _iaddnodetoparent(map, impact, codei, impact->level, &code);
 		}
 
 		ok = imapaddunitto(map, addimpact, unit, addimpact->level);

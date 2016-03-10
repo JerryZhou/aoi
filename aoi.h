@@ -820,7 +820,7 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx);
 int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop);
 
 /* 根据坐标生成code */
-int imapgencode(imap *map, ipos *pos, icode *code);
+int imapgencode(const imap *map, const ipos *pos, icode *code);
 
 /* 计算Code */
 /* y */
@@ -835,7 +835,7 @@ int imapgencode(imap *map, ipos *pos, icode *code);
 /* -----------> x 
  */
 /* 从编码生成坐标 */
-int imapgenpos(imap *map, ipos *pos, icode *code);
+int imapgenpos(imap *map, ipos *pos, const icode *code);
    
 /* 编码移动方向 */
 typedef enum EnumCodeMove {
@@ -846,11 +846,11 @@ typedef enum EnumCodeMove {
     EnumCodeMoveMax
 }EnumCodeMove;
 /* 移动编码: 失败返回0, 成功返回移动的步骤数 */
-int imapmovecode(imap *map, icode *code, int way);
+int imapmovecode(const imap *map, icode *code, int way);
 
 /* 建议 divide 不要大于 10*/
 /* 生成一张地图数据 */
-imap *imapmake(ipos *pos, isize *size, int divide);
+imap *imapmake(const ipos *pos, const isize *size, int divide);
 
 /* 地图信息类型 */
 typedef enum EenumMapState {
@@ -872,7 +872,7 @@ typedef enum EenumMapState {
 }EenumMapState;
 
 /* 打印地图状态信息 */
-void imapstatedesc(imap *map, int require,
+void imapstatedesc(const imap *map, int require,
                    const char* intag, const char *inhead);
 
 /* 释放地图数据，释放附加在地图上的单元数据 */
@@ -888,7 +888,8 @@ int imapaddunit(imap *map, iunit *unit);
 int imapremoveunit(imap *map, iunit *unit);
 
 /* 从地图上检索节点 */
-inode *imapgetnode(imap *map, icode *code, int level, int find); 
+inode *imapgetnode(const imap *map, const icode *code, 
+        int level, int find); 
 
 /* 更新一个单元在地图上的数据 */
 int imapupdateunit(imap *map, iunit *unit);
