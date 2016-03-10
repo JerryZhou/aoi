@@ -9,22 +9,24 @@ project (aoi)
 add_library(aoi STATIC aoi.c aoi.h)
 
 # aoi 单元测试
-add_executable(aoi-test main.cpp simpletest.h aoitest.h)
+include_directories(${CMAKE_SOURCE_DIR})
+add_executable(aoi-test ${CMAKE_SOURCE_DIR}/test/main.cpp ${CMAKE_SOURCE_DIR}/test/simpletest.h ${CMAKE_SOURCE_DIR}/test/aoitest.h)
 target_link_libraries(aoi-test aoi)
 
 # aoi 性能工具
-add_executable(aoi-prof prof.c)
+include_directories(${CMAKE_SOURCE_DIR})
+add_executable(aoi-prof ${CMAKE_SOURCE_DIR}/prof/prof.c)
 target_link_libraries(aoi-prof aoi)
 
 # lua aoi
 set(CMAKE_BUILD_TYPE Release)
 find_package(Lua REQUIRED)
-include_directories(${LUA_INCLUDE_DIR})
-add_library(laoi MODULE laoi.c)
+include_directories(${LUA_INCLUDE_DIR} ${CMAKE_SOURCE_DIR})
+add_library(laoi MODULE ${CMAKE_SOURCE_DIR}/lua-bind/laoi.c)
 target_link_libraries(laoi ${LUA_LIBRARIES} aoi)
 set_target_properties(laoi PROPERTIES PREFIX "" SUFFIX ".so")
 
 # copy the test.lua to build
-configure_file(test.lua test.lua)
+configure_file(${CMAKE_SOURCE_DIR}/lua-bind/test.lua test.lua)
 
 
