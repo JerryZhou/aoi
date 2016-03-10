@@ -555,32 +555,45 @@ typedef void (*iarray_entry_assign)(struct iarray *arr,
 /* 数组常用控制项 */
 typedef enum EnumArrayFlag {
     EnumArrayFlagNone = 0,
+
+    /* 移除元素的时候，
+     * 不移动数组，直接从后面替补
+     * */
     EnumArrayFlagKeepOrder = 1<<1,  /*是否保持有序*/
-    EnumArrayFlagSimple = 1<<2,     /*是否是简单数组*/
+    
+    /*是否是简单数组, 
+     *单元不需要通过swap或者assign去释放
+     *truncate 的时候可以直接设置长度
+     **/
+    EnumArrayFlagSimple = 1<<2,
+    
+    /*自动缩减存储容量*/
+    EnumArrayFlagAutoShirk = 1<<3,
 }EnumArrayFlag;
+
+/* 数组基础属性, 类型元信息 */
+typedef struct iarrayentry{
+    int flag;
+    size_t size;
+    iarray_entry_swap swap;
+    iarray_entry_cmp cmp;
+    iarray_entry_assign assign;
+} iarrayentry;
 
 /* 通用数组 */
 typedef struct iarray {
     irefdeclare;
 
-    size_t size;
     size_t capacity;
     size_t len;
     char *buffer;
 
-    struct {
-        iarray_entry_swap swap;
-        iarray_entry_cmp cmp;
-        iarray_entry_assign assign;
-    };
-    int flag;
+    // 每一种数组类型都需要定义这个
+    const iarrayentry* entry;
 }iarray;
 
 /* 建立数组*/
-iarray *iarraymake(size_t capacity, size_t size, int flag,
-        iarray_entry_swap swap,
-        iarray_entry_cmp cmp,
-        iarray_entry_assign assign);
+iarray *iarraymake(size_t capacity, const iarrayentry *entry);
 
 /* 释放 */
 void iarrayfree(iarray *arr);
@@ -593,6 +606,9 @@ size_t iarraycapacity(const iarray *arr);
 
 /* 查询 */
 void* iarrayat(iarray *arr, int index);
+
+/* 数组内存缓冲区 */
+void* iarraybuffer(iarray *arr);
 
 /* 删除 */
 int iarrayremove(iarray *arr, int index);
@@ -607,7 +623,7 @@ void iarrayremoveall(iarray *arr);
 void iarraytruncate(iarray *arr, size_t len);
 
 /* 缩减容量 */
-void iarrayshunkcapacity(iarray *arr, size_t capacity);
+size_t iarrayshrinkcapacity(iarray *arr, size_t capacity);
 
 /* 排序 */
 void iarraysort(iarray *arr);

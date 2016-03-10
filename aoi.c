@@ -56,10 +56,8 @@ static int gettimeofday(struct timeval *tp, void *tzp)
 #define open_log_profile	(0)
 #define open_log_map_construct  (0)
 
-
-
-
 /* 常用的宏 */
+#define imax(a, b) ((a) > (b) ? (a) : (b))
 #define iunused(v) (void)(v)
 #define ilog(...) printf(__VA_ARGS__)
 
@@ -811,29 +809,21 @@ static void _iarray_entry_free(struct iref* ref) {
     array->buffer = NULL;
     array->len = 0;
     array->capacity = 0;
-    array->size = 0;
-    array->swap = NULL;
-    array->cmp = NULL;
+    array->entry = NULL;
+    array->free = NULL;
     */
 
     iobjfree(ref);
 }
 
 /* 建立数组*/
-iarray *iarraymake(size_t capacity, size_t size, int flag,
-        iarray_entry_swap swap,
-        iarray_entry_cmp cmp,
-        iarray_entry_assign assign) {
+iarray *iarraymake(size_t capacity, const iarrayentry *entry) {
 	iarray *array = (iarray *)iobjmalloc(iarray);
     array->capacity = capacity;
     array->len = 0;
-    array->buffer = (char*)icalloc(capacity, size);
-    array->size = size;
-    array->swap = swap;
-    array->cmp = cmp;
-    array->assign = assign;
+    array->buffer = (char*)icalloc(capacity, entry->size);
     array->free = _iarray_entry_free;
-    array->flag = flag;
+    array->entry = entry;
     iretain(array);
     
     return array;
@@ -857,12 +847,17 @@ size_t iarraycapacity(const iarray *arr) {
 }
 
 /* 查询 */
-#define __arr_i(arr, i) ((void*)((arr)->buffer + (i) * (arr)->size))
+#define __arr_i(arr, i) ((void*)((arr)->buffer + (i) * (arr)->entry->size))
 void* iarrayat(iarray *arr, int index) {
     icheckret(arr, NULL);
     icheckret(index>=0 && index<arr->len, NULL);
 
     return  __arr_i(arr, index);
+}
+
+/* 数组内存缓冲区 */
+void* iarraybuffer(iarray *arr) {
+    return arr->buffer;
 }
 
 /* 删除 */
@@ -871,25 +866,38 @@ int iarrayremove(iarray *arr, int index) {
 
     icheckret(arr, iino);
     icheckret(index>=0 && index<arr->len, iino);
-    arr->swap(arr, index, -1);
+    
+    if (!(arr->entry->flag & EnumArrayFlagSimple)) {
+        arr->entry->swap(arr, index, -1);
+    }
 
-    if (arr->flag & EnumArrayFlagKeepOrder) {
+    if (arr->entry->flag & EnumArrayFlagKeepOrder) {
         /* 移除一项就慢慢的移 */
         for(i=index; i<arr->len-1; ++i) {
-            arr->swap(arr, i, i+1);
+            arr->entry->swap(arr, i, i+1);
         }
     } else if (arr->len-1 != index){
         /* 直接交换最后一项 */
-        arr->swap(arr, index, arr->len-1);
+        arr->entry->swap(arr, index, arr->len-1);
     }
     --arr->len;
     return iiok;
 }
 
+/* NB!! 外部确保变小的容量对象已经被释放了 */
+static size_t _iarray_just_capacity(iarray *arr, size_t newcapacity) {
+    char* newbuffer;
+    newbuffer = irealloc(arr->buffer, newcapacity * arr->entry->size);
+    icheckret(newbuffer, arr->capacity);
+    
+    arr->buffer = newbuffer;
+    arr->capacity = newcapacity;
+    return arr->capacity;
+}
+
 /* 确保 arr->capacity >= capacity , 返回调整后的容量*/
 static size_t _iarray_be_capacity(iarray *arr, size_t capacity) {
     size_t newcapacity;
-    char* newbuffer;
 
     icheckret(arr->capacity < capacity, arr->capacity);
 
@@ -898,12 +906,16 @@ static size_t _iarray_be_capacity(iarray *arr, size_t capacity) {
     do {
         newcapacity = newcapacity * 2;
     } while(newcapacity < capacity);
-    newbuffer = irealloc(arr->buffer, newcapacity * arr->size);
-    icheckret(newbuffer, arr->capacity);
+    
+    return _iarray_just_capacity(arr, newcapacity);
+}
 
-    arr->buffer = newbuffer;
-    arr->capacity = newcapacity;
-    return arr->capacity;
+/* 自动缩小容量 */
+static void _iarrayautoshrink(iarray *arr) {
+    size_t suppose = imax(arr->len * 2, 8);
+    if (arr->capacity > suppose) {
+        iarrayshrinkcapacity(arr, suppose);
+    }
 }
 
 /* 增加 */
@@ -911,7 +923,7 @@ int iarrayadd(iarray *arr, void* value) {
     _iarray_be_capacity(arr, arr->len + 1);
     icheckret(arr->capacity > arr->len, iino);
 
-    arr->assign(arr, arr->len, value);
+    arr->entry->assign(arr, arr->len, value);
     ++arr->len;
     return iiok;
 }
@@ -927,20 +939,72 @@ void iarraytruncate(iarray *arr, size_t len) {
 
     icheck(arr);
     icheck(arr->len > len);
-    for(i=arr->len; i>len; i--) {
-        iarrayremove(arr, i-1);
+    
+    if (arr->entry->flag & EnumArrayFlagSimple) {
+        /* direct set the length*/
+        arr->len = len;
+        /* auto shirk */
+        if (arr->entry->flag & EnumArrayFlagAutoShirk) {
+            _iarrayautoshrink(arr);
+        }
+    } else {
+        /* remove one by one*/
+        for(i=arr->len; i>len; i--) {
+            iarrayremove(arr, i-1);
+        }       
     }
 }
 
-/* 缩减容量 TODO: */
-void iarrayshunkcapacity(iarray *arr, size_t capacity) {
+/* 缩减容量  */
+size_t iarrayshrinkcapacity(iarray *arr, size_t capacity) {
+    icheckret(arr->capacity > capacity, arr->capacity);
+    
+    capacity = imax(arr->len, capacity);
+    return _iarray_just_capacity(arr, capacity);
 }
 
-/* 排序 TODO: */
+/* 堆排序 - 堆调整 */
+static void _iarray_heap_shift(iarray *arr,
+                      int ind, int end) {
+    
+    int i = ind;
+    int c = 2 * i + 1;
+    
+    while(c <= end) {
+        if (c +1 <=end && arr->entry->cmp(arr, c, c+1) < 0 ) {
+            c++;
+        }
+        if (arr->entry->cmp(arr, i, c) > 0) {
+            break;
+        } else {
+            arr->entry->swap(arr, i, c);
+            
+            i = c;
+            c = 2*i + 1;
+        }
+    }
+}
+
+/* 堆排序 */
+static void _iarray_sort_heap(iarray *arr,
+                int start, int end) {
+    int i, j;
+    for (i=(end-1)/2; i>=start; i--) {
+        _iarray_heap_shift(arr, i, end);
+    }
+    
+    for (j=start; j<=end; ++j) {
+        arr->entry->swap(arr, start, end-start-j);
+        _iarray_heap_shift(arr, start, end - start - j - 1);
+    }
+}
+
+/* 排序 */
 void iarraysort(iarray *arr) {
-
+    icheck(arr->len);
+    
+    _iarray_sort_heap(arr, 0, arr->len-1);
 }
-
 
 /* cache 的 绑定在 ref 上的回调 */
 void _ientrywatch_cache(iref *ref) {
@@ -2568,7 +2632,6 @@ void imapsearchcollectnode(imap *map, const irect *rect, ireflist *collects) {
 	inode *tnode = NULL;
 	int i;
 	int level = map->divide;
-    int step;
     /*
      *^
      *|(1)(2)

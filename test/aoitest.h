@@ -3062,11 +3062,12 @@ void _iarray_entry_swap_int(struct iarray *arr,
     int tmp;
     int *arr_int = (int *)arr->buffer;
     if (j == arr_invalid) {
-        //arr_int[i] = 0;
+        // arr_int[i] = 0;
         // may call assign
         _iarray_entry_assign_int(arr, i, 0);
     } else if (i == arr_invalid) {
-        //arr_int[j] = 2;
+        // arr_int[j] = 0;
+        // may call assign
         _iarray_entry_assign_int(arr, j, 0);
     } else {
         tmp = arr_int[i];
@@ -3082,12 +3083,17 @@ int _iarray_entry_cmp_int(struct iarray *arr,
     return arr_int[i] - arr_int[j];
 }
 
+// 定义int数组
+static iarrayentry entry = {
+    EnumArrayFlagAutoShirk | EnumArrayFlagSimple,
+    sizeof(int),
+    _iarray_entry_swap_int,
+    _iarray_entry_cmp_int,
+    _iarray_entry_assign_int
+};
 
 SP_CASE(iarray, int) {
-    iarray *arr = iarraymake(1, sizeof(int), EnumArrayFlagKeepOrder,
-                             _iarray_entry_swap_int,
-                             _iarray_entry_cmp_int ,
-                             _iarray_entry_assign_int);
+    iarray *arr = iarraymake(1, &entry);
     iarrayadd(arr, (void*)1);
     iarrayadd(arr, (void*)20000);
     iarrayadd(arr, (void*)3);
@@ -3102,8 +3108,228 @@ SP_CASE(iarray, int) {
     SP_EQUAL(values[0], 1);
     SP_EQUAL(values[1], 3);
     
+    iarrayadd(arr, (void*)2);
+    SP_EQUAL(values[2], 2);
+    
+    iarraysort(arr);
+    
+    values = (int*)arr->buffer;
+    SP_EQUAL(values[0], 1);
+    SP_EQUAL(values[1], 2);
+    SP_EQUAL(values[2], 3);
+    
     iarrayfree(arr);
     SP_TRUE(1);
+}
+
+SP_CASE(iarray, iarraylen) {
+    iarray *arr = iarraymake(1, &entry);
+    SP_EQUAL(iarraylen(arr), 0);
+    
+    iarrayadd(arr, (void*)1);
+    SP_EQUAL(iarraylen(arr), 1);
+    
+    iarrayadd(arr, (void*)20000);
+    SP_EQUAL(iarraylen(arr), 2);
+    
+    iarrayadd(arr, (void*)3);
+    SP_EQUAL(iarraylen(arr), 3);
+    
+    iarrayfree(arr);
+}
+
+SP_CASE(iarray, iarraycapacity) {
+    iarray *arr = iarraymake(1, &entry);
+    SP_EQUAL(iarraycapacity(arr), 1);
+    
+    iarrayadd(arr, (void*)1);
+    SP_EQUAL(iarraylen(arr), 1);
+    SP_EQUAL(iarraycapacity(arr), 1);
+    
+    iarrayadd(arr, (void*)20000);
+    SP_EQUAL(iarraylen(arr), 2);
+    SP_EQUAL(iarraycapacity(arr), 2);
+    
+    iarrayadd(arr, (void*)3);
+    SP_EQUAL(iarraylen(arr), 3);
+    SP_EQUAL(iarraycapacity(arr), 4);
+    
+    iarrayadd(arr, (void*)4);
+    SP_EQUAL(iarraylen(arr), 4);
+    SP_EQUAL(iarraycapacity(arr), 4);
+    
+    iarrayadd(arr, (void*)5);
+    SP_EQUAL(iarraylen(arr), 5);
+    SP_EQUAL(iarraycapacity(arr), 8);
+    
+    iarrayfree(arr);
+}
+
+#define iarrayof(arr, type, i) (((type *)iarrayat(arr, i))[0])
+
+SP_CASE(iarray, iarrayat) {
+    iarray *arr = iarraymake(1, &entry);
+    iarrayadd(arr, (void*)0);
+    iarrayadd(arr, (void*)1);
+    iarrayadd(arr, (void*)2);
+    iarrayadd(arr, (void*)3);
+    iarrayadd(arr, (void*)4);
+    iarrayadd(arr, (void*)5);
+    
+    SP_EQUAL(((int*)iarrayat(arr, 0))[0], 0);
+    SP_EQUAL(((int*)iarrayat(arr, 1))[0], 1);
+    SP_EQUAL(((int*)iarrayat(arr, 2))[0], 2);
+    SP_EQUAL(((int*)iarrayat(arr, 3))[0], 3);
+    SP_EQUAL(((int*)iarrayat(arr, 4))[0], 4);
+    SP_EQUAL(((int*)iarrayat(arr, 5))[0], 5);
+    
+    SP_EQUAL(iarrayof(arr, int, 5), 5);
+    
+    iarrayfree(arr);
+}
+
+SP_CASE(iarray, iarraybuffer) {
+    iarray *arr = iarraymake(1, &entry);
+    SP_TRUE(iarraybuffer(arr) != NULL);
+    iarrayfree(arr);
+}
+
+SP_CASE(iarray, iarrayremove) {
+    iarray *arr = iarraymake(1, &entry);
+    iarrayadd(arr, (void*)0);
+    iarrayadd(arr, (void*)1);
+    iarrayadd(arr, (void*)2);
+    iarrayadd(arr, (void*)3);
+    iarrayadd(arr, (void*)4);
+    iarrayadd(arr, (void*)5);
+    
+    SP_EQUAL(iarraylen(arr), 6);
+    
+    iarrayremove(arr, 3);
+    SP_EQUAL(iarraylen(arr), 5);
+    
+    SP_EQUAL(iarrayof(arr, int, 0), 0);
+    SP_EQUAL(iarrayof(arr, int, 1), 1);
+    SP_EQUAL(iarrayof(arr, int, 2), 2);
+    SP_EQUAL(iarrayof(arr, int, 3), 5);
+    SP_EQUAL(iarrayof(arr, int, 4), 4);
+    
+    iarrayremove(arr, 2);
+    SP_EQUAL(iarraylen(arr), 4);
+    SP_EQUAL(iarrayof(arr, int, 0), 0);
+    SP_EQUAL(iarrayof(arr, int, 1), 1);
+    SP_EQUAL(iarrayof(arr, int, 2), 4);
+    SP_EQUAL(iarrayof(arr, int, 3), 5);
+    
+    iarrayremove(arr, 3);
+    SP_EQUAL(iarraylen(arr), 3);
+    SP_EQUAL(iarrayof(arr, int, 0), 0);
+    SP_EQUAL(iarrayof(arr, int, 1), 1);
+    SP_EQUAL(iarrayof(arr, int, 2), 4);
+    
+    iarrayfree(arr);
+}
+
+SP_CASE(iarray, iarrayremoveall) {
+    iarray *arr = iarraymake(1, &entry);
+    iarrayadd(arr, (void*)0);
+    iarrayadd(arr, (void*)1);
+    iarrayadd(arr, (void*)2);
+    
+    SP_EQUAL(iarraylen(arr), 3);
+    SP_EQUAL(iarraycapacity(arr), 4);
+    
+    iarrayremoveall(arr);
+    SP_EQUAL(iarraylen(arr), 0);
+    SP_EQUAL(iarraycapacity(arr), 4);
+    
+    for (int i=0; i < 16; ++i) {
+        i_arr_basic v;
+        v.i = i;
+        iarrayadd(arr, v.v);
+    }
+    SP_EQUAL(iarraylen(arr), 16);
+    SP_EQUAL(iarraycapacity(arr), 16);
+    
+    iarrayremoveall(arr);
+    SP_EQUAL(iarraylen(arr), 0);
+    SP_EQUAL(iarraycapacity(arr), 8);
+    
+    iarrayfree(arr);
+}
+
+SP_CASE(iarray, iarraytruncate) {
+    iarray *arr = iarraymake(1, &entry);
+    iarrayadd(arr, (void*)0);
+    iarrayadd(arr, (void*)1);
+    iarrayadd(arr, (void*)2);
+    
+    SP_EQUAL(iarraylen(arr), 3);
+    SP_EQUAL(iarraycapacity(arr), 4);
+    
+    iarraytruncate(arr, 1);
+    SP_EQUAL(iarraylen(arr), 1);
+    SP_EQUAL(iarraycapacity(arr), 4);
+    
+    iarraytruncate(arr, 0);
+    SP_EQUAL(iarraylen(arr), 0);
+    SP_EQUAL(iarraycapacity(arr), 4);
+    
+    for (int i=0; i < 20; ++i) {
+        i_arr_basic v;
+        v.i = i;
+        iarrayadd(arr, v.v);
+    }
+    SP_EQUAL(iarraylen(arr), 20);
+    SP_EQUAL(iarraycapacity(arr), 32);
+    
+    iarraytruncate(arr, 6);
+    SP_EQUAL(iarraylen(arr), 6);
+    SP_EQUAL(iarraycapacity(arr), 12);
+    
+    iarrayfree(arr);
+}
+
+SP_CASE(iarray, iarrayshrinkcapacity) {
+    iarray *arr = iarraymake(1, &entry);
+    iarrayadd(arr, (void*)0);
+    iarrayadd(arr, (void*)1);
+    iarrayadd(arr, (void*)2);
+    
+    SP_EQUAL(iarraylen(arr), 3);
+    SP_EQUAL(iarraycapacity(arr), 4);
+    
+    SP_EQUAL(iarrayshrinkcapacity(arr, 8), 4);
+    SP_EQUAL(iarraycapacity(arr), 4);
+    
+    SP_EQUAL(iarrayshrinkcapacity(arr, 3), 3);
+    SP_EQUAL(iarraycapacity(arr), 3);
+    
+    SP_EQUAL(iarrayshrinkcapacity(arr, 2), 3);
+    SP_EQUAL(iarraycapacity(arr), 3);
+    
+    iarrayfree(arr);
+}
+
+SP_CASE(iarray, iarraysort) {
+    
+    iarray *arr = iarraymake(1, &entry);
+    iarrayadd(arr, (void*)3);
+    iarrayadd(arr, (void*)1);
+    iarrayadd(arr, (void*)2);
+    iarrayadd(arr, (void*)7);
+    iarrayadd(arr, (void*)0);
+    
+    iarraysort(arr);
+    
+    int *values = (int*)iarraybuffer(arr);
+    SP_EQUAL(values[0], 0);
+    SP_EQUAL(values[1], 1);
+    SP_EQUAL(values[2], 2);
+    SP_EQUAL(values[3], 3);
+    SP_EQUAL(values[4], 7);
+    
+    iarrayfree(arr);
 }
 
 #endif
