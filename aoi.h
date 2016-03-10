@@ -368,10 +368,10 @@ void iaoicacheclear(imeta *meta);
 void iaoimemorystate();
     
 /* 获取指定对象的meta信息 */
-imeta *iaoigetmeta(void *p);
+imeta *iaoigetmeta(const void *p);
     
 /* 指定对象是响应的类型: 一致返回iiok, 否则返回 iino */
-int iaoiistype(void *p, const char* type);
+int iaoiistype(const void *p, const char* type);
     
 #define imetacacheclear(type) (iaoicacheclear(imetaof(type)))
 
@@ -415,7 +415,6 @@ typedef void (*ientrywatch)(struct iref* ref);
 typedef struct iref {
     irefdeclare;
 }iref;
-
 
 /* 增加引用计数 */
 int irefretain(iref *ref); 

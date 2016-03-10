@@ -126,7 +126,7 @@ int imetaregister(const char* name, int size, int capacity) {
 /**
  * 尝试从缓冲区拿对象
  */
-iobj *imetapoll(imeta *meta) {
+static iobj *_imetapoll(imeta *meta) {
 	iobj *obj = NULL;
 	if (meta->cache.length) {
 		obj = meta->cache.root;
@@ -170,7 +170,7 @@ void imetapush(iobj *obj) {
 
 /* 获取响应的内存：会经过Meta的Cache */
 void *iaoicalloc(imeta *meta) {
-	iobj *obj = imetapoll(meta);
+	iobj *obj = _imetapoll(meta);
 	return obj->addr;
 }
 
@@ -220,7 +220,7 @@ void iaoimemorystate() {
 }
 
 /* 获取指定对象的meta信息 */
-imeta *iaoigetmeta(void *p) {
+imeta *iaoigetmeta(const void *p) {
 	iobj *obj = NULL;
 	icheckret(p, NULL);
 	obj = __iobj(p);
@@ -228,7 +228,7 @@ imeta *iaoigetmeta(void *p) {
 }
 
 /* 指定对象是响应的类型 */
-int iaoiistype(void *p, const char* type) {
+int iaoiistype(const void *p, const char* type) {
 	imeta *meta = NULL;
 	icheckret(type, iino);
 	meta = iaoigetmeta(p);
@@ -1085,7 +1085,7 @@ int justremoveunit(imap *map, inode *node, iunit *unit) {
 typedef struct ipos2i {
         int x, y;
 }ipos2i;
-static ipos2i __node_offset[] =
+static const ipos2i __node_offset[] =
 {
     {0, 0},
     {0, 1},
