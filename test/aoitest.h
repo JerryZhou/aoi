@@ -2151,7 +2151,7 @@ SP_CASE(ifilter, ifilterclean) {
     ifilterfree(filterrange);
 }
 
-int __filter_test_forid(imap *map, ifilter *filter, iunit *unit) {
+int __filter_test_forid(imap *map, const ifilter *filter, const iunit *unit) {
     icheckret(filter, iino);
     icheckret(unit, iino);
     

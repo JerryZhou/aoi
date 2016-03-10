@@ -698,19 +698,19 @@ ireflist *ireflistmake() {
 }
 
 /* 获取列表长度 */
-int ireflistlen(ireflist *list) {
+int ireflistlen(const ireflist *list) {
 	icheckret(list, 0);
 	return list->length;
 }
 
 /* 获取第一个节点 */
-irefjoint* ireflistfirst(ireflist *list) {
+irefjoint* ireflistfirst(const ireflist *list) {
 	icheckret(list, NULL);
 	return list->root;
 }
 
 /* 从列表里面查找第一个满足要求的节点 */
-irefjoint* ireflistfind(ireflist *list, iref *value) {
+irefjoint* ireflistfind(const ireflist *list, const iref *value) {
 	irefjoint* joint = ireflistfirst(list);
 	while(joint) {
 		if (joint->value == value) {
@@ -2206,7 +2206,7 @@ ifilter *ifiltermake_rect(const ipos *pos, const isize *size) {
 }
 
 /* 搜集树上的所有单元 */
-void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ireflist *snap) {
+void imapcollectunit(imap *map, const inode *node, ireflist *list, const ifilter *filter, ireflist *snap) {
 	int i;
 	iunit* unit = NULL;
 	icheck(node);
@@ -2228,7 +2228,7 @@ void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ir
 		_state_add(unit->state, EnumUnitStateSearching);
 	}
 
-	/* 便利所有的孩子节点 */
+	/* 遍历所有的孩子节点 */
 	icheck(node->childs);
 	icheck(node->childcnt);
 	for (i=0; i<IMaxChilds; ++i) {
@@ -2237,7 +2237,7 @@ void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ir
 }
 
 /* 清除搜索结果标记 */
-void imapcollectcleanunittag(imap *map, ireflist *list) {
+void imapcollectcleanunittag(imap *map, const ireflist *list) {
 	irefjoint *joint = ireflistfirst(list);
 	while (joint) {
 		iunit *u = icast(iunit, joint->value);
@@ -2247,7 +2247,7 @@ void imapcollectcleanunittag(imap *map, ireflist *list) {
 }
 
 /* 清除搜索结果标记 */
-void imapcollectcleannodetag(imap *map, ireflist *list) {
+void imapcollectcleannodetag(imap *map, const ireflist *list) {
 	irefjoint *joint = ireflistfirst(list);
 	while (joint) {
 		inode *u = icast(inode, joint->value);
@@ -2333,7 +2333,7 @@ void isearchresultrefreshfromsnap(imap *map, isearchresult *result) {
 }
 
 /* 计算节点列表的指纹信息 */
-int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_t *maxutick) {
+int64_t imapchecksumnodelist(imap *map, const ireflist *list, int64_t *maxtick, int64_t *maxutick) {
 	int64_t hash = 0;
 #if open_node_utick
 	int64_t utick = 0;
@@ -2368,7 +2368,7 @@ int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_
 }
 
 /* 搜索 */
-void imapsearchfromnode(imap *map, inode *node,
+void imapsearchfromnode(imap *map, const inode *node,
 		isearchresult* result, ireflist *innodes) {
 	irefjoint *joint;
 	inode *searchnode;
@@ -2421,7 +2421,7 @@ void imapsearchfromnode(imap *map, inode *node,
 }
 
 /* 收集包含指定矩形区域的节点(最多4个) */
-void imapsearchcollectnode(imap *map, irect *rect, ireflist *collects) {
+void imapsearchcollectnode(imap *map, const irect *rect, ireflist *collects) {
 	icode code;
 	ipos tpos;
 	inode *tnode = NULL;
@@ -2473,7 +2473,7 @@ void imapsearchcollectnode(imap *map, irect *rect, ireflist *collects) {
 }
 
 /* 计算给定节点列表里面节点的最小公共父节点 */
-inode *imapcaculatesameparent(imap *map, ireflist *collects) {
+inode *imapcaculatesameparent(imap *map, const ireflist *collects) {
 	inode *node;
 	inode *tnode;
 	irefjoint *joint;
@@ -2501,7 +2501,7 @@ inode *imapcaculatesameparent(imap *map, ireflist *collects) {
 }
 
 /* 从地图上搜寻单元 irect{pos, size{rangew, rangeh}}, 并附加条件 filter */
-void imapsearchfromrectwithfilter(imap *map, irect *rect,
+void imapsearchfromrectwithfilter(imap *map, const irect *rect,
 		isearchresult *result, ifilter *filter) {
 	int64_t micro = __Micros;
 	inode *node;
@@ -2550,7 +2550,7 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 }
 
 /* 从地图上搜寻单元, 并附加条件 filter */
-void imapsearchfrompos(imap *map, ipos *pos,
+void imapsearchfrompos(imap *map, const ipos *pos,
 		isearchresult *result, ireal range) {
     ireal rectrange = range + iiradius * map->maxradius; /* 扩大搜索区域，以支持单元的半径搜索 */
 	/* 目标矩形 */
@@ -2593,7 +2593,7 @@ void imapsearchfromunit(imap *map, iunit *unit,
   └── [AAD] tick: 1432538485114727, utick: 1432538485114727 units(3)
   */
 /* 打印节点 */
-void _aoi_printnode(int require, inode *node, const char* prefix, int tail) {
+void _aoi_printnode(int require, const inode *node, const char* prefix, int tail) {
 	/* 前面 */
 	ilog("%s", prefix);
 	if (tail) {

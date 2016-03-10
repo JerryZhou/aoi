@@ -501,13 +501,14 @@ typedef struct ireflist {
 ireflist *ireflistmake();
 
 /* 获取列表长度 */
-int ireflistlen(ireflist *list); 
+int ireflistlen(const ireflist *list); 
 
 /* 获取第一个节点 */
-irefjoint* ireflistfirst(ireflist *list); 
+irefjoint* ireflistfirst(const ireflist *list); 
 
 /* 从列表里面查找第一个满足要求的节点 */
-irefjoint* ireflistfind(ireflist *list, iref *value); 
+irefjoint* ireflistfind(const ireflist *list, 
+        const iref *value); 
 
 /* 往列表增加节点: 前置节点 */
 irefjoint* ireflistaddjoint(ireflist *list, irefjoint * joint); 
@@ -977,11 +978,11 @@ ifilter *ifiltermake_circle(const ipos *pos, ireal range);
 ifilter *ifiltermake_rect(const ipos *pos, const isize *size);
 
 /* 搜集树上的所有单元, 调用完后必须调用imapcollectcleanunittag */
-void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ireflist *snap);
+void imapcollectunit(imap *map, const inode *node, ireflist *list, const ifilter *filter, ireflist *snap);
 /* 清除搜索结果标记 */
-void imapcollectcleanunittag(imap *map, ireflist *list);
+void imapcollectcleanunittag(imap *map, const ireflist *list);
 /* 清除搜索结果标记 */
-void imapcollectcleannodetag(imap *map, ireflist *list);
+void imapcollectcleannodetag(imap *map, const ireflist *list);
 
 /*************************************************************/
 /* isearchresult                                             */
@@ -1021,17 +1022,17 @@ void isearchresultclean(isearchresult *result);
 void isearchresultrefreshfromsnap(imap *map, isearchresult *result);
     
 /* 收集包含指定矩形局域的节点(最多4个) */
-void imapsearchcollectnode(imap *map, irect *rect, ireflist *list);
+void imapsearchcollectnode(imap *map, const irect *rect, ireflist *list);
     
 /* 计算给定节点列表里面节点的最小公共父节点 */
-inode *imapcaculatesameparent(imap *map, ireflist *collects);
+inode *imapcaculatesameparent(imap *map, const ireflist *collects);
     
 /* 从地图上搜寻单元 irect{pos, size{rangew, rangeh}}, 并附加条件 filter */
-void imapsearchfromrectwithfilter(imap *map, irect *rect,
+void imapsearchfromrectwithfilter(imap *map, const irect *rect,
                                   isearchresult *result, ifilter *filter);
     
 /* 从地图上搜寻单元 */
-void imapsearchfrompos(imap *map, ipos *pos,
+void imapsearchfrompos(imap *map, const ipos *pos,
                        isearchresult *result, ireal range);
     
 /* 从地图上搜寻单元, 不包括自己 */
@@ -1039,11 +1040,11 @@ void imapsearchfromunit(imap *map, iunit *unit,
                         isearchresult *result, ireal range);
     
 /* 搜索: 最后的搜索都会经过这里 */
-void imapsearchfromnode(imap *map, inode *node,
+void imapsearchfromnode(imap *map, const inode *node,
                         isearchresult* result, ireflist *innodes);
     
 /* 计算节点列表的指纹信息 */
-int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_t *maxutick);
+int64_t imapchecksumnodelist(imap *map, const ireflist *list, int64_t *maxtick, int64_t *maxutick);
 
 /*************************************************************/
 /* print helper                                              */
@@ -1061,7 +1062,7 @@ typedef enum EnumNodePrintState {
 /* 打印地图 */
 void _aoi_print(imap *map, int require);
 /* 打印指定的节点*/
-void _aoi_printnode(int require, inode *node, const char* prefix, int tail);
+void _aoi_printnode(int require, const inode *node, const char* prefix, int tail);
     
 /* 测试 */
 int _aoi_test(int argc, char** argv);
