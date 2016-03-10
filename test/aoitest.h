@@ -3094,6 +3094,13 @@ SP_CASE(iarray, int) {
     
     int *values = (int*)arr->buffer;
     printf("%d-%d-%d \n", values[0], values[1], values[2]);
+    SP_EQUAL(values[0], 1);
+    SP_EQUAL(values[1], 20000);
+    SP_EQUAL(values[2], 3);
+    
+    iarrayremove(arr, 1);
+    SP_EQUAL(values[0], 1);
+    SP_EQUAL(values[1], 3);
     
     iarrayfree(arr);
     SP_TRUE(1);
