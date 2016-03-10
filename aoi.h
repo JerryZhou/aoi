@@ -87,6 +87,7 @@ typedef double ireal;
 /* 编号 */
 typedef int64_t iid;
 
+
 /*************************************************************/
 /* ipos                                                      */
 /*************************************************************/
@@ -276,6 +277,7 @@ typedef struct iname {
 
 /* 内存操作 */
 #define icalloc(n, size) calloc(n, size)
+#define irealloc(ptr, size) realloc(ptr, size)
 #define ifree(p) free(p)
     
 #if iimeta  /* if iimeta */
@@ -347,7 +349,9 @@ int imetaregister(const char* name, int size, int capacity);
     __ideclaremeta(irefcache, 0),             \
     __ideclaremeta(ifilter, 2000),            \
     __ideclaremeta(isearchresult, 0),         \
-    __ideclaremeta(irefautoreleasepool, 0)
+    __ideclaremeta(irefautoreleasepool, 0),   \
+    __ideclaremeta(iarray, 0),                \
+    __ideclaremeta(islice, 0)
 
 /* 定义所有元信息索引 */
 typedef enum EnumMetaTypeIndex {
@@ -528,6 +532,98 @@ void ireflistremoveall(ireflist *list);
 
 /* 释放列表 */
 void ireflistfree(ireflist *list); 
+
+/*************************************************************/
+/* iarray                                                    */
+/*************************************************************/
+struct iarray;
+struct islice;
+
+/*如果是需要跟 arr_invalid 进行交换就是置0 */
+#define arr_invalid -1
+
+/* 交换两个对象 */
+typedef void (*iarray_entry_swap)(struct iarray *arr,
+        int i, int j);
+/* 比较两个对象 */
+typedef int (*iarray_entry_cmp)(struct iarray *arr,
+        int i, int j);
+/* 赋值 */
+typedef void (*iarray_entry_assign)(struct iarray *arr,
+        int i, void *value);
+
+/* 数组常用控制项 */
+typedef enum EnumArrayFlag {
+    EnumArrayFlagNone = 0,
+    EnumArrayFlagKeepOrder = 1<<1,  /*是否保持有序*/
+    EnumArrayFlagSimple = 1<<2,     /*是否是简单数组*/
+}EnumArrayFlag;
+
+/* 通用数组 */
+typedef struct iarray {
+    irefdeclare;
+
+    size_t size;
+    size_t capacity;
+    size_t len;
+    char *buffer;
+
+    struct {
+        iarray_entry_swap swap;
+        iarray_entry_cmp cmp;
+        iarray_entry_assign assign;
+    };
+    int flag;
+}iarray;
+
+/* 建立数组*/
+iarray *iarraymake(size_t capacity, size_t size, int flag,
+        iarray_entry_swap swap,
+        iarray_entry_cmp cmp,
+        iarray_entry_assign assign);
+
+/* 释放 */
+void iarrayfree(iarray *arr);
+
+/* 长度 */
+size_t iarraylen(const iarray *arr);
+
+/* 容量*/
+size_t iarraycapacity(const iarray *arr);
+
+/* 查询 */
+void* iarrayat(iarray *arr, int index);
+
+/* 删除 */
+int iarrayremove(iarray *arr, int index);
+
+/* 增加 */
+int iarrayadd(iarray *arr, void* value);
+
+/* 清理数组 */
+void iarrayremoveall(iarray *arr);
+
+/* 截断数组 */
+void iarraytruncate(iarray *arr, size_t len);
+
+/* 缩减容量 */
+void iarrayshunkcapacity(iarray *arr, size_t capacity);
+
+/* 排序 */
+void iarraysort(iarray *arr);
+
+/*************************************************************/
+/* islice                                                    */
+/*************************************************************/
+
+typedef struct islice {
+    irefdeclare;
+
+    iarray *array;
+    int begin;
+    int end;
+}islice;
+
 
 /*************************************************************/
 /* irefcache                                                 */

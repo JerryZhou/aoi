@@ -801,6 +801,147 @@ void ireflistfree(ireflist *list) {
 	iobjfree(list);
 }
 
+/* 释放数组相关的资源 */
+static void _iarray_entry_free(struct iref* ref) {
+    iarray *array = (iarray *)ref;
+
+    iarraytruncate(array, 0);
+    ifree(array->buffer);
+    /*
+    array->buffer = NULL;
+    array->len = 0;
+    array->capacity = 0;
+    array->size = 0;
+    array->swap = NULL;
+    array->cmp = NULL;
+    */
+
+    iobjfree(ref);
+}
+
+/* 建立数组*/
+iarray *iarraymake(size_t capacity, size_t size, int flag,
+        iarray_entry_swap swap,
+        iarray_entry_cmp cmp,
+        iarray_entry_assign assign) {
+	iarray *array = (iarray *)iobjmalloc(iarray);
+    array->capacity = capacity;
+    array->len = 0;
+    array->buffer = (char*)icalloc(capacity, size);
+    array->size = size;
+    array->swap = swap;
+    array->cmp = cmp;
+    array->assign = assign;
+    array->free = _iarray_entry_free;
+    array->flag = flag;
+    iretain(array);
+    
+    return array;
+}
+
+/* 释放 */
+void iarrayfree(iarray *arr) {
+    irelease(arr);
+}
+
+/* 长度 */
+size_t iarraylen(const iarray *arr) {
+    icheckret(arr, 0);
+    return arr->len;
+}
+
+/* 容量*/
+size_t iarraycapacity(const iarray *arr) {
+    icheckret(arr, 0);
+    return arr->capacity;
+}
+
+/* 查询 */
+#define __arr_i(arr, i) ((void*)((arr)->buffer + (i) * (arr)->size))
+void* iarrayat(iarray *arr, int index) {
+    icheckret(arr, NULL);
+    icheckret(index>=0 && index<arr->len, NULL);
+
+    return  __arr_i(arr, index);
+}
+
+/* 删除 */
+int iarrayremove(iarray *arr, int index) {
+    int i;
+
+    icheckret(arr, iino);
+    icheckret(index>=0 && index<arr->len, iino);
+    arr->swap(arr, index, -1);
+
+    if (arr->flag & EnumArrayFlagKeepOrder) {
+        /* 移除一项就慢慢的移 */
+        for(i=index; i<arr->len-1; ++i) {
+            arr->swap(arr, i, i+1);
+        }
+    } else if (arr->len-1 != index){
+        /* 直接交换最后一项 */
+        arr->swap(arr, index, arr->len-1);
+    }
+    --arr->len;
+    return iiok;
+}
+
+/* 确保 arr->capacity >= capacity , 返回调整后的容量*/
+static size_t _iarray_be_capacity(iarray *arr, size_t capacity) {
+    size_t newcapacity;
+    char* newbuffer;
+
+    icheckret(arr->capacity < capacity, arr->capacity);
+
+    /* 新的容量 */
+    newcapacity = arr->capacity;
+    do {
+        newcapacity = newcapacity * 2;
+    } while(newcapacity < capacity);
+    newbuffer = irealloc(arr->buffer, newcapacity * arr->size);
+    icheckret(newbuffer, arr->capacity);
+
+    arr->buffer = newbuffer;
+    arr->capacity = newcapacity;
+    return arr->capacity;
+}
+
+/* 增加 */
+int iarrayadd(iarray *arr, void* value) {
+    _iarray_be_capacity(arr, arr->len + 1);
+    icheckret(arr->capacity > arr->len, iino);
+
+    arr->assign(arr, arr->len, value);
+    ++arr->len;
+    return iiok;
+}
+
+/* 清理数组 */
+void iarrayremoveall(iarray *arr) {
+    iarraytruncate(arr, 0);
+}
+
+/* 截断数组 */
+void iarraytruncate(iarray *arr, size_t len) {
+    int i;
+
+    icheck(arr);
+    icheck(arr->len > len);
+    for(i=arr->len-1; i>=len; --i) {
+        iarrayremove(arr, i);
+    }
+}
+
+/* 缩减容量 TODO: */
+void iarrayshunkcapacity(iarray *arr, size_t capacity) {
+}
+
+/* 排序 TODO: */
+void iarraysort(iarray *arr) {
+
+}
+
+
 /* cache 的 绑定在 ref 上的回调 */
 void _ientrywatch_cache(iref *ref) {
 	irefcache *cache = NULL;

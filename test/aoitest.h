@@ -3035,4 +3035,68 @@ SP_CASE(searching_bench_right, searchpos){
     imapfree(map);
 }
 
+SP_SUIT(iarray);
+
+
+// 基本类型
+typedef union i_arr_basic{
+    int i;
+    void *v;
+    char c;
+    float f;
+    double d;
+}i_arr_basic;
+
+/* 赋值 */
+void _iarray_entry_assign_int(struct iarray *arr,
+                            int i, void *value) {
+    int *arr_int = (int *)arr->buffer;
+    i_arr_basic ab;
+    ab.v = value;
+    arr_int[i] = ab.i;
+}
+
+/* 交换两个对象 */
+void _iarray_entry_swap_int(struct iarray *arr,
+                          int i, int j) {
+    int tmp;
+    int *arr_int = (int *)arr->buffer;
+    if (j == arr_invalid) {
+        //arr_int[i] = 0;
+        // may call assign
+        _iarray_entry_assign_int(arr, i, 0);
+    } else if (i == arr_invalid) {
+        //arr_int[j] = 2;
+        _iarray_entry_assign_int(arr, j, 0);
+    } else {
+        tmp = arr_int[i];
+        arr_int[i] = arr_int[j];
+        arr_int[j] = tmp;    
+    }
+}
+
+/* 比较两个对象 */
+int _iarray_entry_cmp_int(struct iarray *arr,
+                         int i, int j) {
+    int *arr_int = (int *)arr->buffer;
+    return arr_int[i] - arr_int[j];
+}
+
+
+SP_CASE(iarray, int) {
+    iarray *arr = iarraymake(1, sizeof(int), EnumArrayFlagKeepOrder,
+                             _iarray_entry_swap_int,
+                             _iarray_entry_cmp_int ,
+                             _iarray_entry_assign_int);
+    iarrayadd(arr, (void*)1);
+    iarrayadd(arr, (void*)20000);
+    iarrayadd(arr, (void*)3);
+    
+    int *values = (int*)arr->buffer;
+    printf("%d-%d-%d \n", values[0], values[1], values[2]);
+    
+    iarrayfree(arr);
+    SP_TRUE(1);
+}
+
 #endif
