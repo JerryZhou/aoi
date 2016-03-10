@@ -25,18 +25,22 @@
 
 # 性能测试
 通过提供的prof 工具测试获取自己需要的参数
-aoi-prof c [divide] [max-unit] [min-search-range] [max-rand-search-range] [benchtimes]
+    ```
+    aoi-prof c [divide] [max-unit] [min-search-range] [max-rand-search-range] [benchtimes]
+    ```
 ![测试样例](http://dwgaga-image.qiniudn.com/more_img_1__Default__bash_.png)
 
 # 单元测试
-aoi-test
+    ```
+    aoi-test
+    ```
 
 # lua Test
 build first and then:
 
-```
-lua test.lua
-```
+    ```
+    lua test.lua
+    ```
 
 
 # 效率案例
