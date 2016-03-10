@@ -305,6 +305,74 @@ ireal ivec2lengthsqr(ivec2 *l) {
 ireal ivec2length(ivec2 *l) {
     return sqrtf(ivec2dot(l, l));
 }
+
+/* 加法*/
+ivec3 ivec3add(ivec3 *l, ivec3 *r) {
+    ivec3 vec;
+    vec.x = r->x + l->x;
+    vec.y = r->y + l->y;
+    vec.z = r->z + l->z;
+    return vec;
+}
+
+/* 减法 */
+ivec3 ivec3subtract(ivec3 *l, ivec3 *r) {
+    ivec3 vec;
+    vec.x = r->x - l->x;
+    vec.y = r->y - l->y;
+    vec.z = r->z - l->z;
+    return vec;
+}
+
+/* 乘法 */
+ivec3 ivec3multipy(ivec3 *l, ireal a) {
+    ivec3 vec;
+    vec.x = l->x * a;
+    vec.y = l->y * a;
+    vec.z = l->z * a;
+    return vec;
+}
+
+/* 点积 
+ * https://en.wikipedia.org/wiki/Dot_product
+ * */
+ireal ivec3dot(ivec3 *l, ivec3 *r) {
+    return l->x * r->x 
+        + l->y * r->y
+        + l->z * r->z;
+}
+
+/* 乘积 
+ * https://en.wikipedia.org/wiki/Cross_product
+ * */ 
+ivec3 ivec3cross(ivec3 *l, ivec3 *r) {
+    ivec3 vec;
+    vec.x = l->y * r->z - l->z * r->y;
+    vec.y = l->z * r->x - l->x * r->z;
+    vec.z = l->x * r->y - l->y * r->x;
+    return vec;
+}
+
+/* 长度的平方 */
+ireal ivec3lengthsqr(ivec3 *l) {
+    return ivec3dot(l, l);
+}
+
+/* 长度 */
+ireal ivec3length(ivec3 *l) {
+    return sqrtf(ivec3dot(l, l));
+}
+
+/* 绝对值 */
+ivec3 ivec3abs(ivec3* l) {
+    ivec3 vec;
+    vec.x = fabs(l->x);
+    vec.y = fabs(l->y);
+    vec.z = fabs(l->z);
+    return vec;
+}
+
+
     
 
 /* 判断矩形包含关系 */

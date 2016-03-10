@@ -131,7 +131,9 @@ ireal idistancepow2(ipos *p, ipos *t);
 /* ivec2                                                     */
 /*************************************************************/
 
-/* 向量 TODO: 完善基本的数学方法 */
+/* 向量,  完善基本的数学方法:  
+ *  加法 ; 减法 ; 乘法 ; 除法 ; 点积(内积) ; 乘积(外积) ; 长度
+ * */
 typedef struct ivec2 {
     union {
         ireal values[2];
@@ -144,6 +146,15 @@ typedef struct ivec2 {
 /* 两点相减得到向量 */
 ivec2 ivec2subtractpoint(ipos *p0, ipos *p1);
 
+/* 加法*/
+ivec2 ivec2add(ivec2 *l, ivec2 *r);
+
+/* 减法 */
+ivec2 ivec2subtract(ivec2 *l, ivec2 *r);
+
+/* 乘法 */
+ivec2 ivec2multipy(ivec2 *l, ireal a);
+
 /* 点积 */
 ireal ivec2dot(ivec2 *l, ivec2 *r);
 
@@ -151,23 +162,57 @@ ireal ivec2dot(ivec2 *l, ivec2 *r);
  * ivec2 ivec2cross(ivec2 *l, ivec2 *r);
  * */
 
-/* 减法 */
-ivec2 ivec2subtract(ivec2 *l, ivec2 *r);
-
-/* 加法*/
-ivec2 ivec2add(ivec2 *l, ivec2 *r);
-
-/* 乘法 */
-ivec2 ivec2multipy(ivec2 *l, ireal a);
-
-/* 绝对值 */
-ivec2 ivec2abs(ivec2* l);
-
 /* 长度的平方 */
 ireal ivec2lengthsqr(ivec2 *l);
 
 /* 长度 */
 ireal ivec2length(ivec2 *l);
+
+/* 绝对值 */
+ivec2 ivec2abs(ivec2* l);
+
+
+/*************************************************************/
+/* ivec3                                                     */
+/*************************************************************/
+
+/* 向量 完善基本的数学方法 */
+typedef struct ivec3 {
+    union {
+        ireal values[3];
+        struct {
+            ireal x, y, z;
+        };
+    };
+}ivec3;
+
+/* 两点相减得到向量 */
+// ivec3 ivec3subtractpoint(ipos *p0, ipos *p1);
+
+/* 加法*/
+ivec3 ivec3add(ivec3 *l, ivec3 *r);
+
+/* 减法 */
+ivec3 ivec3subtract(ivec3 *l, ivec3 *r);
+
+/* 乘法 */
+ivec3 ivec3multipy(ivec3 *l, ireal a);
+
+/* 点积 */
+ireal ivec3dot(ivec3 *l, ivec3 *r);
+
+/* 乘积 */ 
+ivec3 ivec3cross(ivec3 *l, ivec3 *r);
+
+/* 长度的平方 */
+ireal ivec3lengthsqr(ivec3 *l);
+
+/* 长度 */
+ireal ivec3length(ivec3 *l);
+
+/* 绝对值 */
+ivec3 ivec3abs(ivec3* l);
+
     
 /*************************************************************/
 /* isize                                                     */
