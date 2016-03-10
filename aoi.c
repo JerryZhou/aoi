@@ -14,6 +14,35 @@ Please see examples for more details.
 #include "aoi.h"
 #include <math.h>
 
+#ifdef _WIN32
+#ifdef __cplusplus
+extern "C" {
+#endif
+static int gettimeofday(struct timeval *tp, void *tzp)
+{
+        time_t clock;
+        struct tm tm; 
+        SYSTEMTIME wtm;
+
+        GetLocalTime(&wtm);
+        tm.tm_year = wtm.wYear - 1900;
+        tm.tm_mon = wtm.wMonth - 1;
+        tm.tm_mday = wtm.wDay;
+        tm.tm_hour = wtm.wHour;
+        tm.tm_min = wtm.wMinute;
+        tm.tm_sec = wtm.wSecond;
+        tm.tm_isdst = -1; 
+        clock = mktime(&tm);
+        tp->tv_sec = clock;
+        tp->tv_usec = wtm.wMilliseconds * 1000;
+
+        return 0;
+}
+#ifdef __cplusplus
+}
+#endif /*__cplusplus*/
+#endif /*WIN32*/
+
 /* 日志开关 */
 #define open_log_code		(0) /* 关于编码生成的日志 */
 #define open_log_gencode	(0)
@@ -26,6 +55,8 @@ Please see examples for more details.
 #define open_log_unit_remove (0)
 #define open_log_profile	(0)
 #define open_log_map_construct  (0)
+
+
 
 
 /* 常用的宏 */
@@ -243,14 +274,14 @@ int64_t igetnextmicro(){
 }
 
 /* 计算距离的平方 */
-ireal idistancepow2(ipos *p, ipos *t) {
+ireal idistancepow2(const ipos *p, const ipos *t) {
 	ireal dx = p->x - t->x;
 	ireal dy = p->y - t->y;
 	return dx*dx + dy*dy;
 }
 
 /* 两点相减得到向量 */
-ivec2 ivec2subtractpoint(ipos *p0, ipos *p1) {
+ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1) {
     ivec2 vec;
     vec.x = p1->x - p0->x;
     vec.y = p1->y - p0->y;
@@ -258,14 +289,14 @@ ivec2 ivec2subtractpoint(ipos *p0, ipos *p1) {
 }
 
 /* 点积 */
-ireal ivec2dot(ivec2 *l, ivec2 *r) {
+ireal ivec2dot(const ivec2 *l, const ivec2 *r) {
     icheckret(l, 0);
     icheckret(r, 0);
     return l->x * r->x + l->y + r->y;
 }
 
 /* 减法 */
-ivec2 ivec2subtract(ivec2 *l, ivec2 *r) {
+ivec2 ivec2subtract(const ivec2 *l, const ivec2 *r) {
     ivec2 vec;
     vec.x = r->x - l->x;
     vec.y = r->y - l->y;
@@ -273,7 +304,7 @@ ivec2 ivec2subtract(ivec2 *l, ivec2 *r) {
 }
 
 /* 加法*/
-ivec2 ivec2add(ivec2 *l, ivec2 *r) {
+ivec2 ivec2add(const ivec2 *l, const ivec2 *r) {
     ivec2 vec;
     vec.x = r->x + l->x;
     vec.y = r->y + l->y;
@@ -281,7 +312,7 @@ ivec2 ivec2add(ivec2 *l, ivec2 *r) {
 }
 
 /* 乘法 */
-ivec2 ivec2multipy(ivec2 *l, ireal a) {
+ivec2 ivec2multipy(const ivec2 *l, const ireal a) {
     ivec2 vec;
     vec.x = l->x * a;
     vec.y = l->y * a;
@@ -289,25 +320,43 @@ ivec2 ivec2multipy(ivec2 *l, ireal a) {
 }
 
 /* 绝对值 */
-ivec2 ivec2abs(ivec2* l) {
+ivec2 ivec2abs(const ivec2* l) {
     ivec2 vec;
     vec.x = fabs(l->x);
     vec.y = fabs(l->y);
     return vec;
 }
 
+/* 归一*/
+ivec2 ivec2normalize(const ivec2 *l) {
+    ireal len = ivec2length(l);
+    return len > 0 ? ivec2multipy(l, 1.0/len) : *l;
+}
+
 /* 长度的平方 */
-ireal ivec2lengthsqr(ivec2 *l) {
+ireal ivec2lengthsqr(const ivec2 *l) {
     return ivec2dot(l, l);
 }
 
 /* 长度 */
-ireal ivec2length(ivec2 *l) {
+ireal ivec2length(const ivec2 *l) {
     return sqrtf(ivec2dot(l, l));
 }
 
+/* 平行分量, 确保 r 已经归一化 */
+ivec2 ivec2parallel(const ivec2 *l, const ivec2 *r) {
+    ireal projection = ivec2dot (l, r);
+    return ivec2multipy(r, projection);
+}
+
+/* 垂直分量, 确保 r 已经归一化 */
+ivec2 ivec2perpendicular(const ivec2 *l, const ivec2 *r) {
+    ivec2 p = ivec2parallel(l, r);
+    return ivec2subtract(l, &p);
+}
+
 /* 加法*/
-ivec3 ivec3add(ivec3 *l, ivec3 *r) {
+ivec3 ivec3add(const ivec3 *l, const ivec3 *r) {
     ivec3 vec;
     vec.x = r->x + l->x;
     vec.y = r->y + l->y;
@@ -316,7 +365,7 @@ ivec3 ivec3add(ivec3 *l, ivec3 *r) {
 }
 
 /* 减法 */
-ivec3 ivec3subtract(ivec3 *l, ivec3 *r) {
+ivec3 ivec3subtract(const ivec3 *l, const ivec3 *r) {
     ivec3 vec;
     vec.x = r->x - l->x;
     vec.y = r->y - l->y;
@@ -325,7 +374,7 @@ ivec3 ivec3subtract(ivec3 *l, ivec3 *r) {
 }
 
 /* 乘法 */
-ivec3 ivec3multipy(ivec3 *l, ireal a) {
+ivec3 ivec3multipy(const ivec3 *l, ireal a) {
     ivec3 vec;
     vec.x = l->x * a;
     vec.y = l->y * a;
@@ -336,7 +385,7 @@ ivec3 ivec3multipy(ivec3 *l, ireal a) {
 /* 点积 
  * https://en.wikipedia.org/wiki/Dot_product
  * */
-ireal ivec3dot(ivec3 *l, ivec3 *r) {
+ireal ivec3dot(const ivec3 *l, const ivec3 *r) {
     return l->x * r->x 
         + l->y * r->y
         + l->z * r->z;
@@ -345,7 +394,7 @@ ireal ivec3dot(ivec3 *l, ivec3 *r) {
 /* 乘积 
  * https://en.wikipedia.org/wiki/Cross_product
  * */ 
-ivec3 ivec3cross(ivec3 *l, ivec3 *r) {
+ivec3 ivec3cross(const ivec3 *l, const ivec3 *r) {
     ivec3 vec;
     vec.x = l->y * r->z - l->z * r->y;
     vec.y = l->z * r->x - l->x * r->z;
@@ -354,17 +403,17 @@ ivec3 ivec3cross(ivec3 *l, ivec3 *r) {
 }
 
 /* 长度的平方 */
-ireal ivec3lengthsqr(ivec3 *l) {
+ireal ivec3lengthsqr(const ivec3 *l) {
     return ivec3dot(l, l);
 }
 
 /* 长度 */
-ireal ivec3length(ivec3 *l) {
+ireal ivec3length(const ivec3 *l) {
     return sqrtf(ivec3dot(l, l));
 }
 
 /* 绝对值 */
-ivec3 ivec3abs(ivec3* l) {
+ivec3 ivec3abs(const ivec3* l) {
     ivec3 vec;
     vec.x = fabs(l->x);
     vec.y = fabs(l->y);
@@ -372,11 +421,26 @@ ivec3 ivec3abs(ivec3* l) {
     return vec;
 }
 
+/* 归一*/
+ivec3 ivec3normalize(const ivec3 *l) {
+    ireal len = ivec3length(l);
+    return len > 0 ? ivec3multipy(l, 1.0/len) : *l;
+}
 
-    
+/* 平行分量, 确保 r 已经归一化 */
+ivec3 ivec3parallel(const ivec3 *l, const ivec3 *r) {
+    ireal projection = ivec3dot (l, r);
+    return ivec3multipy(r, projection);
+}
+
+/* 垂直分量, 确保 r 已经归一化 */
+ivec3 ivec3perpendicular(const ivec3 *l, const ivec3 *r) {
+    ivec3 p = ivec3parallel(l, r);
+    return ivec3subtract(l, &p);
+}
 
 /* 判断矩形包含关系 */
-int irectcontains(irect *con, irect *r) {
+int irectcontains(const irect *con, const irect *r) {
 	icheckret(con, iino);
 	icheckret(r, iiok);
 
@@ -390,7 +454,7 @@ int irectcontains(irect *con, irect *r) {
 }
 
 /* 判断矩形与点的包含关系 */
-int irectcontainspoint(irect *con, ipos *p) {
+int irectcontainspoint(const irect *con, const ipos *p) {
 	icheckret(con, iino);
 	icheckret(p, iiok);
 
@@ -404,7 +468,7 @@ int irectcontainspoint(irect *con, ipos *p) {
 }
 
 /* 矩形与圆是否相交 */
-int irectintersect(irect *con, icircle *c) {
+int irectintersect(const irect *con, const icircle *c) {
     icheckret(con, iino);
     icheckret(c, iiok);
     
@@ -433,7 +497,7 @@ int irectintersect(irect *con, icircle *c) {
 }
 
 /* 圆形相交: iiok, iino */
-int icircleintersect(icircle *con, icircle *c) {
+int icircleintersect(const icircle *con, const icircle *c) {
 	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(c, iiok);
@@ -448,7 +512,7 @@ int icircleintersect(icircle *con, icircle *c) {
 }
 
 /* 圆形包含: iiok, iino */
-int icirclecontains(icircle *con, icircle *c) {
+int icirclecontains(const icircle *con, const icircle *c) {
 	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(c, iiok);
@@ -463,7 +527,7 @@ int icirclecontains(icircle *con, icircle *c) {
 }
 
 /* 圆形包含: iiok, iino */
-int icirclecontainspoint(icircle *con, ipos *p) {
+int icirclecontainspoint(const icircle *con, const ipos *p) {
 	ireal ds = 0.0;
 	icheckret(con, iino);
 	icheckret(p, iiok);
@@ -481,7 +545,7 @@ int icirclecontainspoint(icircle *con, ipos *p) {
 /*	  EnumCircleRelationAContainsB(con包含c), */
 /*	  EnumCircleRelationIntersect(相交), */
 /*	  EnumCircleRelationNoIntersect(相离) */
-int icirclerelation(icircle *con, icircle *c) {
+int icirclerelation(const icircle *con, const icircle *c) {
 	ireal minusds = 0.0;
 	ireal addds = 0.0;
 	ireal ds = 0.0;

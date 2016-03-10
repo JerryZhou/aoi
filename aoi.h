@@ -24,34 +24,6 @@
 #include <windows.h>
 #define snprintf _snprintf
 typedef _int64 int64_t;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-static int gettimeofday(struct timeval *tp, void *tzp)
-{
-        time_t clock;
-        struct tm tm; 
-        SYSTEMTIME wtm;
-
-        GetLocalTime(&wtm);
-        tm.tm_year = wtm.wYear - 1900;
-        tm.tm_mon = wtm.wMonth - 1;
-        tm.tm_mday = wtm.wDay;
-        tm.tm_hour = wtm.wHour;
-        tm.tm_min = wtm.wMinute;
-        tm.tm_sec = wtm.wSecond;
-        tm.tm_isdst = -1; 
-        clock = mktime(&tm);
-        tp->tv_sec = clock;
-        tp->tv_usec = wtm.wMilliseconds * 1000;
-
-        return 0;
-}
-#ifdef __cplusplus
-}
-#endif
-
 #else
 #include <stdbool.h>
 #include <inttypes.h>
@@ -125,7 +97,7 @@ typedef struct ipos {
 }ipos;
     
 /* 计算距离的平方 */
-ireal idistancepow2(ipos *p, ipos *t);
+ireal idistancepow2(const ipos *p, const ipos *t);
     
 /*************************************************************/
 /* ivec2                                                     */
@@ -144,33 +116,38 @@ typedef struct ivec2 {
 }ivec2;
 
 /* 两点相减得到向量 */
-ivec2 ivec2subtractpoint(ipos *p0, ipos *p1);
+ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1);
 
 /* 加法*/
-ivec2 ivec2add(ivec2 *l, ivec2 *r);
+ivec2 ivec2add(const ivec2 *l, const ivec2 *r);
 
 /* 减法 */
-ivec2 ivec2subtract(ivec2 *l, ivec2 *r);
+ivec2 ivec2subtract(const ivec2 *l, const ivec2 *r);
 
 /* 乘法 */
-ivec2 ivec2multipy(ivec2 *l, ireal a);
+ivec2 ivec2multipy(const ivec2 *l, const ireal a);
 
 /* 点积 */
-ireal ivec2dot(ivec2 *l, ivec2 *r);
+ireal ivec2dot(const ivec2 *l, const ivec2 *r);
 
 /* 乘积 : 二维向量不存在叉积 
- * ivec2 ivec2cross(ivec2 *l, ivec2 *r);
+ * ivec2 ivec2cross(const ivec2 *l, const ivec2 *r);
  * */
 
 /* 长度的平方 */
-ireal ivec2lengthsqr(ivec2 *l);
+ireal ivec2lengthsqr(const ivec2 *l);
 
 /* 长度 */
-ireal ivec2length(ivec2 *l);
+ireal ivec2length(const ivec2 *l);
 
 /* 绝对值 */
-ivec2 ivec2abs(ivec2* l);
+ivec2 ivec2abs(const ivec2* l);
 
+/* 平行分量, 确保 r 已经归一化 */
+ivec2 ivec2parallel(const ivec2 *l, const ivec2 *r); 
+
+/* 垂直分量, 确保 r 已经归一化 */
+ivec2 ivec2perpendicular(const ivec2 *l, const ivec2 *r); 
 
 /*************************************************************/
 /* ivec3                                                     */
@@ -187,31 +164,40 @@ typedef struct ivec3 {
 }ivec3;
 
 /* 两点相减得到向量 */
-// ivec3 ivec3subtractpoint(ipos *p0, ipos *p1);
+// ivec3 ivec3subtractpoint(const ipos *p0, const ipos *p1);
 
 /* 加法*/
-ivec3 ivec3add(ivec3 *l, ivec3 *r);
+ivec3 ivec3add(const ivec3 *l, const ivec3 *r);
 
 /* 减法 */
-ivec3 ivec3subtract(ivec3 *l, ivec3 *r);
+ivec3 ivec3subtract(const ivec3 *l, const ivec3 *r);
 
 /* 乘法 */
-ivec3 ivec3multipy(ivec3 *l, ireal a);
+ivec3 ivec3multipy(const ivec3 *l, const ireal a);
 
 /* 点积 */
-ireal ivec3dot(ivec3 *l, ivec3 *r);
+ireal ivec3dot(const ivec3 *l, const ivec3 *r);
 
 /* 乘积 */ 
-ivec3 ivec3cross(ivec3 *l, ivec3 *r);
+ivec3 ivec3cross(const ivec3 *l, const ivec3 *r);
 
 /* 长度的平方 */
-ireal ivec3lengthsqr(ivec3 *l);
+ireal ivec3lengthsqr(const ivec3 *l);
 
 /* 长度 */
-ireal ivec3length(ivec3 *l);
+ireal ivec3length(const ivec3 *l);
 
 /* 绝对值 */
-ivec3 ivec3abs(ivec3* l);
+ivec3 ivec3abs(const ivec3* l);
+
+/* 归一*/
+ivec3 ivec3normalize(const ivec3 *l);
+
+/* 平行分量, 确保 r 已经归一化 */
+ivec3 ivec3parallel(const ivec3 *l, const ivec3 *r);
+
+/* 垂直分量, 确保 r 已经归一化 */
+ivec3 ivec3perpendicular(const ivec3 *l, const ivec3 *r);
 
     
 /*************************************************************/
@@ -234,9 +220,9 @@ typedef struct irect {
 }irect;
     
 /* 矩形包含: iiok, iino */
-int irectcontains(irect *con, irect *r);
+int irectcontains(const irect *con, const irect *r);
 /* 矩形包含: iiok, iino */
-int irectcontainspoint(irect *con, ipos *p);
+int irectcontainspoint(const irect *con, const ipos *p);
     
 /*************************************************************/
 /* icircle                                                   */
@@ -258,19 +244,19 @@ typedef enum EnumCircleRelation {
 } EnumCircleRelation;
     
 /* 圆形相交: iiok, iino */
-int icircleintersect(icircle *con, icircle *c);
+int icircleintersect(const icircle *con, const icircle *c);
 /* 圆形包含: iiok, iino */
-int icirclecontains(icircle *con, icircle *c);
+int icirclecontains(const icircle *con, const icircle *c);
 /* 圆形包含: iiok, iino */
-int icirclecontainspoint(icircle *con, ipos *p);
+int icirclecontainspoint(const icircle *con, const ipos *p);
 /* 圆形的关系: EnumCircleRelationBContainsA(c包含con), */
 /*    EnumCircleRelationAContainsB(con包含c), */
 /*    EnumCircleRelationIntersect(相交), */
 /*    EnumCircleRelationNoIntersect(相离) */
-int icirclerelation(icircle *con, icircle *c);
+int icirclerelation(const icircle *con, const icircle *c);
     
 /* 矩形与圆是否相交 */
-int irectintersect(irect *con, icircle *c);
+int irectintersect(const irect *con, const icircle *c);
 
 /* 名字的最大长度 */
 #define IMaxNameLength 32
