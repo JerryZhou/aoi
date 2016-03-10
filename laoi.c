@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <lua.h>
-#include <lauxlib.h>
+#include "lua.h"
+#include "lauxlib.h"
 #include "aoi.h"
-
 /*
  * #define ENABLE_LAOI_DEBUG
  */
@@ -384,6 +383,31 @@ static int lua__unit_new(lua_State *L)
 	return 1;
 }
 
+
+static int lua__unit_new_with_radius(lua_State *L)
+{
+    iunit *u = NULL;
+    lua_Number x, y, radius;
+    iid id = (iid)luaL_checknumber(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    lua_rawgeti(L, 2, 1);
+    x = luaL_checknumber(L, -1);
+    
+    lua_rawgeti(L, 2, 2);
+    y = luaL_checknumber(L, -1);
+    
+    lua_rawgeti(L, 2, 3);
+    radius = luaL_checknumber(L, -1);
+    
+    u = imakeunitwithradius(id, (ireal)x, (ireal)y, (ireal)radius);
+    if (u == NULL) {
+        return 0;
+    }
+    LUA_BIND_META(L, iunit, u, AOI_UNIT);
+    DLOG("new unit,id=%lld\n", id);
+    return 1;
+}
+
 static int lua__unit_gc(lua_State *L)
 {
 	iunit * unit = CHECK_AOI_UNIT(L, 1);
@@ -551,6 +575,7 @@ int luaopen_laoi(lua_State* L)
 	luaL_Reg lfuncs[] = {
 		{"new_map", lua__map_new},
 		{"new_unit", lua__unit_new},
+        {"new_unit_with_radius", lua__unit_new_with_radius},
 		{"imeta_cache_clear", lua__meta_cache_clear},
 		{"getcurmicro", lua__getcurmicro},
 		{"getcurtick", lua__getcurtick},
@@ -574,4 +599,3 @@ int luaopen_laoi(lua_State* L)
 
 	return 1;
 }
-

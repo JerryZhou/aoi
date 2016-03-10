@@ -535,7 +535,10 @@ typedef struct iunit {
 }iunit;
 
 /* 构造一个基本单元 */
-iunit * imakeunit(iid id, ireal x, ireal y); 
+iunit * imakeunit(iid id, ireal x, ireal y);
+    
+/* 重载：构造一个基本单元 */
+iunit * imakeunitwithradius(iid id, ireal x, ireal y, ireal radius);
 
 /* 释放一个基本单元 */
 void ifreeunit(iunit *unit);
