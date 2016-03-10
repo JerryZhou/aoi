@@ -724,6 +724,14 @@ iunit * imakeunit(iid id, ireal x, ireal y) {
 	return unit;
 }
 
+/* 构造一个基本单元 */
+iunit * imakeunitwithradius(iid id, ireal x, ireal y, ireal radius) {
+    iunit *unit = imakeunit(id, x, y);
+    unit->radius = radius;
+    return unit;
+}
+
+
 /* 释放一个基本单元 */
 void ifreeunit(iunit *unit) {
 	irelease(unit);
