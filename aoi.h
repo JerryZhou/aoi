@@ -684,10 +684,11 @@ typedef struct islice {
     
     int begin;
     int end;
+    int capacity;
 }islice;
     
 /* 左闭右开的区间 [begin, end) */
-islice *islicemake(iarray *arr, int begin, int end);
+islice *islicemake(iarray *arr, int begin, int end, int capacity);
     
 /* 左闭右开的区间 [begin, end) */
 islice *islicemakeby(islice *arr, int begin, int end);
@@ -701,21 +702,25 @@ size_t islicelen(const islice *slice);
 /* 容量 */
 size_t islicecapacity(const islice *slice);
     
-/* 附加 */
+/* 附加 
+ * 用法: slice = isliceappend(slice, append);
+ * */
 islice* isliceappend(islice *slice, const islice *append);
     
-/* 增加元素 */
+/* 
+ * 增加元素 
+ * 用法 : slice = isliceadd(slice, i);
+ * */
 islice* isliceadd(islice *slice, const void *value);
-    
-/* 删除 */
-int isliceremove(islice *slice, int index);
     
 /* 设置值*/
 int isliceset(islice *slice, int index, const void *value);
     
 /* 查询 */
-const void* isliceat(islice *slice, int index);
+const void* isliceat(const islice *slice, int index);
     
+/* 辅助宏，获取*/
+#define isliceof(slice, type, i) (((type *)isliceat(slice, i))[0])
 
 /*************************************************************/
 /* irefcache                                                 */
