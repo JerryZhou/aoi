@@ -2298,7 +2298,7 @@ int ifilterrun(imap *map, const ifilter *filter, const iunit *unit) {
 }
 
 /* 距离过滤器 */
-int _entryfilter_circle(imap *map, const ifilter *filter, const iunit* unit) {
+int _ientryfilter_circle(imap *map, const ifilter *filter, const iunit* unit) {
 	icircle ucircle;
 	(void) ucircle;
 	icheckret(unit, iino);
