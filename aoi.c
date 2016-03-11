@@ -56,10 +56,8 @@ static int gettimeofday(struct timeval *tp, void *tzp)
 #define open_log_profile	(0)
 #define open_log_map_construct  (0)
 
-
-
-
 /* 常用的宏 */
+#define imax(a, b) ((a) > (b) ? (a) : (b))
 #define iunused(v) (void)(v)
 #define ilog(...) printf(__VA_ARGS__)
 
@@ -701,19 +699,19 @@ ireflist *ireflistmake() {
 }
 
 /* 获取列表长度 */
-int ireflistlen(ireflist *list) {
+int ireflistlen(const ireflist *list) {
 	icheckret(list, 0);
 	return list->length;
 }
 
 /* 获取第一个节点 */
-irefjoint* ireflistfirst(ireflist *list) {
+irefjoint* ireflistfirst(const ireflist *list) {
 	icheckret(list, NULL);
 	return list->root;
 }
 
 /* 从列表里面查找第一个满足要求的节点 */
-irefjoint* ireflistfind(ireflist *list, iref *value) {
+irefjoint* ireflistfind(const ireflist *list, const iref *value) {
 	irefjoint* joint = ireflistfirst(list);
 	while(joint) {
 		if (joint->value == value) {
@@ -802,6 +800,213 @@ void ireflistfree(ireflist *list) {
 
 	/* 释放list 本身 */
 	iobjfree(list);
+}
+
+/* 释放数组相关的资源 */
+static void _iarray_entry_free(struct iref* ref) {
+    iarray *array = (iarray *)ref;
+
+    iarraytruncate(array, 0);
+    ifree(array->buffer);
+    /*
+    array->buffer = NULL;
+    array->len = 0;
+    array->capacity = 0;
+    array->entry = NULL;
+    array->free = NULL;
+    */
+
+    iobjfree(ref);
+}
+
+/* 建立数组*/
+iarray *iarraymake(size_t capacity, const iarrayentry *entry) {
+	iarray *array = (iarray *)iobjmalloc(iarray);
+    array->capacity = capacity;
+    array->len = 0;
+    array->buffer = (char*)icalloc(capacity, entry->size);
+    array->free = _iarray_entry_free;
+    array->entry = entry;
+    iretain(array);
+    
+    return array;
+}
+
+/* 释放 */
+void iarrayfree(iarray *arr) {
+    irelease(arr);
+}
+
+/* 长度 */
+size_t iarraylen(const iarray *arr) {
+    icheckret(arr, 0);
+    return arr->len;
+}
+
+/* 容量*/
+size_t iarraycapacity(const iarray *arr) {
+    icheckret(arr, 0);
+    return arr->capacity;
+}
+
+/* 查询 */
+#define __arr_i(arr, i) ((void*)((arr)->buffer + (i) * (arr)->entry->size))
+void* iarrayat(iarray *arr, int index) {
+    icheckret(arr, NULL);
+    icheckret(index>=0 && index<arr->len, NULL);
+
+    return  __arr_i(arr, index);
+}
+
+/* 数组内存缓冲区 */
+void* iarraybuffer(iarray *arr) {
+    return arr->buffer;
+}
+
+/* 删除 */
+int iarrayremove(iarray *arr, int index) {
+    int i;
+
+    icheckret(arr, iino);
+    icheckret(index>=0 && index<arr->len, iino);
+    
+    if (!(arr->entry->flag & EnumArrayFlagSimple)) {
+        arr->entry->swap(arr, index, -1);
+    }
+
+    if (arr->entry->flag & EnumArrayFlagKeepOrder) {
+        /* 移除一项就慢慢的移 */
+        for(i=index; i<arr->len-1; ++i) {
+            arr->entry->swap(arr, i, i+1);
+        }
+    } else if (arr->len-1 != index){
+        /* 直接交换最后一项 */
+        arr->entry->swap(arr, index, arr->len-1);
+    }
+    --arr->len;
+    return iiok;
+}
+
+/* NB!! 外部确保变小的容量对象已经被释放了 */
+static size_t _iarray_just_capacity(iarray *arr, size_t newcapacity) {
+    char* newbuffer;
+    newbuffer = irealloc(arr->buffer, newcapacity * arr->entry->size);
+    icheckret(newbuffer, arr->capacity);
+    
+    arr->buffer = newbuffer;
+    arr->capacity = newcapacity;
+    return arr->capacity;
+}
+
+/* 确保 arr->capacity >= capacity , 返回调整后的容量*/
+static size_t _iarray_be_capacity(iarray *arr, size_t capacity) {
+    size_t newcapacity;
+
+    icheckret(arr->capacity < capacity, arr->capacity);
+
+    /* 新的容量 */
+    newcapacity = arr->capacity;
+    do {
+        newcapacity = newcapacity * 2;
+    } while(newcapacity < capacity);
+    
+    return _iarray_just_capacity(arr, newcapacity);
+}
+
+/* 自动缩小容量 */
+static void _iarrayautoshrink(iarray *arr) {
+    size_t suppose = imax(arr->len * 2, 8);
+    if (arr->capacity > suppose) {
+        iarrayshrinkcapacity(arr, suppose);
+    }
+}
+
+/* 增加 */
+int iarrayadd(iarray *arr, void* value) {
+    _iarray_be_capacity(arr, arr->len + 1);
+    icheckret(arr->capacity > arr->len, iino);
+
+    arr->entry->assign(arr, arr->len, value);
+    ++arr->len;
+    return iiok;
+}
+
+/* 清理数组 */
+void iarrayremoveall(iarray *arr) {
+    iarraytruncate(arr, 0);
+}
+
+/* 截断数组 */
+void iarraytruncate(iarray *arr, size_t len) {
+    int i;
+
+    icheck(arr);
+    icheck(arr->len > len);
+    
+    if (arr->entry->flag & EnumArrayFlagSimple) {
+        /* direct set the length*/
+        arr->len = len;
+        /* auto shirk */
+        if (arr->entry->flag & EnumArrayFlagAutoShirk) {
+            _iarrayautoshrink(arr);
+        }
+    } else {
+        /* remove one by one*/
+        for(i=arr->len; i>len; i--) {
+            iarrayremove(arr, i-1);
+        }       
+    }
+}
+
+/* 缩减容量  */
+size_t iarrayshrinkcapacity(iarray *arr, size_t capacity) {
+    icheckret(arr->capacity > capacity, arr->capacity);
+    
+    capacity = imax(arr->len, capacity);
+    return _iarray_just_capacity(arr, capacity);
+}
+
+/* 堆排序 - 堆调整 */
+static void _iarray_heap_shift(iarray *arr,
+                      int ind, int end) {
+    
+    int i = ind;
+    int c = 2 * i + 1;
+    
+    while(c <= end) {
+        if (c +1 <=end && arr->entry->cmp(arr, c, c+1) < 0 ) {
+            c++;
+        }
+        if (arr->entry->cmp(arr, i, c) > 0) {
+            break;
+        } else {
+            arr->entry->swap(arr, i, c);
+            
+            i = c;
+            c = 2*i + 1;
+        }
+    }
+}
+
+/* 堆排序 */
+static void _iarray_sort_heap(iarray *arr,
+                int start, int end) {
+    int i, j;
+    for (i=(end-1)/2; i>=start; i--) {
+        _iarray_heap_shift(arr, i, end);
+    }
+    
+    for (j=start; j<=end; ++j) {
+        arr->entry->swap(arr, start, end-start-j);
+        _iarray_heap_shift(arr, start, end - start - j - 1);
+    }
+}
+
+/* 排序 */
+void iarraysort(iarray *arr) {
+    icheck(arr->len);
+    
+    _iarray_sort_heap(arr, 0, arr->len-1);
 }
 
 /* cache 的 绑定在 ref 上的回调 */
@@ -1097,7 +1302,7 @@ static const ipos2i __node_offset[] =
 };
 
 /* 加入新的节点 */
-inode* addnodetoparent(imap *map, inode *node, int codei, int idx, icode *code) {
+static inode* _iaddnodetoparent(imap *map, inode *node, int codei, int idx, const icode *code) {
 	/* 创造一个节点 */
 	inode* child = icache(map->nodecache, inode);
 	child->level = idx+1;
@@ -1192,7 +1397,7 @@ void ineighborsdel(inode *node, inode *to) {
 }
 
 /* 移除节点 */
-int removenodefromparent(imap *map, inode *node) {
+static int _iremovenodefromparent(imap *map, inode *node) {
 	icheckret(node, iino);
 	icheckret(node->parent, iino);
 
@@ -1275,7 +1480,7 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
 #endif
 		if (child == NULL) {
 			/* 创造一个节点 */
-			child = addnodetoparent(map, node, codei, idx, &unit->code);
+			child = _iaddnodetoparent(map, node, codei, idx, &unit->code);
 		}
 
 		ok = imapaddunitto(map, child, unit, ++idx);
@@ -1343,14 +1548,14 @@ int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop
 				&& node->childcnt == 0 /* 孩子节点为0 */
 				&& node->unitcnt == 0 /* 上面绑定的单元节点也为空 */
 		   ) { 
-			removenodefromparent(map, node);
+			_iremovenodefromparent(map, node);
 		}
 	}
 	return ok;
 }
 
 /* 根据坐标生成code */
-int imapgencode(imap *map, ipos *pos, icode *code) {
+int imapgencode(const imap *map, const ipos *pos, icode *code) {
 	/* init value */
 	int i = 0;
 	int iw, ih;
@@ -1406,7 +1611,7 @@ int imapgencode(imap *map, ipos *pos, icode *code) {
 }
 
 /* 从编码生成坐标 */
-int imapgenpos(imap *map, ipos *pos, icode *code) {
+int imapgenpos(imap *map, ipos *pos, const icode *code) {
 	/* init value */
 	int i = 0;
 	/* ipos np = {.x=0, .y=0}; */
@@ -1523,7 +1728,7 @@ static int gmoveforbid[][4] = {
 };
 
 /* 移动编码 */
-int imapmovecode(imap *map, icode *code, int way) {
+int imapmovecode(const imap *map, icode *code, int way) {
 	int moves = 0;
 	size_t level = 0;
 	size_t when = 0;
@@ -1570,7 +1775,7 @@ int imapmovecode(imap *map, icode *code, int way) {
 }
 
 /* 生成一张地图数据 */
-imap *imapmake(ipos *pos, isize *size, int divide) {
+imap *imapmake(const ipos *pos, const isize *size, int divide) {
 	imap *map = iobjmalloc(imap);
 	map->pos = *pos;
 	map->size = *size;
@@ -1582,7 +1787,7 @@ imap *imapmake(ipos *pos, isize *size, int divide) {
 }
 
 /* 打印地图状态信息 */
-void imapstatedesc(imap *map, int require,
+void imapstatedesc(const imap *map, int require,
 		const char* intag, const char *inhead) {
 	/* 设置Tag */
 	const char* tag = "[IMAP-State]";
@@ -1755,7 +1960,7 @@ int imapremoveunit(imap *map, iunit *unit) {
 
 
 /* 从地图上检索节点 */
-inode *imapgetnode(imap *map, icode *code, int level, int find) {
+inode *imapgetnode(const imap *map, const icode *code, int level, int find) {
 	int64_t micro = __Micros;
 	inode *node = NULL;
 
@@ -1789,7 +1994,7 @@ inode *imapgetnode(imap *map, icode *code, int level, int find) {
 
 /* 刷新更新时间点 */
 #if open_node_utick
-void imaprefreshutick(inode *node, int64_t utick) {
+static void _imaprefreshutick(inode *node, int64_t utick) {
 	icheck(node);
 	while (node) {
 		node->utick = utick;
@@ -1830,7 +2035,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 		/* 如果需要支持utick 依然需要更新所有父级节点的utick */
 		/* 获取影响的顶级节,  更新父亲节点影响节点的utick点 */
 #if open_node_utick
-		imaprefreshutick(unit->node, igetnextmicro());
+		_imaprefreshutick(unit->node, igetnextmicro());
 #endif
 		return iiok;
 	}
@@ -1853,7 +2058,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 		/* 获取影响的顶级节点 */
 		/* 更新父亲节点影响节点的utick */
 #if open_node_utick
-		imaprefreshutick(unit->node, igetnextmicro());
+		_imaprefreshutick(unit->node, igetnextmicro());
 #endif
 		return iiok;
 	}
@@ -1878,7 +2083,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 		codei = unit->code.code[offset]-'A';
 		addimpact = impact->childs[codei];
 		if (!addimpact) {
-			addimpact = addnodetoparent(map, impact, codei, impact->level, &code);
+			addimpact = _iaddnodetoparent(map, impact, codei, impact->level, &code);
 		}
 
 		ok = imapaddunitto(map, addimpact, unit, addimpact->level);
@@ -1891,7 +2096,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 	/* 更新父亲节点影响节点的utick */
 #if open_node_utick
 	if (utick) {
-		imaprefreshutick(impact, utick);
+        _imaprefreshutick(impact, utick);
 	}
 #endif
 	iplog(__Since(micro), "[MAP-Unit] Update  Unit(%lld) To (%s, %.3f, %.3f)\n",
@@ -1901,7 +2106,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 }
 
 /* 更新一个单元的附加信息到地图数据上：现阶段就只更新了单元的半径信息 */
-void imaprefreshunit(imap *map, iunit *unit) {
+void imaprefreshunit(imap *map, const iunit *unit) {
 	iunused(map);
 	iunused(unit);
 
@@ -1936,7 +2141,7 @@ void imapsetblock(imap *map, int x, int y, int state) {
 }
 
 /* 获取块的状态 */
-int imapgetblock(imap *map, int x, int y) {
+int imapgetblock(const imap *map, int x, int y) {
 	int cur = x * map->divide + y;
 	int idx = cur / 8;
 	int offset = cur & 8;
@@ -1944,7 +2149,7 @@ int imapgetblock(imap *map, int x, int y) {
 }
 
 /* 对一个数字做Hash:Redis */
-void ihash(int64_t *hash, int64_t v) {
+static void _ihash(int64_t *hash, int64_t v) {
 	*hash += v;
 	/* For the hashing step we use Tomas Wang's 64 bit integer hash. */
 	*hash = (~*hash) + (*hash << 21); /* hash = (hash << 21) - hash - 1; */
@@ -1959,35 +2164,34 @@ void ihash(int64_t *hash, int64_t v) {
 #define __realint(r) ((int64_t)(r*10000000))
 
 /* 默认的过滤器指纹计算方法 */
-int64_t _entryfilterchecksumdefault(imap *map, struct ifilter *d) {
+static int64_t _entryfilterchecksumdefault(imap *map, const struct ifilter *d) {
 	int64_t hash = 0;
 
 	/* circle */
-	ihash(&hash, __realint(d->s.u.circle.pos.x));
-	ihash(&hash, __realint(d->s.u.circle.pos.y));
-	ihash(&hash, __realint(d->s.u.circle.radius));
+	_ihash(&hash, __realint(d->s.u.circle.pos.x));
+	_ihash(&hash, __realint(d->s.u.circle.pos.y));
+	_ihash(&hash, __realint(d->s.u.circle.radius));
 
 	/* rect */
-	ihash(&hash, __realint(d->s.u.rect.pos.x));
-	ihash(&hash, __realint(d->s.u.rect.pos.y));
-	ihash(&hash, __realint(d->s.u.rect.size.w));
-	ihash(&hash, __realint(d->s.u.rect.size.h));
+	_ihash(&hash, __realint(d->s.u.rect.pos.x));
+	_ihash(&hash, __realint(d->s.u.rect.pos.y));
+	_ihash(&hash, __realint(d->s.u.rect.size.w));
+	_ihash(&hash, __realint(d->s.u.rect.size.h));
 
 	/* id */
-	ihash(&hash, d->s.u.id);
+	_ihash(&hash, d->s.u.id);
 
 	/* code */
-	ihash(&hash, *(int64_t *)(d->s.u.code.code));
-	ihash(&hash, *(int64_t *)(d->s.u.code.code + sizeof(int64_t)));
-	ihash(&hash, *(int64_t *)(d->s.u.code.code + sizeof(int64_t) * 2));
-	ihash(&hash, *(int64_t *)(d->s.u.code.code + sizeof(int64_t) * 3));
+	_ihash(&hash, *(int64_t *)(d->s.u.code.code));
+	_ihash(&hash, *(int64_t *)(d->s.u.code.code + sizeof(int64_t)));
+	_ihash(&hash, *(int64_t *)(d->s.u.code.code + sizeof(int64_t) * 2));
+	_ihash(&hash, *(int64_t *)(d->s.u.code.code + sizeof(int64_t) * 3));
 
 	return hash;
 }
 
 /* 指纹识别 */
-int64_t ifilterchecksum(imap *map, ifilter *d)
-{
+int64_t ifilterchecksum(imap *map, const ifilter *d) {
 	/* 依赖 IMaxDivide */
 	int64_t hash = 0;
 	irefjoint *sub;
@@ -1998,7 +2202,7 @@ int64_t ifilterchecksum(imap *map, ifilter *d)
 	if (d->s.list) {
 		sub = ireflistfirst(d->s.list);
 		while (sub) {
-			ihash(&hash, ifilterchecksum(map, icast(ifilter, sub->value)));
+			_ihash(&hash, ifilterchecksum(map, icast(ifilter, sub->value)));
 			sub = sub->next;
 		}
 	}
@@ -2007,7 +2211,7 @@ int64_t ifilterchecksum(imap *map, ifilter *d)
 }
 
 /* 过滤器的析构入口 */
-void __ifilterfreeentry(iref *ref) {
+static void __ifilterfreeentry(iref *ref) {
 	ifilter *filter = icast(ifilter, ref);
 	ireflistfree(filter->s.list);
 	filter->s.list = NULL;
@@ -2053,7 +2257,7 @@ void ifilterclean(ifilter *filter) {
 }
 
 /* 组合过滤器 */
-int _entryfilter_compose(imap *map, ifilter *filter, iunit* unit) {
+static int _ientryfilter_compose(imap *map, const ifilter *filter, const iunit* unit) {
 	irefjoint *joint = NULL;
 	icheckret(unit, iino);
 	icheckret(filter->s.list, iino);
@@ -2076,25 +2280,25 @@ int _entryfilter_compose(imap *map, ifilter *filter, iunit* unit) {
 }
 
 /* 通用过滤器入口 */
-int ifilterrun(imap *map, ifilter *filter, iunit *unit) {
+int ifilterrun(imap *map, const ifilter *filter, const iunit *unit) {
 	int ok = 0;
 	icheckret(filter, iiok);
 
 	ok = iiok;
 	/* 组合过滤模式 */
 	if (filter->s.list) {
-		ok = _entryfilter_compose(map, filter, unit);
+		ok = _ientryfilter_compose(map, filter, unit);
 	}
 	/* 单一过滤模式 */
 	if (ok == iiok && filter->entry &&
-			filter->entry != _entryfilter_compose) {
+			filter->entry != _ientryfilter_compose) {
 		ok = filter->entry(map, filter, unit);
 	}
 	return ok;
 }
 
 /* 距离过滤器 */
-int _entryfilter_circle(imap *map, ifilter *filter, iunit* unit) {
+int _entryfilter_circle(imap *map, const ifilter *filter, const iunit* unit) {
 	icircle ucircle;
 	(void) ucircle;
 	icheckret(unit, iino);
@@ -2131,28 +2335,28 @@ int _entryfilter_circle(imap *map, ifilter *filter, iunit* unit) {
 }
 
 /* 圆形过滤器的指纹信息 */
-int64_t _entryfilechecksum_circile(imap *map, ifilter *d) {
+static int64_t _ientryfilechecksum_circile(imap *map, const ifilter *d) {
 	int64_t hash = 0;
 
 	/* circle */
-	ihash(&hash, __realint(d->s.u.circle.pos.x));
-	ihash(&hash, __realint(d->s.u.circle.pos.y));
-	ihash(&hash, __realint(d->s.u.circle.radius));
+	_ihash(&hash, __realint(d->s.u.circle.pos.x));
+	_ihash(&hash, __realint(d->s.u.circle.pos.y));
+	_ihash(&hash, __realint(d->s.u.circle.radius));
 	return hash;
 }
 
 /* range过滤器 */
-ifilter *ifiltermake_circle(ipos *pos, ireal range) {
+ifilter *ifiltermake_circle(const ipos *pos, ireal range) {
 	ifilter *filter = ifiltermake();
 	filter->s.u.circle.pos = *pos;
 	filter->s.u.circle.radius = range;
-	filter->entry = _entryfilter_circle;
-	filter->entrychecksum = _entryfilechecksum_circile;
+	filter->entry = _ientryfilter_circle;
+	filter->entrychecksum = _ientryfilechecksum_circile;
 	return filter;
 }
 
 /* 距离过滤器 */
-int _entryfilter_rect(imap *map, ifilter *filter, iunit* unit) {
+static int _ientryfilter_rect(imap *map, const ifilter *filter, const iunit* unit) {
 	icircle c;
 	(void) c;
 	icheckret(unit, iino);
@@ -2193,30 +2397,30 @@ int _entryfilter_rect(imap *map, ifilter *filter, iunit* unit) {
 }
 
 /* 方向过滤器的指纹信息 */
-int64_t _entryfilterchecksum_rect(imap *map, ifilter *d) {
+static int64_t _ientryfilterchecksum_rect(imap *map, const ifilter *d) {
 	int64_t hash = 0;
 
 	/* rect */
-	ihash(&hash, __realint(d->s.u.rect.pos.x));
-	ihash(&hash, __realint(d->s.u.rect.pos.y));
-	ihash(&hash, __realint(d->s.u.rect.size.w));
-	ihash(&hash, __realint(d->s.u.rect.size.h));
+	_ihash(&hash, __realint(d->s.u.rect.pos.x));
+	_ihash(&hash, __realint(d->s.u.rect.pos.y));
+	_ihash(&hash, __realint(d->s.u.rect.size.w));
+	_ihash(&hash, __realint(d->s.u.rect.size.h));
 
 	return hash;
 }
 
 /* 矩形过滤器 */
-ifilter *ifiltermake_rect(ipos *pos, isize *size) {
+ifilter *ifiltermake_rect(const ipos *pos, const isize *size) {
 	ifilter *filter = ifiltermake();
 	filter->s.u.rect.pos = *pos;
 	filter->s.u.rect.size = *size;
-	filter->entry = _entryfilter_rect;
-	filter->entrychecksum = _entryfilterchecksum_rect;
+	filter->entry = _ientryfilter_rect;
+	filter->entrychecksum = _ientryfilterchecksum_rect;
 	return filter;
 }
 
 /* 搜集树上的所有单元 */
-void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ireflist *snap) {
+void imapcollectunit(imap *map, const inode *node, ireflist *list, const ifilter *filter, ireflist *snap) {
 	int i;
 	iunit* unit = NULL;
 	icheck(node);
@@ -2238,7 +2442,7 @@ void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ir
 		_state_add(unit->state, EnumUnitStateSearching);
 	}
 
-	/* 便利所有的孩子节点 */
+	/* 遍历所有的孩子节点 */
 	icheck(node->childs);
 	icheck(node->childcnt);
 	for (i=0; i<IMaxChilds; ++i) {
@@ -2247,7 +2451,7 @@ void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ir
 }
 
 /* 清除搜索结果标记 */
-void imapcollectcleanunittag(imap *map, ireflist *list) {
+void imapcollectcleanunittag(imap *map, const ireflist *list) {
 	irefjoint *joint = ireflistfirst(list);
 	while (joint) {
 		iunit *u = icast(iunit, joint->value);
@@ -2257,7 +2461,7 @@ void imapcollectcleanunittag(imap *map, ireflist *list) {
 }
 
 /* 清除搜索结果标记 */
-void imapcollectcleannodetag(imap *map, ireflist *list) {
+void imapcollectcleannodetag(imap *map, const ireflist *list) {
 	irefjoint *joint = ireflistfirst(list);
 	while (joint) {
 		inode *u = icast(inode, joint->value);
@@ -2343,7 +2547,7 @@ void isearchresultrefreshfromsnap(imap *map, isearchresult *result) {
 }
 
 /* 计算节点列表的指纹信息 */
-int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_t *maxutick) {
+int64_t imapchecksumnodelist(imap *map, const ireflist *list, int64_t *maxtick, int64_t *maxutick) {
 	int64_t hash = 0;
 #if open_node_utick
 	int64_t utick = 0;
@@ -2361,7 +2565,7 @@ int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_
 			tick = node->tick;
 		}
 
-		ihash(&hash, node->tick);
+		_ihash(&hash, node->tick);
 		joint = joint->next;
 	}
 	if (maxtick) {
@@ -2378,7 +2582,7 @@ int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_
 }
 
 /* 搜索 */
-void imapsearchfromnode(imap *map, inode *node,
+void imapsearchfromnode(imap *map, const inode *node,
 		isearchresult* result, ireflist *innodes) {
 	irefjoint *joint;
 	inode *searchnode;
@@ -2388,7 +2592,7 @@ void imapsearchfromnode(imap *map, inode *node,
 	int64_t maxutick;
 	int64_t checksum = ifilterchecksum(map, result->filter);
 	int64_t nodechecksum = imapchecksumnodelist(map, innodes, &maxtick, &maxutick);
-	ihash(&checksum, nodechecksum);
+	_ihash(&checksum, nodechecksum);
 	if (result->checksum == checksum) {
 		/* 上下文的环境一样，而且没有人动过或者变更过相关属性，直接返回了 */
 		/* 如果不支持 utick , 则maxutick == 0 */
@@ -2431,7 +2635,7 @@ void imapsearchfromnode(imap *map, inode *node,
 }
 
 /* 收集包含指定矩形区域的节点(最多4个) */
-void imapsearchcollectnode(imap *map, irect *rect, ireflist *collects) {
+void imapsearchcollectnode(imap *map, const irect *rect, ireflist *collects) {
 	icode code;
 	ipos tpos;
 	inode *tnode = NULL;
@@ -2482,7 +2686,7 @@ void imapsearchcollectnode(imap *map, irect *rect, ireflist *collects) {
 }
 
 /* 计算给定节点列表里面节点的最小公共父节点 */
-inode *imapcaculatesameparent(imap *map, ireflist *collects) {
+inode *imapcaculatesameparent(imap *map, const ireflist *collects) {
 	inode *node;
 	inode *tnode;
 	irefjoint *joint;
@@ -2510,7 +2714,7 @@ inode *imapcaculatesameparent(imap *map, ireflist *collects) {
 }
 
 /* 从地图上搜寻单元 irect{pos, size{rangew, rangeh}}, 并附加条件 filter */
-void imapsearchfromrectwithfilter(imap *map, irect *rect,
+void imapsearchfromrectwithfilter(imap *map, const irect *rect,
 		isearchresult *result, ifilter *filter) {
 	int64_t micro = __Micros;
 	inode *node;
@@ -2559,7 +2763,7 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 }
 
 /* 从地图上搜寻单元, 并附加条件 filter */
-void imapsearchfrompos(imap *map, ipos *pos,
+void imapsearchfrompos(imap *map, const ipos *pos,
 		isearchresult *result, ireal range) {
 	ireal rectrange = range + iiradius * map->maxradius; /* 扩大搜索区域，以支持单元的半径搜索 */
 	/* 目标矩形 */
@@ -2602,7 +2806,7 @@ void imapsearchfromunit(imap *map, iunit *unit,
   └── [AAD] tick: 1432538485114727, utick: 1432538485114727 units(3)
   */
 /* 打印节点 */
-void _aoi_printnode(int require, inode *node, const char* prefix, int tail) {
+void _aoi_printnode(int require, const inode *node, const char* prefix, int tail) {
 	/* 前面 */
 	ilog("%s", prefix);
 	if (tail) {

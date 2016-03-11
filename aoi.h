@@ -87,6 +87,7 @@ typedef double ireal;
 /* 编号 */
 typedef int64_t iid;
 
+
 /*************************************************************/
 /* ipos                                                      */
 /*************************************************************/
@@ -276,6 +277,7 @@ typedef struct iname {
 
 /* 内存操作 */
 #define icalloc(n, size) calloc(n, size)
+#define irealloc(ptr, size) realloc(ptr, size)
 #define ifree(p) free(p)
     
 #if iimeta  /* if iimeta */
@@ -347,7 +349,9 @@ int imetaregister(const char* name, int size, int capacity);
     __ideclaremeta(irefcache, 0),             \
     __ideclaremeta(ifilter, 2000),            \
     __ideclaremeta(isearchresult, 0),         \
-    __ideclaremeta(irefautoreleasepool, 0)
+    __ideclaremeta(irefautoreleasepool, 0),   \
+    __ideclaremeta(iarray, 0),                \
+    __ideclaremeta(islice, 0)
 
 /* 定义所有元信息索引 */
 typedef enum EnumMetaTypeIndex {
@@ -501,13 +505,14 @@ typedef struct ireflist {
 ireflist *ireflistmake();
 
 /* 获取列表长度 */
-int ireflistlen(ireflist *list); 
+int ireflistlen(const ireflist *list); 
 
 /* 获取第一个节点 */
-irefjoint* ireflistfirst(ireflist *list); 
+irefjoint* ireflistfirst(const ireflist *list); 
 
 /* 从列表里面查找第一个满足要求的节点 */
-irefjoint* ireflistfind(ireflist *list, iref *value); 
+irefjoint* ireflistfind(const ireflist *list, 
+        const iref *value); 
 
 /* 往列表增加节点: 前置节点 */
 irefjoint* ireflistaddjoint(ireflist *list, irefjoint * joint); 
@@ -527,6 +532,114 @@ void ireflistremoveall(ireflist *list);
 
 /* 释放列表 */
 void ireflistfree(ireflist *list); 
+
+/*************************************************************/
+/* iarray                                                    */
+/*************************************************************/
+struct iarray;
+struct islice;
+
+/*如果是需要跟 arr_invalid 进行交换就是置0 */
+#define arr_invalid -1
+
+/* 交换两个对象 */
+typedef void (*iarray_entry_swap)(struct iarray *arr,
+        int i, int j);
+/* 比较两个对象 */
+typedef int (*iarray_entry_cmp)(struct iarray *arr,
+        int i, int j);
+/* 赋值 */
+typedef void (*iarray_entry_assign)(struct iarray *arr,
+        int i, void *value);
+
+/* 数组常用控制项 */
+typedef enum EnumArrayFlag {
+    EnumArrayFlagNone = 0,
+
+    /* 移除元素的时候，
+     * 不移动数组，直接从后面替补
+     * */
+    EnumArrayFlagKeepOrder = 1<<1,  /*是否保持有序*/
+    
+    /*是否是简单数组, 
+     *单元不需要通过swap或者assign去释放
+     *truncate 的时候可以直接设置长度
+     **/
+    EnumArrayFlagSimple = 1<<2,
+    
+    /*自动缩减存储容量*/
+    EnumArrayFlagAutoShirk = 1<<3,
+}EnumArrayFlag;
+
+/* 数组基础属性, 类型元信息 */
+typedef struct iarrayentry{
+    int flag;
+    size_t size;
+    iarray_entry_swap swap;
+    iarray_entry_cmp cmp;
+    iarray_entry_assign assign;
+} iarrayentry;
+
+/* 通用数组 */
+typedef struct iarray {
+    irefdeclare;
+
+    size_t capacity;
+    size_t len;
+    char *buffer;
+
+    // 每一种数组类型都需要定义这个
+    const iarrayentry* entry;
+}iarray;
+
+/* 建立数组*/
+iarray *iarraymake(size_t capacity, const iarrayentry *entry);
+
+/* 释放 */
+void iarrayfree(iarray *arr);
+
+/* 长度 */
+size_t iarraylen(const iarray *arr);
+
+/* 容量*/
+size_t iarraycapacity(const iarray *arr);
+
+/* 查询 */
+void* iarrayat(iarray *arr, int index);
+
+/* 数组内存缓冲区 */
+void* iarraybuffer(iarray *arr);
+
+/* 删除 */
+int iarrayremove(iarray *arr, int index);
+
+/* 增加 */
+int iarrayadd(iarray *arr, void* value);
+
+/* 清理数组 */
+void iarrayremoveall(iarray *arr);
+
+/* 截断数组 */
+void iarraytruncate(iarray *arr, size_t len);
+
+/* 缩减容量 */
+size_t iarrayshrinkcapacity(iarray *arr, size_t capacity);
+
+/* 排序 */
+void iarraysort(iarray *arr);
+
+/*************************************************************/
+/* islice                                                    */
+/*************************************************************/
+
+typedef struct islice {
+    irefdeclare;
+
+    iarray *array;
+    int begin;
+    int end;
+}islice;
+
 
 /*************************************************************/
 /* irefcache                                                 */
@@ -820,7 +933,7 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx);
 int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop);
 
 /* 根据坐标生成code */
-int imapgencode(imap *map, ipos *pos, icode *code);
+int imapgencode(const imap *map, const ipos *pos, icode *code);
 
 /* 计算Code */
 /* y */
@@ -835,7 +948,7 @@ int imapgencode(imap *map, ipos *pos, icode *code);
 /* -----------> x 
  */
 /* 从编码生成坐标 */
-int imapgenpos(imap *map, ipos *pos, icode *code);
+int imapgenpos(imap *map, ipos *pos, const icode *code);
    
 /* 编码移动方向 */
 typedef enum EnumCodeMove {
@@ -846,11 +959,11 @@ typedef enum EnumCodeMove {
     EnumCodeMoveMax
 }EnumCodeMove;
 /* 移动编码: 失败返回0, 成功返回移动的步骤数 */
-int imapmovecode(imap *map, icode *code, int way);
+int imapmovecode(const imap *map, icode *code, int way);
 
 /* 建议 divide 不要大于 10*/
 /* 生成一张地图数据 */
-imap *imapmake(ipos *pos, isize *size, int divide);
+imap *imapmake(const ipos *pos, const isize *size, int divide);
 
 /* 地图信息类型 */
 typedef enum EenumMapState {
@@ -872,7 +985,7 @@ typedef enum EenumMapState {
 }EenumMapState;
 
 /* 打印地图状态信息 */
-void imapstatedesc(imap *map, int require,
+void imapstatedesc(const imap *map, int require,
                    const char* intag, const char *inhead);
 
 /* 释放地图数据，释放附加在地图上的单元数据 */
@@ -888,17 +1001,24 @@ int imapaddunit(imap *map, iunit *unit);
 int imapremoveunit(imap *map, iunit *unit);
 
 /* 从地图上检索节点 */
-inode *imapgetnode(imap *map, icode *code, int level, int find); 
+inode *imapgetnode(const imap *map, const icode *code, 
+        int level, int find); 
 
 /* 更新一个单元在地图上的数据 */
 int imapupdateunit(imap *map, iunit *unit);
     
 /* 更新一个单元的附加信息到地图数据上：现阶段就只更新了单元的半径信息 */
 /* 如果单元改变了半径，需要调用这个函数刷新一下，才回立刻生效，不然等单位移动单元格后才生效*/
-void imaprefreshunit(imap *map, iunit *unit);
+void imaprefreshunit(imap *map, const iunit *unit);
     
+/* 设置块的状态 */
+void imapsetblock(imap *map, int x, int y, int state);
+
 /* 加载位图阻挡信息 sizeof(blocks) == (divide*divide + 7 ) / 8 */
 void imaploadblocks(imap *map, char* blocks);
+
+/* 获取块的状态 */
+int imapgetblock(const imap *map, int x, int y);
     
 /*************************************************************/
 /* ifilter                                                   */
@@ -913,10 +1033,10 @@ typedef enum EnumFilterBehavior {
 }EnumFilterBehavior;
 
 /* 过滤器入口函数 */
-typedef int (*ientryfilter)(imap *map, struct ifilter *filter, iunit* unit);
+typedef int (*ientryfilter)(imap *map, const struct ifilter *filter, const iunit* unit);
 
 /* 过滤器指纹入口 */
-typedef int64_t (*ientryfilterchecksum)(imap *map, struct ifilter *filter);
+typedef int64_t (*ientryfilterchecksum)(imap *map, const struct ifilter *filter);
 
 /* 过滤器上下文 */
 typedef struct ifilter {
@@ -943,7 +1063,7 @@ typedef struct ifilter {
 }ifilter;
 
 /* 指纹识别 */
-int64_t ifilterchecksum(imap *map, ifilter *d);
+int64_t ifilterchecksum(imap *map, const ifilter *d);
 
 /* 释放节点o */
 void ifilterfree(ifilter *filter); 
@@ -961,20 +1081,20 @@ void ifilterremove(ifilter *filter, ifilter *sub);
 void ifilterclean(ifilter *filter);
 
 /* 通用过滤器入口 */
-int ifilterrun(imap *map, ifilter *filter, iunit *unit); 
+int ifilterrun(imap *map, const ifilter *filter, const iunit *unit); 
 
 /* circle 过滤器 */
-ifilter *ifiltermake_circle(ipos *pos, ireal range);
+ifilter *ifiltermake_circle(const ipos *pos, ireal range);
     
 /* rect 过滤器 */
-ifilter *ifiltermake_rect(ipos *pos, isize *size);
+ifilter *ifiltermake_rect(const ipos *pos, const isize *size);
 
 /* 搜集树上的所有单元, 调用完后必须调用imapcollectcleanunittag */
-void imapcollectunit(imap *map, inode *node, ireflist *list, ifilter *filter, ireflist *snap);
+void imapcollectunit(imap *map, const inode *node, ireflist *list, const ifilter *filter, ireflist *snap);
 /* 清除搜索结果标记 */
-void imapcollectcleanunittag(imap *map, ireflist *list);
+void imapcollectcleanunittag(imap *map, const ireflist *list);
 /* 清除搜索结果标记 */
-void imapcollectcleannodetag(imap *map, ireflist *list);
+void imapcollectcleannodetag(imap *map, const ireflist *list);
 
 /*************************************************************/
 /* isearchresult                                             */
@@ -1014,17 +1134,17 @@ void isearchresultclean(isearchresult *result);
 void isearchresultrefreshfromsnap(imap *map, isearchresult *result);
     
 /* 收集包含指定矩形局域的节点(最多4个) */
-void imapsearchcollectnode(imap *map, irect *rect, ireflist *list);
+void imapsearchcollectnode(imap *map, const irect *rect, ireflist *list);
     
 /* 计算给定节点列表里面节点的最小公共父节点 */
-inode *imapcaculatesameparent(imap *map, ireflist *collects);
+inode *imapcaculatesameparent(imap *map, const ireflist *collects);
     
 /* 从地图上搜寻单元 irect{pos, size{rangew, rangeh}}, 并附加条件 filter */
-void imapsearchfromrectwithfilter(imap *map, irect *rect,
+void imapsearchfromrectwithfilter(imap *map, const irect *rect,
                                   isearchresult *result, ifilter *filter);
     
 /* 从地图上搜寻单元 */
-void imapsearchfrompos(imap *map, ipos *pos,
+void imapsearchfrompos(imap *map, const ipos *pos,
                        isearchresult *result, ireal range);
     
 /* 从地图上搜寻单元, 不包括自己 */
@@ -1032,11 +1152,11 @@ void imapsearchfromunit(imap *map, iunit *unit,
                         isearchresult *result, ireal range);
     
 /* 搜索: 最后的搜索都会经过这里 */
-void imapsearchfromnode(imap *map, inode *node,
+void imapsearchfromnode(imap *map, const inode *node,
                         isearchresult* result, ireflist *innodes);
     
 /* 计算节点列表的指纹信息 */
-int64_t imapchecksumnodelist(imap *map, ireflist *list, int64_t *maxtick, int64_t *maxutick);
+int64_t imapchecksumnodelist(imap *map, const ireflist *list, int64_t *maxtick, int64_t *maxutick);
 
 /*************************************************************/
 /* print helper                                              */
@@ -1054,7 +1174,7 @@ typedef enum EnumNodePrintState {
 /* 打印地图 */
 void _aoi_print(imap *map, int require);
 /* 打印指定的节点*/
-void _aoi_printnode(int require, inode *node, const char* prefix, int tail);
+void _aoi_printnode(int require, const inode *node, const char* prefix, int tail);
     
 /* 测试 */
 int _aoi_test(int argc, char** argv);
