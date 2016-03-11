@@ -282,161 +282,161 @@ ireal idistancepow2(const ipos *p, const ipos *t) {
 
 /* 两点相减得到向量 */
 ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1) {
-    ivec2 vec;
-    vec.x = p1->x - p0->x;
-    vec.y = p1->y - p0->y;
-    return vec;
+	ivec2 vec;
+	vec.u.v.x = p1->x - p0->x;
+	vec.u.v.y = p1->y - p0->y;
+	return vec;
 }
 
 /* 点积 */
 ireal ivec2dot(const ivec2 *l, const ivec2 *r) {
-    icheckret(l, 0);
-    icheckret(r, 0);
-    return l->x * r->x + l->y + r->y;
+	icheckret(l, 0);
+	icheckret(r, 0);
+	return l->u.v.x * r->u.v.x + l->u.v.y + r->u.v.y;
 }
 
 /* 减法 */
 ivec2 ivec2subtract(const ivec2 *l, const ivec2 *r) {
-    ivec2 vec;
-    vec.x = r->x - l->x;
-    vec.y = r->y - l->y;
-    return vec;
+	ivec2 vec;
+	vec.u.v.x = r->u.v.x - l->u.v.x;
+	vec.u.v.y = r->u.v.y - l->u.v.y;
+	return vec;
 }
 
 /* 加法*/
 ivec2 ivec2add(const ivec2 *l, const ivec2 *r) {
-    ivec2 vec;
-    vec.x = r->x + l->x;
-    vec.y = r->y + l->y;
-    return vec;
+	ivec2 vec;
+	vec.u.v.x = r->u.v.x + l->u.v.x;
+	vec.u.v.y = r->u.v.y + l->u.v.y;
+	return vec;
 }
 
 /* 乘法 */
 ivec2 ivec2multipy(const ivec2 *l, const ireal a) {
-    ivec2 vec;
-    vec.x = l->x * a;
-    vec.y = l->y * a;
-    return vec;
+	ivec2 vec;
+	vec.u.v.x = l->u.v.x * a;
+	vec.u.v.y = l->u.v.y * a;
+	return vec;
 }
 
 /* 绝对值 */
 ivec2 ivec2abs(const ivec2* l) {
-    ivec2 vec;
-    vec.x = fabs(l->x);
-    vec.y = fabs(l->y);
-    return vec;
+	ivec2 vec;
+	vec.u.v.x = fabs(l->u.v.x);
+	vec.u.v.y = fabs(l->u.v.y);
+	return vec;
 }
 
 /* 归一*/
 ivec2 ivec2normalize(const ivec2 *l) {
-    ireal len = ivec2length(l);
-    return len > 0 ? ivec2multipy(l, 1.0/len) : *l;
+	ireal len = ivec2length(l);
+	return len > 0 ? ivec2multipy(l, 1.0/len) : *l;
 }
 
 /* 长度的平方 */
 ireal ivec2lengthsqr(const ivec2 *l) {
-    return ivec2dot(l, l);
+	return ivec2dot(l, l);
 }
 
 /* 长度 */
 ireal ivec2length(const ivec2 *l) {
-    return sqrtf(ivec2dot(l, l));
+	return sqrtf(ivec2dot(l, l));
 }
 
 /* 平行分量, 确保 r 已经归一化 */
 ivec2 ivec2parallel(const ivec2 *l, const ivec2 *r) {
-    ireal projection = ivec2dot (l, r);
-    return ivec2multipy(r, projection);
+	ireal projection = ivec2dot (l, r);
+	return ivec2multipy(r, projection);
 }
 
 /* 垂直分量, 确保 r 已经归一化 */
 ivec2 ivec2perpendicular(const ivec2 *l, const ivec2 *r) {
-    ivec2 p = ivec2parallel(l, r);
-    return ivec2subtract(l, &p);
+	ivec2 p = ivec2parallel(l, r);
+	return ivec2subtract(l, &p);
 }
 
 /* 加法*/
 ivec3 ivec3add(const ivec3 *l, const ivec3 *r) {
-    ivec3 vec;
-    vec.x = r->x + l->x;
-    vec.y = r->y + l->y;
-    vec.z = r->z + l->z;
-    return vec;
+	ivec3 vec;
+	vec.u.v.x = r->u.v.x + l->u.v.x;
+	vec.u.v.y = r->u.v.y + l->u.v.y;
+	vec.u.v.z = r->u.v.z + l->u.v.z;
+	return vec;
 }
 
 /* 减法 */
 ivec3 ivec3subtract(const ivec3 *l, const ivec3 *r) {
-    ivec3 vec;
-    vec.x = r->x - l->x;
-    vec.y = r->y - l->y;
-    vec.z = r->z - l->z;
-    return vec;
+	ivec3 vec;
+	vec.u.v.x = r->u.v.x - l->u.v.x;
+	vec.u.v.y = r->u.v.y - l->u.v.y;
+	vec.u.v.z = r->u.v.z - l->u.v.z;
+	return vec;
 }
 
 /* 乘法 */
 ivec3 ivec3multipy(const ivec3 *l, ireal a) {
-    ivec3 vec;
-    vec.x = l->x * a;
-    vec.y = l->y * a;
-    vec.z = l->z * a;
-    return vec;
+	ivec3 vec;
+	vec.u.v.x = l->u.v.x * a;
+	vec.u.v.y = l->u.v.y * a;
+	vec.u.v.z = l->u.v.z * a;
+	return vec;
 }
 
 /* 点积 
  * https://en.wikipedia.org/wiki/Dot_product
  * */
 ireal ivec3dot(const ivec3 *l, const ivec3 *r) {
-    return l->x * r->x 
-        + l->y * r->y
-        + l->z * r->z;
+	return l->u.v.x * r->u.v.x
+		+ l->u.v.y * r->u.v.y
+		+ l->u.v.z * r->u.v.z;
 }
 
 /* 乘积 
  * https://en.wikipedia.org/wiki/Cross_product
  * */ 
 ivec3 ivec3cross(const ivec3 *l, const ivec3 *r) {
-    ivec3 vec;
-    vec.x = l->y * r->z - l->z * r->y;
-    vec.y = l->z * r->x - l->x * r->z;
-    vec.z = l->x * r->y - l->y * r->x;
-    return vec;
+	ivec3 vec;
+	vec.u.v.x = l->u.v.y * r->u.v.z - l->u.v.z * r->u.v.y;
+	vec.u.v.y = l->u.v.z * r->u.v.x - l->u.v.x * r->u.v.z;
+	vec.u.v.z = l->u.v.x * r->u.v.y - l->u.v.y * r->u.v.x;
+	return vec;
 }
 
 /* 长度的平方 */
 ireal ivec3lengthsqr(const ivec3 *l) {
-    return ivec3dot(l, l);
+	return ivec3dot(l, l);
 }
 
 /* 长度 */
 ireal ivec3length(const ivec3 *l) {
-    return sqrtf(ivec3dot(l, l));
+	return sqrtf(ivec3dot(l, l));
 }
 
 /* 绝对值 */
 ivec3 ivec3abs(const ivec3* l) {
-    ivec3 vec;
-    vec.x = fabs(l->x);
-    vec.y = fabs(l->y);
-    vec.z = fabs(l->z);
-    return vec;
+	ivec3 vec;
+	vec.u.v.x = fabs(l->u.v.x);
+	vec.u.v.y = fabs(l->u.v.y);
+	vec.u.v.z = fabs(l->u.v.z);
+	return vec;
 }
 
 /* 归一*/
 ivec3 ivec3normalize(const ivec3 *l) {
-    ireal len = ivec3length(l);
-    return len > 0 ? ivec3multipy(l, 1.0/len) : *l;
+	ireal len = ivec3length(l);
+	return len > 0 ? ivec3multipy(l, 1.0/len) : *l;
 }
 
 /* 平行分量, 确保 r 已经归一化 */
 ivec3 ivec3parallel(const ivec3 *l, const ivec3 *r) {
-    ireal projection = ivec3dot (l, r);
-    return ivec3multipy(r, projection);
+	ireal projection = ivec3dot (l, r);
+	return ivec3multipy(r, projection);
 }
 
 /* 垂直分量, 确保 r 已经归一化 */
 ivec3 ivec3perpendicular(const ivec3 *l, const ivec3 *r) {
-    ivec3 p = ivec3parallel(l, r);
-    return ivec3subtract(l, &p);
+	ivec3 p = ivec3parallel(l, r);
+	return ivec3subtract(l, &p);
 }
 
 /* 判断矩形包含关系 */
@@ -469,31 +469,34 @@ int irectcontainspoint(const irect *con, const ipos *p) {
 
 /* 矩形与圆是否相交 */
 int irectintersect(const irect *con, const icircle *c) {
-    icheckret(con, iino);
-    icheckret(c, iiok);
-    
-    /* https://www.zhihu.com/question/24251545  */
-    /*
-     bool BoxCircleIntersect(Vector2 c, Vector2 h, Vector2 p, float r) {
-     Vector2 v = abs(p - c);    // 第1步：转换至第1象限
-     Vector2 u = max(v - h, 0); // 第2步：求圆心至矩形的最短距离矢量
-     return dot(u, u) <= r * r; // 第3步：长度平方与半径平方比较
-     }
-     
-     作者：Milo Yip
-     链接：https://www.zhihu.com/question/24251545/answer/27184960
-     */
-    /*
-     ivec2 c = {con->pos.x, con->pos.y};
-     ivec2 p = {c->pos.x, c->pos.y};
-     */
-    ivec2 v = {{{fabs(c->pos.x - con->pos.x), fabs(c->pos.y - con->pos.y)}}};
-    ivec2 h = {{{con->size.w, con->size.h}}};
-    ivec2 u =  {{{v.x - h.x, v.y - h.y}}};
-    u.x = u.x < 0 ? 0 : u.x;
-    u.y = u.y < 0 ? 0 : u.y;
-    
-    return u.x * u.x + u.y * u.y < c->radius * c->radius;
+	icheckret(con, iino);
+	icheckret(c, iiok);
+
+	/* https://www.zhihu.com/question/24251545  */
+	/*
+	 * bool BoxCircleIntersect(Vector2 c, Vector2 h, Vector2 p, float r) {
+	 * Vector2 v = abs(p - c);    // 第1步：转换至第1象限
+	 * Vector2 u = max(v - h, 0); // 第2步：求圆心至矩形的最短距离矢量
+	 * return dot(u, u) <= r * r; // 第3步：长度平方与半径平方比较
+	 * }
+
+	 * 作者：Milo Yip
+	 * 链接：https://www.zhihu.com/question/24251545/answer/27184960
+	 */
+
+	/*
+	 * ivec2 c = {con->pos.x, con->pos.y};
+	 * ivec2 p = {c->pos.x, c->pos.y};
+	 */
+	do {
+		ivec2 v = {{{fabs(c->pos.x - con->pos.x), fabs(c->pos.y - con->pos.y)}}};
+		ivec2 h = {{{con->size.w, con->size.h}}};
+		ivec2 u =  {{{v.u.v.x - h.u.v.x, v.u.v.y - h.u.v.y}}};
+		u.u.v.x = u.u.v.x < 0 ? 0 : u.u.v.x;
+		u.u.v.y = u.u.v.y < 0 ? 0 : u.u.v.y;
+		return u.u.v.x * u.u.v.x + u.u.v.y * u.u.v.y < c->radius * c->radius;
+	} while(0);
+	return 0;
 }
 
 /* 圆形相交: iiok, iino */
@@ -917,9 +920,9 @@ iunit * imakeunit(iid id, ireal x, ireal y) {
 
 /* 构造一个基本单元 */
 iunit * imakeunitwithradius(iid id, ireal x, ireal y, ireal radius) {
-    iunit *unit = imakeunit(id, x, y);
-    unit->radius = radius;
-    return unit;
+	iunit *unit = imakeunit(id, x, y);
+	unit->radius = radius;
+	return unit;
 }
 
 
@@ -954,8 +957,8 @@ static void _ientryfree_node(struct iref* ref) {
 inode * imakenode(){
 	inode *node = iobjmalloc(inode);
 	iretain(node);
-    /* 析构函数在这里  */
-    node->free = _ientryfree_node;
+	/* 析构函数在这里  */
+	node->free = _ientryfree_node;
 
 	return node;
 }
@@ -968,10 +971,10 @@ void ifreenode(inode *node){
 /* 释放节点包含的单元 */
 void ifreenodekeeper(inode *node) {
 	ifreeunitlist(node->units);
-    node->units = NULL;
-    node->unitcnt = 0;
-    
-    ineighborsclean(node);
+	node->units = NULL;
+	node->unitcnt = 0;
+
+	ineighborsclean(node);
 	ifreenode(node);
 }
 
@@ -1026,9 +1029,9 @@ int justaddunit(imap *map, inode *node, iunit *unit){
 	list_add_front(node->units, unit);
 	/* add ref as we save units in list */
 	iretain(unit);
-    
-    /* refresh the radius to map */
-    imaprefreshunit(map, unit);
+
+	/* refresh the radius to map */
+	imaprefreshunit(map, unit);
 
 	return iiok;
 }
@@ -1083,14 +1086,14 @@ int justremoveunit(imap *map, inode *node, iunit *unit) {
 
 /* 节点坐标生成 */
 typedef struct ipos2i {
-        int x, y;
+	int x, y;
 }ipos2i;
 static const ipos2i __node_offset[] =
 {
-    {0, 0},
-    {0, 1},
-    {1, 0},
-    {1, 1}
+	{0, 0},
+	{0, 1},
+	{1, 0},
+	{1, 1}
 };
 
 /* 加入新的节点 */
@@ -1100,14 +1103,14 @@ inode* addnodetoparent(imap *map, inode *node, int codei, int idx, icode *code) 
 	child->level = idx+1;
 	child->parent = node;
 	child->codei = codei;
-    /* y */
-    /* ^ */
-    /* | ((0, 1) , (1, 1)) */
-    /* | ((0, 0) , (1, 0)) */
-    /* -----------> x
-     */
-    child->x = node->x * 2 + __node_offset[codei].x;
-    child->y = node->y * 2 + __node_offset[codei].y;
+	/* y */
+	/* ^ */
+	/* | ((0, 1) , (1, 1)) */
+	/* | ((0, 0) , (1, 0)) */
+	/* -----------> x
+	*/
+	child->x = node->x * 2 + __node_offset[codei].x;
+	child->y = node->y * 2 + __node_offset[codei].y;
 
 	/* 生成节点编码信息 */
 	copycode(child->code, (*code), child->level);
@@ -1139,29 +1142,29 @@ inode* addnodetoparent(imap *map, inode *node, int codei, int idx, icode *code) 
  * 把节点从 有向图里面拿出来， 没有任何一个节点可以到他
  */
 void ineighborsclean(inode *node) {
-    irefjoint* joint = NULL;
-    inode *neighbor = NULL;
-    icheck(node);
-    
-    /* disconnect to others */
-    joint = ireflistfirst(node->neighbors_walkable);
-    while (joint) {
-        neighbor = icast(inode, joint->value);
-        ireflistremove(neighbor->neighbors, irefcast(node));
-        joint = joint->next;
-    }
-    ireflistfree(node->neighbors_walkable);
-    node->neighbors_walkable = NULL;
-    
-    /* disconnect from others */
-    joint = ireflistfirst(node->neighbors);
-    while (joint) {
-        neighbor = icast(inode, joint->value);
-        ireflistremove(neighbor->neighbors_walkable, irefcast(node));
-        joint = joint->next;
-    }
-    ireflistfree(node->neighbors);
-    node->neighbors = NULL;
+	irefjoint* joint = NULL;
+	inode *neighbor = NULL;
+	icheck(node);
+
+	/* disconnect to others */
+	joint = ireflistfirst(node->neighbors_walkable);
+	while (joint) {
+		neighbor = icast(inode, joint->value);
+		ireflistremove(neighbor->neighbors, irefcast(node));
+		joint = joint->next;
+	}
+	ireflistfree(node->neighbors_walkable);
+	node->neighbors_walkable = NULL;
+
+	/* disconnect from others */
+	joint = ireflistfirst(node->neighbors);
+	while (joint) {
+		neighbor = icast(inode, joint->value);
+		ireflistremove(neighbor->neighbors_walkable, irefcast(node));
+		joint = joint->next;
+	}
+	ireflistfree(node->neighbors);
+	node->neighbors = NULL;
 }
 
 /* 
@@ -1213,11 +1216,11 @@ int removenodefromparent(imap *map, inode *node) {
 	node->codei = 0;
 	node->code.code[0] = 0;
 	node->tick = 0;
-    node->x = node->y = 0;
-    node->state = 0;
-    
-    /* 清理 邻居 节点*/
-    ineighborsclean(node);
+	node->x = node->y = 0;
+	node->state = 0;
+
+	/* 清理 邻居 节点*/
+	ineighborsclean(node);
 
 #if open_node_utick
 	node->utick = 0;
@@ -1255,10 +1258,10 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
 		/* log it */
 #if open_log_unit_add
 		_print_unit_add(node, unit, idx);
-        /* log it */
+		/* log it */
 #endif
 
-        ++map->state.unitcount;
+		++map->state.unitcount;
 		ok = iiok;
 	}else {
 		/* 定位节点所在的子节点 */
@@ -1506,16 +1509,16 @@ static int gmoveposstep[][2] = {
 /*	边缘部分是不能进行某些操作的 */
 static int gmoveforbid[][4] = {
 	/* EnumCodeMoveLeft */
-    /* C && D Can Be Moved Left*/
+	/* C && D Can Be Moved Left*/
 	{'A',	'B',	0,		0},
 	/* EnumCodeMoveRight */
-    /* A && B Can Be Moved Right*/
+	/* A && B Can Be Moved Right*/
 	{0,		0,		'C',	'D'},
 	/* EnumCodeMoveDown */
-    /* B && D Can Be Moved Down*/
+	/* B && D Can Be Moved Down*/
 	{'A',	0,		'C',	0}, 
 	/* EnumCodeMoveUp */
-    /* A && C Can Be Moved Up*/
+	/* A && C Can Be Moved Up*/
 	{0,		'B',	0,		'D'},
 };
 
@@ -1643,13 +1646,13 @@ void imapfree(imap *map) {
 	while (map->leaf) {
 		justremoveleaf(map, map->leaf);
 	}
-    /* 释放节点缓冲区 */
+	/* 释放节点缓冲区 */
 	irefcachefree(map->nodecache);
-    
-    /* 释放阻挡位图 */
-    if (map->blocks) {
-        ifree(map->blocks);
-    }
+
+	/* 释放阻挡位图 */
+	if (map->blocks) {
+		ifree(map->blocks);
+	}
 
 	/* 释放地图本身 */
 	iobjfree(map);
@@ -1836,7 +1839,7 @@ int imapupdateunit(imap *map, iunit *unit) {
 	/* 生成新的编码 */
 	imapgencode(map, &unit->pos, &code);
 	/* 获取新编码的变更顶层节点位置, 并赋值新的编码 */
-    /* 这里只能从0级别开始，code 可能后部分一致，但是前部不一致 */
+	/* 这里只能从0级别开始，code 可能后部分一致，但是前部不一致 */
 	for(offset=0; offset<map->divide; ++offset) {
 		if (code.code[offset] != unit->code.code[offset]) {
 			break;
@@ -1899,45 +1902,45 @@ int imapupdateunit(imap *map, iunit *unit) {
 
 /* 更新一个单元的附加信息到地图数据上：现阶段就只更新了单元的半径信息 */
 void imaprefreshunit(imap *map, iunit *unit) {
-    iunused(map);
-    iunused(unit);
-    
+	iunused(map);
+	iunused(unit);
+
 #if iiradius
-    if (map->maxradius < unit->radius) {
-        map->maxradius = unit->radius;
-    }
+	if (map->maxradius < unit->radius) {
+		map->maxradius = unit->radius;
+	}
 #endif
 }
 
 /* 建议 divide 不要大于 10*/
 /* 加载位图阻挡信息 sizeof(blocks) == (divide*divide + 7 ) / 8 */
 void imaploadblocks(imap *map, char* blocks) {
-    /* new memory */
-    size_t size = (map->divide*map->divide + 7)/8;
-    if (map->blocks == NULL) {
-        map->blocks = icalloc(1, size);
-    }
-    memcpy(map->blocks, blocks, size);
+	/* new memory */
+	size_t size = (map->divide*map->divide + 7)/8;
+	if (map->blocks == NULL) {
+		map->blocks = icalloc(1, size);
+	}
+	memcpy(map->blocks, blocks, size);
 }
 
 /* 设置块的状态 */
 void imapsetblock(imap *map, int x, int y, int state) {
-    int cur = x * map->divide + y;
-    int idx = cur / 8;
-    int offset = cur & 8;
-    if (state == iiok) {
-        map->blocks[idx] = map->blocks[idx] | (1<<offset);
-    } else {
-        map->blocks[idx] = map->blocks[idx] & (~(1<<offset));
-    }
+	int cur = x * map->divide + y;
+	int idx = cur / 8;
+	int offset = cur & 8;
+	if (state == iiok) {
+		map->blocks[idx] = map->blocks[idx] | (1<<offset);
+	} else {
+		map->blocks[idx] = map->blocks[idx] & (~(1<<offset));
+	}
 }
 
 /* 获取块的状态 */
 int imapgetblock(imap *map, int x, int y) {
-    int cur = x * map->divide + y;
-    int idx = cur / 8;
-    int offset = cur & 8;
-    return (map->blocks[idx] >> offset) & 0x01;
+	int cur = x * map->divide + y;
+	int idx = cur / 8;
+	int offset = cur & 8;
+	return (map->blocks[idx] >> offset) & 0x01;
 }
 
 /* 对一个数字做Hash:Redis */
@@ -1983,7 +1986,8 @@ int64_t _entryfilterchecksumdefault(imap *map, struct ifilter *d) {
 }
 
 /* 指纹识别 */
-int64_t ifilterchecksum(imap *map, ifilter *d) {
+int64_t ifilterchecksum(imap *map, ifilter *d)
+{
 	/* 依赖 IMaxDivide */
 	int64_t hash = 0;
 	irefjoint *sub;
@@ -2091,33 +2095,36 @@ int ifilterrun(imap *map, ifilter *filter, iunit *unit) {
 
 /* 距离过滤器 */
 int _entryfilter_circle(imap *map, ifilter *filter, iunit* unit) {
+	icircle ucircle;
+	(void) ucircle;
 	icheckret(unit, iino);
 	iunused(map);
 
 #if iiradius
-    icircle ucircle = {unit->pos, unit->radius};
-    /* 距离超出范围 */
-    if (icircleintersect(&filter->s.u.circle, &ucircle) == iino) {
+	ucircle.pos = unit->pos;
+	ucircle.radius = unit->radius;
+	/* 距离超出范围 */
+	if (icircleintersect(&filter->s.u.circle, &ucircle) == iino) {
 #if open_log_filter
-        ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f : %.3f) - (%.3f, %.3f: %.3f)\n",
-             unit->id,
-             unit->pos.x, unit->pos.y,
-             unit->radius,
-             filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
+		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f : %.3f) - (%.3f, %.3f: %.3f)\n",
+				unit->id,
+				unit->pos.x, unit->pos.y,
+				unit->radius,
+				filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
 #endif /* open_log_filter */
-        return iino;
-    }
+		return iino;
+	}
 #else
-    /* 距离超出范围 */
-    if (icirclecontainspoint(&filter->s.u.circle, &unit->pos) == iino) {
+	/* 距离超出范围 */
+	if (icirclecontainspoint(&filter->s.u.circle, &unit->pos) == iino) {
 #if open_log_filter
-        ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) - (%.3f, %.3f: %.3f)\n",
-             unit->id,
-             unit->pos.x, unit->pos.y,
-             filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
+		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f) - (%.3f, %.3f: %.3f)\n",
+				unit->id,
+				unit->pos.x, unit->pos.y,
+				filter->s.u.circle.pos.x, filter->s.u.circle.pos.y, filter->s.u.circle.radis);
 #endif /* open_log_filter */
-        return iino;
-    }
+		return iino;
+	}
 #endif /* iiradius */
 
 	return iiok;
@@ -2146,16 +2153,19 @@ ifilter *ifiltermake_circle(ipos *pos, ireal range) {
 
 /* 距离过滤器 */
 int _entryfilter_rect(imap *map, ifilter *filter, iunit* unit) {
+	icircle c;
+	(void) c;
 	icheckret(unit, iino);
 	iunused(map);
 
 #if iiradius
 	/* 距离超出范围 */
-    icircle c = {unit->pos, unit->radius};
+	c.pos = unit->pos;
+	c.radius = unit->radius;
 	if (irectintersect(&filter->s.u.rect, &c) == iino) {
 #if open_log_filter
 		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f: %.3f)"
-                " Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
+				" Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
 				unit->id,
 				unit->pos.x, unit->pos.y, unit->radius,
 				filter->s.u.rect.pos.x, filter->s.u.rect.pos.y,
@@ -2169,7 +2179,7 @@ int _entryfilter_rect(imap *map, ifilter *filter, iunit* unit) {
 	if (irectcontainspoint(&filter->s.u.rect, &unit->pos) == iino) {
 #if open_log_filter
 		ilog("[MAP-Filter] NO : Unit: %lld (%.3f, %.3f)"
-                " Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
+				" Not In Rect (%.3f, %.3f:%.3f, %.3f) \n",
 				unit->id,
 				unit->pos.x, unit->pos.y,
 				filter->s.u.rect.pos.x, filter->s.u.rect.pos.y,
@@ -2427,13 +2437,12 @@ void imapsearchcollectnode(imap *map, irect *rect, ireflist *collects) {
 	inode *tnode = NULL;
 	int i;
 	int level = map->divide;
-    int step;
-    /*
-     *^
-     *|(1)(2)
-     *|(0)(3)
-     *|__________>
-     */
+	/*
+	 *^
+	 *|(1)(2)
+	 *|(0)(3)
+	 *|__________>
+	 */
 	ireal offsets[] = {rect->pos.x, rect->pos.y,
 		rect->pos.x, rect->pos.y + rect->size.h,
 		rect->pos.x + rect->size.w, rect->pos.y + rect->size.h,
@@ -2459,7 +2468,7 @@ void imapsearchcollectnode(imap *map, irect *rect, ireflist *collects) {
 			continue;
 		}
 
-        /* TODO: can use the imapmovecode to optimaze*/
+		/* TODO: can use the imapmovecode to optimaze*/
 		imapgencode(map, &tpos, &code);
 		tnode = imapgetnode(map, &code, level, EnumFindBehaviorAccurate);
 		if (tnode && !_state_is(tnode->state, EnumNodeStateSearching)) {
@@ -2552,7 +2561,7 @@ void imapsearchfromrectwithfilter(imap *map, irect *rect,
 /* 从地图上搜寻单元, 并附加条件 filter */
 void imapsearchfrompos(imap *map, ipos *pos,
 		isearchresult *result, ireal range) {
-    ireal rectrange = range + iiradius * map->maxradius; /* 扩大搜索区域，以支持单元的半径搜索 */
+	ireal rectrange = range + iiradius * map->maxradius; /* 扩大搜索区域，以支持单元的半径搜索 */
 	/* 目标矩形 */
 	/*irect rect = {.pos={.x=pos->x-rectrange, .y=pos->y-rectrange}, .size={.w=2*rectrange, .h=2*rectrange}};*/
 	irect rect = {{pos->x-rectrange, pos->y-rectrange}, {2*rectrange, 2*rectrange}};
@@ -2758,4 +2767,3 @@ int _aoi_test(int argc, char** argv) {
 	imapfree(map);
 	return 0;
 }
-

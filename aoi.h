@@ -111,8 +111,8 @@ typedef struct ivec2 {
         ireal values[2];
         struct {
             ireal x, y;
-        };
-    };
+        } v;
+    } u;
 }ivec2;
 
 /* 两点相减得到向量 */
@@ -159,8 +159,8 @@ typedef struct ivec3 {
         ireal values[3];
         struct {
             ireal x, y, z;
-        };
-    };
+        }v;
+    }u;
 }ivec3;
 
 /* 两点相减得到向量 */
