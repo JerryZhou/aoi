@@ -58,6 +58,7 @@ static int gettimeofday(struct timeval *tp, void *tzp)
 
 /* 常用的宏 */
 #define imax(a, b) ((a) > (b) ? (a) : (b))
+#define imin(a, b) ((a) < (b) ? (a) : (b))
 #define iunused(v) (void)(v)
 #define ilog(...) printf(__VA_ARGS__)
 
@@ -1278,6 +1279,87 @@ static const iarrayentry _arr_entry_iref = {
 /* 内置的引用数组 */
 iarray* iarraymakeiref(size_t capacity) {
     return iarraymake(capacity, &_arr_entry_iref);
+}
+
+/*************************************************************/
+/* islice                                                    */
+/*************************************************************/
+
+/* free slice and slice-array */
+static void _islice_entry_free(iref *ref) {
+    islice *slice = (islice*)ref;
+    irelease(slice->array);
+    iobjfree(slice);
+}
+
+/* 左闭右开的区间 [begin, end) */
+islice *islicemake(iarray *arr, int begin, int end) {
+    islice* slice;
+    icheckret(arr, NULL);
+    
+    slice = iobjmalloc(islice);
+    slice->free = _islice_entry_free;
+    slice->begin = begin;
+    slice->end = imin(end, arr->len);
+    slice->array = arr;
+    iretain(arr);
+    iretain(slice);
+    return slice;
+}
+
+/* 左闭右开的区间 [begin, end) */
+islice *islicemakeby(islice *sli, int begin, int end) {
+    icheckret(sli, NULL);
+    return islicemake(sli->array, sli->begin + begin, sli->begin + end);
+}
+
+/* 释放 */
+void islicefree(islice *slice) {
+    irelease(slice);
+}
+
+/* 长度 */
+size_t islicelen(const islice *slice) {
+    icheckret(slice, 0);
+    icheckret(slice->end > slice->begin, 0);
+    return slice->end - slice->begin;
+}
+
+/* 容量 */
+size_t islicecapacity(const islice *slice) {
+    icheckret(slice, 0);
+    icheckret(slice->array, 0);
+    icheckret(slice->array->capacity > slice->begin, 0);
+    return slice->array->capacity - slice->begin;
+}
+
+/* 附加 TODO: */
+islice* isliceappend(islice *slice, const islice *append) {
+    return NULL;
+}
+
+/* 增加元素 TODO: */
+islice* isliceadd(islice *slice, const void *value) {
+    return NULL;
+}
+
+/* 删除 */
+int isliceremove(islice *slice, int index) {
+    icheckret(slice, iino);
+    icheckret(slice->array, iino);
+    return iarrayremove(slice->array, slice->begin + index);
+}
+
+/* 设置值*/
+int isliceset(islice *slice, int index, const void *value) {
+    icheckret(slice, iino);
+    icheckret(slice->array, iino);
+    return iarrayset(slice->array, slice->begin + index, value);
+}
+
+/* 查询 */
+const void* isliceat(islice *slice, int index) {
+    return iarrayat(slice->array, slice->begin+index);
 }
 
 /* cache 的 绑定在 ref 上的回调 */

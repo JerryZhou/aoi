@@ -673,14 +673,49 @@ iarray* iarraymakeiref(size_t capacity);
 /* islice                                                    */
 /*************************************************************/
 
+/*
+ * 与 slice 搭配的是 array
+ * array 是固定容量的数组，容量不变
+ */
 typedef struct islice {
     irefdeclare;
 
     iarray *array;
+    
     int begin;
     int end;
 }islice;
+    
+/* 左闭右开的区间 [begin, end) */
+islice *islicemake(iarray *arr, int begin, int end);
+    
+/* 左闭右开的区间 [begin, end) */
+islice *islicemakeby(islice *arr, int begin, int end);
+    
+/* 释放 */
+void islicefree(islice *slice);
 
+/* 长度 */
+size_t islicelen(const islice *slice);
+    
+/* 容量 */
+size_t islicecapacity(const islice *slice);
+    
+/* 附加 */
+islice* isliceappend(islice *slice, const islice *append);
+    
+/* 增加元素 */
+islice* isliceadd(islice *slice, const void *value);
+    
+/* 删除 */
+int isliceremove(islice *slice, int index);
+    
+/* 设置值*/
+int isliceset(islice *slice, int index, const void *value);
+    
+/* 查询 */
+const void* isliceat(islice *slice, int index);
+    
 
 /*************************************************************/
 /* irefcache                                                 */
