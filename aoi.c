@@ -983,7 +983,7 @@ int iarrayinsert(iarray *arr, int index, const void *value, int nums) {
             }    
         }
     }
-    // assign it
+    /* assign it */
     arr->entry->assign(arr, index, value, nums);
     arr->len += nums;
     return iiok;
@@ -1099,12 +1099,12 @@ static void _iarray_entry_swap_copy(struct iarray *arr,
     }
     
     if (j == arr_invalid) {
-        // arr_int[i] = 0;
-        // may call assign
+        /* arr_int[i] = 0;
+        may call assign */
         _iarray_entry_assign_copy(arr, i, tmp, 1);
     } else if (i == arr_invalid) {
-        // arr_int[j] = 0;
-        // may call assign
+        /* arr_int[j] = 0;
+        may call assign */
         _iarray_entry_assign_copy(arr, j, tmp, 1);
     } else {
         memmove(tmp, __arr_i(arr, i), arr->entry->size);
@@ -1120,7 +1120,7 @@ static int _iarray_entry_cmp_int(struct iarray *arr,
     return arr_int[i] - arr_int[j];
 }
 
-// 定义int 数组
+/* 定义int 数组 */
 static const iarrayentry _arr_entry_int = {
     EnumArrayFlagAutoShirk |
     EnumArrayFlagSimple |
@@ -1144,7 +1144,7 @@ static int _iarray_entry_cmp_ireal(struct iarray *arr,
     return arrs[i] - arrs[j];
 }
 
-// 定义ireal 数组
+/* 定义ireal 数组 */
 static const iarrayentry _arr_entry_ireal = {
     EnumArrayFlagAutoShirk |
     EnumArrayFlagSimple |
@@ -1168,7 +1168,7 @@ static int _iarray_entry_cmp_int64(struct iarray *arr,
     return arrs[i] - arrs[j];
 }
 
-// 定义int64 数组
+/* 定义int64 数组 */
 static const iarrayentry _arr_entry_int64 = {
     EnumArrayFlagAutoShirk |
     EnumArrayFlagSimple |
@@ -1192,7 +1192,7 @@ static int _iarray_entry_cmp_char(struct iarray *arr,
     return arrs[i] - arrs[j];
 }
 
-// 定义char 数组
+/* 定义char 数组 */
 static const iarrayentry _arr_entry_char = {
     EnumArrayFlagAutoShirk |
     EnumArrayFlagSimple |
@@ -1243,12 +1243,12 @@ static void _iarray_entry_swap_iref(struct iarray *arr,
     iref* tmp;
     iref* *arrs = (iref* *)arr->buffer;
     if (j == arr_invalid) {
-        // arr_int[i] = 0;
-        // may call assign
+        /* arr_int[i] = 0;
+         * may call assign */
         _iarray_entry_assign_iref(arr, i, 0, 1);
     } else if (i == arr_invalid) {
-        // arr_int[j] = 0;
-        // may call assign
+        /* arr_int[j] = 0;
+         * may call assign */
         _iarray_entry_assign_iref(arr, j, 0, 1);
     } else {
         tmp = arrs[i];
