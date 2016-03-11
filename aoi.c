@@ -1296,25 +1296,20 @@ static void _islice_entry_free(iref *ref) {
 islice *islicemake(iarray *arr, int begin, int end, int capacity) {
     islice* slice;
     icheckret(arr, NULL);
-    icheckret(begin>=0 && begin<arr->len, NULL);
     
-    /*容量点不能比end点还低*/
-    begin = imax(0, begin);
-    end = imax(begin, end);
-    if (capacity == 0) {
-        capacity = arr->capacity;
-    } else {
-        capacity = imax(end, capacity);
-    }
+    /*begin = [0, arr->len-1] */
+    begin = imin(imax(0, begin), (int)(arr->len)-1);
+    /*end = [begin, arr->len] */
+    end = imin(imax(begin, end), arr->len);
+    /*capacity = [end, arr->capacity] */
+    capacity = imin(imax(end, capacity), arr->capacity);
     
     slice = iobjmalloc(islice);
     slice->free = _islice_entry_free;
     slice->begin = begin;
-    slice->end = imin(end, arr->len);
-    slice->capacity = imax(capacity, arr->capacity);
+    slice->end = end;
+    slice->capacity = capacity;
     slice->array = arr;
-    /* disable the auto shirk */
-    iarrayunsetflag(arr, EnumArrayFlagAutoShirk);
     
     iretain(arr);
     iretain(slice);
@@ -1324,7 +1319,12 @@ islice *islicemake(iarray *arr, int begin, int end, int capacity) {
 /* 左闭右开的区间 [begin, end) */
 islice *islicemakeby(islice *sli, int begin, int end) {
     icheckret(sli, NULL);
-    return islicemake(sli->array, sli->begin + begin, sli->begin + end, sli->capacity);
+    /* begin = [sli->begin, sli->end-1] */
+    begin = imin(imax(sli->begin, sli->begin + begin), imax(sli->end-1, 0));
+    /* end = [sli->begin, sli->end] */
+    end = imin(imax(sli->begin, sli->begin + end), imax(sli->end, 0));
+    /* real slice */
+    return islicemake(sli->array, begin, end, sli->capacity);
 }
 
 /* 释放 */
@@ -1347,10 +1347,9 @@ size_t islicecapacity(const islice *slice) {
     return slice->capacity - slice->begin;
 }
 
-/* 附加 */
-islice* isliceappend(islice *slice, const islice *append) {
-    
-    int appendcount = islicelen(append);
+/* inner append entry */
+static islice* _islice_append(islice* slice, const void *values, int count) {
+    int appendcount = count;
     int needcapacity = (slice->end+appendcount-1);
     int index = slice->end;
     int indexappend = 0;
@@ -1362,20 +1361,22 @@ islice* isliceappend(islice *slice, const islice *append) {
      * panic(0) if slice->array->entry != append->array->entry
      */
     
+#define __value_i(values, i, size) (const void *)((char*)values + i * size)
+    
     /* if we got enough space*/
     if (needcapacity < slice->capacity) {
         /* set */
         while (index < slice->array->len
                && indexappend < appendcount) {
             iarrayset(slice->array, index,
-                      isliceat(append, indexappend));
+                      __value_i(values, indexappend, slice->array->entry->size));
             ++index;
             ++indexappend;
         }
         /* append */
         if (indexappend < appendcount) {
             iarrayinsert(slice->array, index,
-                         __arr_i(append->array, indexappend+ append->begin),
+                         __value_i(values, indexappend, slice->array->entry->size),
                          appendcount - indexappend);
         }
     } else {
@@ -1396,7 +1397,7 @@ islice* isliceappend(islice *slice, const islice *append) {
         /*copy from old slice*/
         iarrayinsert(newarray, 0, __arr_i(slice->array, slice->begin), islicelen(slice));
         /*add new values*/
-        iarrayinsert(newarray, newarray->len, __arr_i(append->array, append->begin), islicelen(append));
+        iarrayinsert(newarray, newarray->len, values, appendcount);
         /*make new slice*/
         newslice = islicemake(newarray, 0, needcapacity, newcapacity);
         
@@ -1411,48 +1412,14 @@ islice* isliceappend(islice *slice, const islice *append) {
     return slice;
 }
 
+/* 附加 */
+islice* isliceappend(islice *slice, const islice *append) {
+    return _islice_append(slice, __arr_i(append->array, append->begin), islicelen(append));
+}
+
 /* 增加元素 */
 islice* isliceadd(islice *slice, const void *value) {
-    size_t newcapacity;
-    islice *newslice;
-    iarray * newarray;
-    
-    /* still some capacity */
-    if (slice->end < slice->capacity) {
-        /*in array len*/
-        if (slice->end < slice->array->len) {
-            iarrayset(slice->array, slice->end, value);
-        } else {
-            iarrayadd(slice->array, value);
-        }
-        ++slice->end;
-    } else {
-        /* make new array and copy from here */
-        newcapacity = islicecapacity(slice);
-        newcapacity = imax(newcapacity, 4);
-        if (newcapacity < 1000) {
-            newcapacity = (size_t)(newcapacity * 2);
-        } else {
-            newcapacity = (size_t)(newcapacity * 6 / 5);
-        }
-        /*new array*/
-        newarray = iarraymake(newcapacity, slice->array->entry);
-        /*copy from old slice*/
-        iarrayinsert(newarray, 0, __arr_i(slice->array, slice->begin), islicelen(slice));
-        /*add new value*/
-        iarrayadd(newarray, value);
-        /*make new slice*/
-        newslice = islicemake(newarray, 0, slice->end+1, newcapacity);
-        
-        /* free the new array ref*/
-        iarrayfree(newarray);
-        /* free the old slice*/
-        islicefree(slice);
-        
-        /* set slice to return*/
-        slice = newslice;
-    }
-    return slice;
+    return _islice_append(slice, value, 1);
 }
 
 /* 设置值*/

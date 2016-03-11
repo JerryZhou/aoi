@@ -682,6 +682,10 @@ typedef struct islice {
 
     iarray *array;
     
+    /*
+     * len = end - begin
+     * real.capacity = capacity - begin 
+     **/
     int begin;
     int end;
     int capacity;
