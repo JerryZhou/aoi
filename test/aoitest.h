@@ -3037,66 +3037,22 @@ SP_CASE(searching_bench_right, searchpos){
 
 SP_SUIT(iarray);
 
-
-// 基本类型
-typedef union i_arr_basic{
-    int i;
-    void *v;
-    char c;
-    float f;
-    double d;
-}i_arr_basic;
-
-/* 赋值 */
-void _iarray_entry_assign_int(struct iarray *arr,
-                            int i, void *value) {
-    int *arr_int = (int *)arr->buffer;
-    i_arr_basic ab;
-    ab.v = value;
-    arr_int[i] = ab.i;
+static iarray *_iarray_make_int(size_t size) {
+    iarray *arr = iarraymakeint(1);
+    iarrayunsetflag(arr, EnumArrayFlagKeepOrder);
+    return arr;
 }
 
-/* 交换两个对象 */
-void _iarray_entry_swap_int(struct iarray *arr,
-                          int i, int j) {
-    int tmp;
-    int *arr_int = (int *)arr->buffer;
-    if (j == arr_invalid) {
-        // arr_int[i] = 0;
-        // may call assign
-        _iarray_entry_assign_int(arr, i, 0);
-    } else if (i == arr_invalid) {
-        // arr_int[j] = 0;
-        // may call assign
-        _iarray_entry_assign_int(arr, j, 0);
-    } else {
-        tmp = arr_int[i];
-        arr_int[i] = arr_int[j];
-        arr_int[j] = tmp;    
-    }
+static void _iarrayaddint(iarray *arr, int i) {
+    iarrayadd(arr, &i);
 }
-
-/* 比较两个对象 */
-int _iarray_entry_cmp_int(struct iarray *arr,
-                         int i, int j) {
-    int *arr_int = (int *)arr->buffer;
-    return arr_int[i] - arr_int[j];
-}
-
-// 定义int数组
-static iarrayentry entry = {
-    EnumArrayFlagAutoShirk | EnumArrayFlagSimple,
-    sizeof(int),
-    _iarray_entry_swap_int,
-    _iarray_entry_cmp_int,
-    _iarray_entry_assign_int
-};
 
 SP_CASE(iarray, int) {
-    iarray *arr = iarraymake(1, &entry);
-    iarrayadd(arr, (void*)1);
-    iarrayadd(arr, (void*)20000);
-    iarrayadd(arr, (void*)3);
+    iarray *arr = _iarray_make_int(1);
+
+    _iarrayaddint(arr, 1);
+    _iarrayaddint(arr, 20000);
+    _iarrayaddint(arr, 3);
     
     int *values = (int*)arr->buffer;
     printf("%d-%d-%d \n", values[0], values[1], values[2]);
@@ -3108,7 +3064,7 @@ SP_CASE(iarray, int) {
     SP_EQUAL(values[0], 1);
     SP_EQUAL(values[1], 3);
     
-    iarrayadd(arr, (void*)2);
+    _iarrayaddint(arr, 2);
     SP_EQUAL(values[2], 2);
     
     iarraysort(arr);
@@ -3123,58 +3079,57 @@ SP_CASE(iarray, int) {
 }
 
 SP_CASE(iarray, iarraylen) {
-    iarray *arr = iarraymake(1, &entry);
+    iarray *arr = _iarray_make_int(1);
     SP_EQUAL(iarraylen(arr), 0);
     
-    iarrayadd(arr, (void*)1);
+    _iarrayaddint(arr, 1);
     SP_EQUAL(iarraylen(arr), 1);
     
-    iarrayadd(arr, (void*)20000);
+    _iarrayaddint(arr, 20000);
     SP_EQUAL(iarraylen(arr), 2);
     
-    iarrayadd(arr, (void*)3);
+    _iarrayaddint(arr, 3);
     SP_EQUAL(iarraylen(arr), 3);
     
     iarrayfree(arr);
 }
 
 SP_CASE(iarray, iarraycapacity) {
-    iarray *arr = iarraymake(1, &entry);
+    iarray *arr = _iarray_make_int(1);
     SP_EQUAL(iarraycapacity(arr), 1);
     
-    iarrayadd(arr, (void*)1);
+    _iarrayaddint(arr, 1);
     SP_EQUAL(iarraylen(arr), 1);
     SP_EQUAL(iarraycapacity(arr), 1);
     
-    iarrayadd(arr, (void*)20000);
+    _iarrayaddint(arr, 20000);
     SP_EQUAL(iarraylen(arr), 2);
     SP_EQUAL(iarraycapacity(arr), 2);
     
-    iarrayadd(arr, (void*)3);
+    _iarrayaddint(arr, 3);
     SP_EQUAL(iarraylen(arr), 3);
     SP_EQUAL(iarraycapacity(arr), 4);
     
-    iarrayadd(arr, (void*)4);
+    _iarrayaddint(arr, 4);
     SP_EQUAL(iarraylen(arr), 4);
     SP_EQUAL(iarraycapacity(arr), 4);
     
-    iarrayadd(arr, (void*)5);
+    _iarrayaddint(arr, 5);
     SP_EQUAL(iarraylen(arr), 5);
     SP_EQUAL(iarraycapacity(arr), 8);
     
     iarrayfree(arr);
 }
 
-#define iarrayof(arr, type, i) (((type *)iarrayat(arr, i))[0])
 
 SP_CASE(iarray, iarrayat) {
-    iarray *arr = iarraymake(1, &entry);
-    iarrayadd(arr, (void*)0);
-    iarrayadd(arr, (void*)1);
-    iarrayadd(arr, (void*)2);
-    iarrayadd(arr, (void*)3);
-    iarrayadd(arr, (void*)4);
-    iarrayadd(arr, (void*)5);
+    iarray *arr = _iarray_make_int(1);
+    _iarrayaddint(arr, 0);
+    _iarrayaddint(arr, 1);
+    _iarrayaddint(arr, 2);
+    _iarrayaddint(arr, 3);
+    _iarrayaddint(arr, 4);
+    _iarrayaddint(arr, 5);
     
     SP_EQUAL(((int*)iarrayat(arr, 0))[0], 0);
     SP_EQUAL(((int*)iarrayat(arr, 1))[0], 1);
@@ -3189,19 +3144,19 @@ SP_CASE(iarray, iarrayat) {
 }
 
 SP_CASE(iarray, iarraybuffer) {
-    iarray *arr = iarraymake(1, &entry);
+    iarray *arr = _iarray_make_int(1);
     SP_TRUE(iarraybuffer(arr) != NULL);
     iarrayfree(arr);
 }
 
 SP_CASE(iarray, iarrayremove) {
-    iarray *arr = iarraymake(1, &entry);
-    iarrayadd(arr, (void*)0);
-    iarrayadd(arr, (void*)1);
-    iarrayadd(arr, (void*)2);
-    iarrayadd(arr, (void*)3);
-    iarrayadd(arr, (void*)4);
-    iarrayadd(arr, (void*)5);
+    iarray *arr = _iarray_make_int(1);
+    _iarrayaddint(arr, 0);
+    _iarrayaddint(arr, 1);
+    _iarrayaddint(arr, 2);
+    _iarrayaddint(arr, 3);
+    _iarrayaddint(arr, 4);
+    _iarrayaddint(arr, 5);
     
     SP_EQUAL(iarraylen(arr), 6);
     
@@ -3231,10 +3186,10 @@ SP_CASE(iarray, iarrayremove) {
 }
 
 SP_CASE(iarray, iarrayremoveall) {
-    iarray *arr = iarraymake(1, &entry);
-    iarrayadd(arr, (void*)0);
-    iarrayadd(arr, (void*)1);
-    iarrayadd(arr, (void*)2);
+    iarray *arr = _iarray_make_int(1);
+    _iarrayaddint(arr, 0);
+    _iarrayaddint(arr, 1);
+    _iarrayaddint(arr, 2);
     
     SP_EQUAL(iarraylen(arr), 3);
     SP_EQUAL(iarraycapacity(arr), 4);
@@ -3244,9 +3199,7 @@ SP_CASE(iarray, iarrayremoveall) {
     SP_EQUAL(iarraycapacity(arr), 4);
     
     for (int i=0; i < 16; ++i) {
-        i_arr_basic v;
-        v.i = i;
-        iarrayadd(arr, v.v);
+        _iarrayaddint(arr, i);
     }
     SP_EQUAL(iarraylen(arr), 16);
     SP_EQUAL(iarraycapacity(arr), 16);
@@ -3259,10 +3212,10 @@ SP_CASE(iarray, iarrayremoveall) {
 }
 
 SP_CASE(iarray, iarraytruncate) {
-    iarray *arr = iarraymake(1, &entry);
-    iarrayadd(arr, (void*)0);
-    iarrayadd(arr, (void*)1);
-    iarrayadd(arr, (void*)2);
+    iarray *arr = _iarray_make_int(1);
+    _iarrayaddint(arr, 0);
+    _iarrayaddint(arr, 1);
+    _iarrayaddint(arr, 2);
     
     SP_EQUAL(iarraylen(arr), 3);
     SP_EQUAL(iarraycapacity(arr), 4);
@@ -3276,9 +3229,7 @@ SP_CASE(iarray, iarraytruncate) {
     SP_EQUAL(iarraycapacity(arr), 4);
     
     for (int i=0; i < 20; ++i) {
-        i_arr_basic v;
-        v.i = i;
-        iarrayadd(arr, v.v);
+        _iarrayaddint(arr, i);
     }
     SP_EQUAL(iarraylen(arr), 20);
     SP_EQUAL(iarraycapacity(arr), 32);
@@ -3291,10 +3242,10 @@ SP_CASE(iarray, iarraytruncate) {
 }
 
 SP_CASE(iarray, iarrayshrinkcapacity) {
-    iarray *arr = iarraymake(1, &entry);
-    iarrayadd(arr, (void*)0);
-    iarrayadd(arr, (void*)1);
-    iarrayadd(arr, (void*)2);
+    iarray *arr = _iarray_make_int(1);
+    _iarrayaddint(arr, 0);
+    _iarrayaddint(arr, 1);
+    _iarrayaddint(arr, 2);
     
     SP_EQUAL(iarraylen(arr), 3);
     SP_EQUAL(iarraycapacity(arr), 4);
@@ -3311,14 +3262,56 @@ SP_CASE(iarray, iarrayshrinkcapacity) {
     iarrayfree(arr);
 }
 
+SP_CASE(iarray, iarrayinsert) {
+    iarray *arr = _iarray_make_int(1);
+    _iarrayaddint(arr, 3);
+    _iarrayaddint(arr, 4);
+    _iarrayaddint(arr, 5);
+    _iarrayaddint(arr, 6);
+    
+    int inserts[] = {0, 1, 2};
+    int appends[] = {7, 8, 9};
+    
+    SP_EQUAL(iarraylen(arr), 4);
+    SP_EQUAL(iarrayof(arr, int, 0), 3);
+    SP_EQUAL(iarrayof(arr, int, 1), 4);
+    SP_EQUAL(iarrayof(arr, int, 2), 5);
+    SP_EQUAL(iarrayof(arr, int, 3), 6);
+    
+    iarrayinsert(arr, 0, inserts, 3);
+    SP_EQUAL(iarraylen(arr), 7);
+    SP_EQUAL(iarrayof(arr, int, 0), 0);
+    SP_EQUAL(iarrayof(arr, int, 1), 1);
+    SP_EQUAL(iarrayof(arr, int, 2), 2);
+    SP_EQUAL(iarrayof(arr, int, 3), 3);
+    SP_EQUAL(iarrayof(arr, int, 4), 4);
+    SP_EQUAL(iarrayof(arr, int, 5), 5);
+    SP_EQUAL(iarrayof(arr, int, 6), 6);
+    
+    iarrayinsert(arr, arr->len, appends, 3);
+    SP_EQUAL(iarraylen(arr), 10);
+    SP_EQUAL(iarrayof(arr, int, 0), 0);
+    SP_EQUAL(iarrayof(arr, int, 1), 1);
+    SP_EQUAL(iarrayof(arr, int, 2), 2);
+    SP_EQUAL(iarrayof(arr, int, 3), 3);
+    SP_EQUAL(iarrayof(arr, int, 4), 4);
+    SP_EQUAL(iarrayof(arr, int, 5), 5);
+    SP_EQUAL(iarrayof(arr, int, 6), 6);
+    SP_EQUAL(iarrayof(arr, int, 7), 7);
+    SP_EQUAL(iarrayof(arr, int, 8), 8);
+    SP_EQUAL(iarrayof(arr, int, 9), 9);
+    
+    iarrayfree(arr);
+}
+
 SP_CASE(iarray, iarraysort) {
     
-    iarray *arr = iarraymake(1, &entry);
-    iarrayadd(arr, (void*)3);
-    iarrayadd(arr, (void*)1);
-    iarrayadd(arr, (void*)2);
-    iarrayadd(arr, (void*)7);
-    iarrayadd(arr, (void*)0);
+    iarray *arr = _iarray_make_int(1);
+    _iarrayaddint(arr, 3);
+    _iarrayaddint(arr, 1);
+    _iarrayaddint(arr, 2);
+    _iarrayaddint(arr, 7);
+    _iarrayaddint(arr, 0);
     
     iarraysort(arr);
     
@@ -3330,6 +3323,221 @@ SP_CASE(iarray, iarraysort) {
     SP_EQUAL(values[4], 7);
     
     iarrayfree(arr);
+}
+
+SP_SUIT(iarray_iref);
+
+static int _arr_iref_try_free = 0;
+static void _arr_iref_watch(iref *ref) {
+    icheck(ref->ref == 0);
+    ++_arr_iref_try_free;
+}
+
+static iref* _arrirefmake() {
+    iref* ref = iobjmalloc(iref);
+    iretain(ref);
+    ref->watch = _arr_iref_watch;
+    // printf("ref : %p\n", ref);
+    return ref;
+}
+
+static void _arrirefadd(iarray* arr, iref *ref) {
+    iarrayadd(arr, &ref);
+}
+
+SP_CASE(iarray_iref, iarrayadd) {
+    iarray *arr = iarraymakeiref(1);
+    SP_EQUAL(iarraylen(arr), 0);
+    SP_EQUAL(iarraycapacity(arr), 1);
+    
+    SP_EQUAL(_arr_iref_try_free, 0);
+    
+    iref* ref = _arrirefmake();
+    _arrirefadd(arr, ref);
+    irelease(ref);
+    
+    SP_EQUAL(_arr_iref_try_free, 0);
+    
+    iarrayfree(arr);
+    
+    SP_EQUAL(_arr_iref_try_free, 1);
+    
+    _arr_iref_try_free = 0;
+}
+
+SP_CASE(iarray_iref, iarrayinsert) {
+    iarray *arr = iarraymakeiref(1);
+    SP_EQUAL(iarraylen(arr), 0);
+    SP_EQUAL(iarraycapacity(arr), 1);
+    
+    SP_EQUAL(_arr_iref_try_free, 0);
+    
+    iref* refs[] = {
+        _arrirefmake(),
+        _arrirefmake(),
+        _arrirefmake(),
+        _arrirefmake(),
+    };
+    _arrirefadd(arr, refs[0]);
+    _arrirefadd(arr, refs[1]);
+    _arrirefadd(arr, refs[2]);
+    _arrirefadd(arr, refs[3]);
+    
+    SP_EQUAL(iarrayof(arr, iref*, 0), refs[0]);
+    SP_EQUAL(iarrayof(arr, iref*, 1), refs[1]);
+    SP_EQUAL(iarrayof(arr, iref*, 2), refs[2]);
+    SP_EQUAL(iarrayof(arr, iref*, 3), refs[3]);
+    
+    iref* inserts[] = {
+        _arrirefmake(),
+        _arrirefmake(),
+        _arrirefmake(),
+    };
+    iarrayinsert(arr, 0, inserts, 3);
+    SP_EQUAL(iarrayof(arr, iref*, 0), inserts[0]);
+    SP_EQUAL(iarrayof(arr, iref*, 1), inserts[1]);
+    SP_EQUAL(iarrayof(arr, iref*, 2), inserts[2]);
+                                      
+    SP_EQUAL(iarrayof(arr, iref*, 3), refs[0]);
+    SP_EQUAL(iarrayof(arr, iref*, 4), refs[1]);
+    SP_EQUAL(iarrayof(arr, iref*, 5), refs[2]);
+    SP_EQUAL(iarrayof(arr, iref*, 6), refs[3]);
+    
+    iref* appends[] = {
+        _arrirefmake(),
+        _arrirefmake(),
+        _arrirefmake(),
+    };
+    iarrayinsert(arr, arr->len, appends, 3);
+    SP_EQUAL(iarrayof(arr, iref*, 0), inserts[0]);
+    SP_EQUAL(iarrayof(arr, iref*, 1), inserts[1]);
+    SP_EQUAL(iarrayof(arr, iref*, 2), inserts[2]);
+                                      
+    SP_EQUAL(iarrayof(arr, iref*, 3), refs[0]);
+    SP_EQUAL(iarrayof(arr, iref*, 4), refs[1]);
+    SP_EQUAL(iarrayof(arr, iref*, 5), refs[2]);
+    SP_EQUAL(iarrayof(arr, iref*, 6), refs[3]);
+    
+    SP_EQUAL(iarrayof(arr, iref*, 7), appends[0]);
+    SP_EQUAL(iarrayof(arr, iref*, 8), appends[1]);
+    SP_EQUAL(iarrayof(arr, iref*, 9), appends[2]);
+    
+    
+    SP_EQUAL(_arr_iref_try_free, 0);
+    
+    iarrayfree(arr);
+    irelease(inserts[0]);
+    irelease(inserts[1]);
+    irelease(inserts[2]);
+    irelease(refs[0]);
+    irelease(refs[1]);
+    irelease(refs[2]);
+    irelease(refs[3]);
+    irelease(appends[0]);
+    irelease(appends[1]);
+    irelease(appends[2]);
+    
+    SP_EQUAL(_arr_iref_try_free, 10);
+    
+    _arr_iref_try_free = 0;
+}
+
+SP_CASE(iarray_iref, iarrayremove) {
+    iarray *arr = iarraymakeiref(1);
+    SP_EQUAL(iarraylen(arr), 0);
+    SP_EQUAL(iarraycapacity(arr), 1);
+    
+    SP_EQUAL(_arr_iref_try_free, 0);
+    
+    iref* ref = _arrirefmake();
+    _arrirefadd(arr, ref);
+    irelease(ref);
+    
+    SP_EQUAL(_arr_iref_try_free, 0);
+    
+    iarrayremove(arr, 0);
+    iarrayremove(arr, -1);
+    iarrayremove(arr, 2);
+    
+    SP_EQUAL(_arr_iref_try_free, 1);
+    
+    iarrayfree(arr);
+    
+    SP_EQUAL(_arr_iref_try_free, 1);
+    
+    _arr_iref_try_free = 0;
+}
+
+SP_CASE(iarray_iref, iarrayremove_keeporder) {
+    iarray *arr = iarraymakeiref(1);
+    iarraysetflag(arr, EnumArrayFlagKeepOrder);
+    
+    SP_EQUAL(iarraylen(arr), 0);
+    SP_EQUAL(iarraycapacity(arr), 1);
+    
+    SP_EQUAL(_arr_iref_try_free, 0);
+    
+    iref* ref0 = _arrirefmake();
+    _arrirefadd(arr, ref0);
+    iref* ref1 = _arrirefmake();
+    _arrirefadd(arr, ref1);
+    iref* ref2 = _arrirefmake();
+    _arrirefadd(arr, ref2);
+    iref* ref3 = _arrirefmake();
+    _arrirefadd(arr, ref3);
+    
+    SP_EQUAL(iarraylen(arr), 4);
+    SP_EQUAL(iarrayof(arr, iref*, 0), ref0);
+    SP_EQUAL(iarrayof(arr, iref*, 1), ref1);
+    SP_EQUAL(iarrayof(arr, iref*, 2), ref2);
+    SP_EQUAL(iarrayof(arr, iref*, 3), ref3);
+    
+    iarrayremove(arr, 2);
+    
+    SP_EQUAL(iarrayof(arr, iref*, 0), ref0);
+    SP_EQUAL(iarrayof(arr, iref*, 1), ref1);
+    SP_EQUAL(iarrayof(arr, iref*, 2), ref3);
+    
+    iarrayunsetflag(arr, EnumArrayFlagKeepOrder);
+    
+    iarrayremove(arr, 0);
+    SP_EQUAL(iarrayof(arr, iref*, 0), ref3);
+    SP_EQUAL(iarrayof(arr, iref*, 1), ref1);
+    
+    irelease(ref0);
+    irelease(ref1);
+    irelease(ref2);
+    irelease(ref3);
+    
+    SP_EQUAL(_arr_iref_try_free, 2);
+    
+    iarrayfree(arr);
+    
+    SP_EQUAL(_arr_iref_try_free, 4);
+    
+    _arr_iref_try_free = 0;
+}
+
+SP_CASE(iarray_iref, iarrayset) {
+    
+    iarray *arr = iarraymakeiref(1);
+    
+    iref* ref0 = _arrirefmake();
+    SP_EQUAL(iarrayset(arr, 0, &ref0), iino);
+    SP_EQUAL(iarraylen(arr), 0);
+    
+    _arrirefadd(arr, ref0);
+    SP_EQUAL(iarraylen(arr), 1);
+    SP_EQUAL(iarrayset(arr, 0, &ref0), iiok);
+    
+    irelease(ref0);
+    SP_EQUAL(_arr_iref_try_free, 0);
+    
+    iarrayfree(arr);
+    
+    SP_EQUAL(_arr_iref_try_free, 1);
+    
+    _arr_iref_try_free = 0;
 }
 
 #endif

@@ -548,9 +548,9 @@ typedef void (*iarray_entry_swap)(struct iarray *arr,
 /* 比较两个对象 */
 typedef int (*iarray_entry_cmp)(struct iarray *arr,
         int i, int j);
-/* 赋值 */
+/* 赋值  */
 typedef void (*iarray_entry_assign)(struct iarray *arr,
-        int i, void *value);
+        int i, const void *value, int nums);
 
 /* 数组常用控制项 */
 typedef enum EnumArrayFlag {
@@ -564,11 +564,16 @@ typedef enum EnumArrayFlag {
     /*是否是简单数组, 
      *单元不需要通过swap或者assign去释放
      *truncate 的时候可以直接设置长度
+     *简单数组实现的assign 函数必须实现 memmove 语义
+     *memmove 可以处理内存重叠问题
      **/
     EnumArrayFlagSimple = 1<<2,
     
     /*自动缩减存储容量*/
     EnumArrayFlagAutoShirk = 1<<3,
+    
+    /* MemSet Pennding Memory */
+    EnumArrayFlagMemsetZero = 1<<4,
 }EnumArrayFlag;
 
 /* 数组基础属性, 类型元信息 */
@@ -576,8 +581,8 @@ typedef struct iarrayentry{
     int flag;
     size_t size;
     iarray_entry_swap swap;
-    iarray_entry_cmp cmp;
     iarray_entry_assign assign;
+    iarray_entry_cmp cmp;
 } iarrayentry;
 
 /* 通用数组 */
@@ -587,8 +592,9 @@ typedef struct iarray {
     size_t capacity;
     size_t len;
     char *buffer;
+    int flag;
 
-    // 每一种数组类型都需要定义这个
+    /* 每一种数组类型都需要定义这个 */
     const iarrayentry* entry;
 }iarray;
 
@@ -605,17 +611,32 @@ size_t iarraylen(const iarray *arr);
 size_t iarraycapacity(const iarray *arr);
 
 /* 查询 */
-void* iarrayat(iarray *arr, int index);
+const void* iarrayat(iarray *arr, int index);
 
 /* 数组内存缓冲区 */
 void* iarraybuffer(iarray *arr);
+
+/* 设置标签, 返回操作前的标志 */
+int iarraysetflag(iarray *arr, int flag);
+
+/* 清理标签, 返回操作前的标志*/
+int iarrayunsetflag(iarray *arr, int flag);
+
+/* 是否具备标签 */
+int iarrayisflag(iarray *arr, int flag);
 
 /* 删除 */
 int iarrayremove(iarray *arr, int index);
 
 /* 增加 */
-int iarrayadd(iarray *arr, void* value);
-
+int iarrayadd(iarray *arr, const void* value);
+    
+ /* 插入 */
+int iarrayinsert(iarray *arr, int index, const void *value, int nums);
+   
+/* 设置 */
+int iarrayset(iarray *arr, int index, const void *value);
+    
 /* 清理数组 */
 void iarrayremoveall(iarray *arr);
 
@@ -627,6 +648,24 @@ size_t iarrayshrinkcapacity(iarray *arr, size_t capacity);
 
 /* 排序 */
 void iarraysort(iarray *arr);
+    
+/* 内置的整数数组 */
+iarray* iarraymakeint(size_t capacity);
+    
+/* 浮点数组 */
+iarray* iarraymakeireal(size_t capacity);
+    
+/* int64 数组*/
+iarray* iarraymakeint64(size_t capacity);
+    
+/* char 数组*/
+iarray* iarraymakechar(size_t capacity);
+    
+/* 内置的引用数组 */
+iarray* iarraymakeiref(size_t capacity);
+    
+/* 辅助宏，获取*/
+#define iarrayof(arr, type, i) (((type *)iarrayat(arr, i))[0])
 
 /*************************************************************/
 /* islice                                                    */

@@ -803,7 +803,11 @@ void ireflistfree(ireflist *list) {
 static void _iarray_entry_free(struct iref* ref) {
     iarray *array = (iarray *)ref;
 
+    /* 释放资源的时候把shrink关掉 */
+    iarrayunsetflag(array, EnumArrayFlagAutoShirk);
+    /* 释放 */
     iarraytruncate(array, 0);
+    /* 释放内存 */
     ifree(array->buffer);
     /*
     array->buffer = NULL;
@@ -811,6 +815,7 @@ static void _iarray_entry_free(struct iref* ref) {
     array->capacity = 0;
     array->entry = NULL;
     array->free = NULL;
+    array->flag = 0;
     */
 
     iobjfree(ref);
@@ -824,6 +829,7 @@ iarray *iarraymake(size_t capacity, const iarrayentry *entry) {
     array->buffer = (char*)icalloc(capacity, entry->size);
     array->free = _iarray_entry_free;
     array->entry = entry;
+    array->flag = entry->flag;
     iretain(array);
     
     return array;
@@ -848,7 +854,7 @@ size_t iarraycapacity(const iarray *arr) {
 
 /* 查询 */
 #define __arr_i(arr, i) ((void*)((arr)->buffer + (i) * (arr)->entry->size))
-void* iarrayat(iarray *arr, int index) {
+const void* iarrayat(iarray *arr, int index) {
     icheckret(arr, NULL);
     icheckret(index>=0 && index<arr->len, NULL);
 
@@ -860,6 +866,25 @@ void* iarraybuffer(iarray *arr) {
     return arr->buffer;
 }
 
+/* 设置标签 */
+int iarraysetflag(iarray *arr, int flag) {
+    int old = arr->flag; 
+    arr->flag |= flag;
+    return old;
+}
+
+/* 清理标签 */
+int iarrayunsetflag(iarray *arr, int flag){
+    int old = arr->flag; 
+    arr->flag &= (~flag);
+    return old;
+}
+
+/* 是否具备标签 */
+int iarrayisflag(iarray *arr, int flag) {
+    return arr->flag & flag;
+}
+
 /* 删除 */
 int iarrayremove(iarray *arr, int index) {
     int i;
@@ -867,11 +892,11 @@ int iarrayremove(iarray *arr, int index) {
     icheckret(arr, iino);
     icheckret(index>=0 && index<arr->len, iino);
     
-    if (!(arr->entry->flag & EnumArrayFlagSimple)) {
+    if (!(arr->flag & EnumArrayFlagSimple)) {
         arr->entry->swap(arr, index, -1);
     }
 
-    if (arr->entry->flag & EnumArrayFlagKeepOrder) {
+    if (arr->flag & EnumArrayFlagKeepOrder) {
         /* 移除一项就慢慢的移 */
         for(i=index; i<arr->len-1; ++i) {
             arr->entry->swap(arr, i, i+1);
@@ -889,6 +914,12 @@ static size_t _iarray_just_capacity(iarray *arr, size_t newcapacity) {
     char* newbuffer;
     newbuffer = irealloc(arr->buffer, newcapacity * arr->entry->size);
     icheckret(newbuffer, arr->capacity);
+    /* 清理新加的内存 */
+    if (arr->flag & EnumArrayFlagMemsetZero && newcapacity > arr->capacity) {
+        memset(newbuffer + arr->capacity * arr->entry->size,
+           0,
+           (newcapacity-arr->capacity) * arr->entry->size);
+    }
     
     arr->buffer = newbuffer;
     arr->capacity = newcapacity;
@@ -919,12 +950,46 @@ static void _iarrayautoshrink(iarray *arr) {
 }
 
 /* 增加 */
-int iarrayadd(iarray *arr, void* value) {
-    _iarray_be_capacity(arr, arr->len + 1);
-    icheckret(arr->capacity > arr->len, iino);
+int iarrayadd(iarray *arr, const void* value) {
+    return iarrayinsert(arr, arr->len, value, 1);
+}
 
-    arr->entry->assign(arr, arr->len, value);
-    ++arr->len;
+/* 插入 */
+int iarrayinsert(iarray *arr, int index, const void *value, int nums) {
+    int i;
+    
+    icheckret(index>=0 && index<=arr->len, iino);
+    /* be sure the capacity is enough */
+    _iarray_be_capacity(arr, arr->len + nums);
+    icheckret(arr->capacity >= arr->len + nums, iino);
+    
+    /*swap after*/
+    if (index != arr->len) {
+        /* if the array is simple one, we can just do memove */
+        /* simple flag is only for inner use */
+        if (arr->flag & EnumArrayFlagSimple) {
+            arr->entry->assign(arr, index + nums,
+                               __arr_i(arr, index),
+                               arr->len - index);
+        } else {
+            /* swap one by one */
+            i = arr->len - 1;
+            while (i >= index) {
+                arr->entry->swap(arr, i, i+nums);
+                --i;
+            }    
+        }
+    }
+    // assign it
+    arr->entry->assign(arr, index, value, nums);
+    arr->len += nums;
+    return iiok;
+}
+
+/* 设置 */
+int iarrayset(iarray *arr, int index, const void *value) {
+    icheckret(index >=0 && index<arr->len, iino);
+    arr->entry->assign(arr, index, value, 1);
     return iiok;
 }
 
@@ -940,11 +1005,11 @@ void iarraytruncate(iarray *arr, size_t len) {
     icheck(arr);
     icheck(arr->len > len);
     
-    if (arr->entry->flag & EnumArrayFlagSimple) {
+    if (arr->flag & EnumArrayFlagSimple) {
         /* direct set the length*/
         arr->len = len;
         /* auto shirk */
-        if (arr->entry->flag & EnumArrayFlagAutoShirk) {
+        if (arr->flag & EnumArrayFlagAutoShirk) {
             _iarrayautoshrink(arr);
         }
     } else {
@@ -1004,6 +1069,212 @@ void iarraysort(iarray *arr) {
     icheck(arr->len);
     
     _iarray_sort_heap(arr, 0, arr->len-1);
+}
+
+/*************************************************************/
+/* iarray - copy                                             */
+/*************************************************************/
+
+/* 赋值 */
+static void _iarray_entry_assign_copy(struct iarray *arr,
+                            int i, const void *value, int nums) {
+    memmove(arr->buffer + i * arr->entry->size,
+           value,
+           nums * arr->entry->size);
+}
+
+/* 交换两个对象 */
+static void _iarray_entry_swap_copy(struct iarray *arr,
+                          int i, int j) {
+    /* 空对象 */
+    char buffer[256];
+    char *tmp;
+    if (arr->entry->size > 256) {
+        tmp = icalloc(1, arr->entry->size);
+    } else {
+        tmp = buffer;
+    }
+    
+    if (j == arr_invalid) {
+        // arr_int[i] = 0;
+        // may call assign
+        _iarray_entry_assign_copy(arr, i, tmp, 1);
+    } else if (i == arr_invalid) {
+        // arr_int[j] = 0;
+        // may call assign
+        _iarray_entry_assign_copy(arr, j, tmp, 1);
+    } else {
+        memmove(tmp, __arr_i(arr, i), arr->entry->size);
+        memmove(__arr_i(arr, i), __arr_i(arr, j), arr->entry->size);
+        memmove(__arr_i(arr, j), tmp, arr->entry->size);
+    }
+}
+
+/* 比较两个对象 */
+static int _iarray_entry_cmp_int(struct iarray *arr,
+                         int i, int j) {
+    int *arr_int = (int *)arr->buffer;
+    return arr_int[i] - arr_int[j];
+}
+
+// 定义int 数组
+static const iarrayentry _arr_entry_int = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagSimple |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(int),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    _iarray_entry_cmp_int,
+};
+
+/* 内置的整数数组 */
+iarray* iarraymakeint(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_int);
+}
+
+/* 比较两个对象 */
+static int _iarray_entry_cmp_ireal(struct iarray *arr,
+                                 int i, int j) {
+    ireal *arrs = (ireal *)arr->buffer;
+    return arrs[i] - arrs[j];
+}
+
+// 定义ireal 数组
+static const iarrayentry _arr_entry_ireal = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagSimple |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ireal),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    _iarray_entry_cmp_ireal,
+};
+
+/* 浮点数组 */
+iarray* iarraymakeireal(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_ireal);
+}
+
+/* 比较两个对象 */
+static int _iarray_entry_cmp_int64(struct iarray *arr,
+                                   int i, int j) {
+    int64_t *arrs = (int64_t *)arr->buffer;
+    return arrs[i] - arrs[j];
+}
+
+// 定义int64 数组
+static const iarrayentry _arr_entry_int64 = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagSimple |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ireal),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    _iarray_entry_cmp_int64,
+};
+
+/* int64 数组*/
+iarray* iarraymakeint64(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_int64);
+}
+
+/* 比较两个对象 */
+static int _iarray_entry_cmp_char(struct iarray *arr,
+                                   int i, int j) {
+    char *arrs = (char *)arr->buffer;
+    return arrs[i] - arrs[j];
+}
+
+// 定义char 数组
+static const iarrayentry _arr_entry_char = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagSimple |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ireal),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    _iarray_entry_cmp_char,
+};
+
+/* char 数组*/
+iarray* iarraymakechar(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_char);
+}
+
+/*************************************************************/
+/* iarray - iref                                             */
+/*************************************************************/
+
+/* 赋值 */
+static void _iarray_entry_assign_iref(struct iarray *arr,
+                            int i, const void *value, int nums) {
+    iref* *arrs = (iref* *)arr->buffer;
+    iref* *refvalue = (iref* *)value;
+    iref* ref = NULL;
+    int j = 0;
+    
+    /* 附加很多个 */
+    while (j < nums) {
+        /* realloc not set zero to pending memory */
+        if (i >= arr->len) {
+            arrs[i] = NULL;
+        }
+        if (refvalue) {
+            ref = refvalue[j];
+        }
+        
+        iassign(arrs[i], ref);
+        ++j;
+        ++i;
+    }
+}
+
+/* 交换两个对象 */
+static void _iarray_entry_swap_iref(struct iarray *arr,
+                          int i, int j) {
+    iref* tmp;
+    iref* *arrs = (iref* *)arr->buffer;
+    if (j == arr_invalid) {
+        // arr_int[i] = 0;
+        // may call assign
+        _iarray_entry_assign_iref(arr, i, 0, 1);
+    } else if (i == arr_invalid) {
+        // arr_int[j] = 0;
+        // may call assign
+        _iarray_entry_assign_iref(arr, j, 0, 1);
+    } else {
+        tmp = arrs[i];
+        arrs[i] = arrs[j];
+        arrs[j] = tmp;    
+    }
+}
+
+/* 比较两个对象 */
+static int _iarray_entry_cmp_iref(struct iarray *arr,
+                         int i, int j) {
+    iref* *arrs = (iref* *)arr->buffer;
+    return arrs[i] - arrs[j];
+}
+
+/* 定义iref 数组 */
+static const iarrayentry _arr_entry_iref = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(iref*),
+    _iarray_entry_swap_iref,
+    _iarray_entry_assign_iref,
+    _iarray_entry_cmp_iref,
+};
+
+/* 内置的引用数组 */
+iarray* iarraymakeiref(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_iref);
 }
 
 /* cache 的 绑定在 ref 上的回调 */
