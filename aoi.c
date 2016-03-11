@@ -21,7 +21,7 @@ extern "C" {
 static int gettimeofday(struct timeval *tp, void *tzp)
 {
         time_t clock;
-        struct tm tm; 
+        struct tm tm;
         SYSTEMTIME wtm;
 
         GetLocalTime(&wtm);
@@ -31,7 +31,7 @@ static int gettimeofday(struct timeval *tp, void *tzp)
         tm.tm_hour = wtm.wHour;
         tm.tm_min = wtm.wMinute;
         tm.tm_sec = wtm.wSecond;
-        tm.tm_isdst = -1; 
+        tm.tm_isdst = -1;
         clock = mktime(&tm);
         tp->tv_sec = clock;
         tp->tv_usec = wtm.wMilliseconds * 1000;
@@ -380,7 +380,7 @@ ivec3 ivec3multipy(const ivec3 *l, ireal a) {
 	return vec;
 }
 
-/* 点积 
+/* 点积
  * https://en.wikipedia.org/wiki/Dot_product
  * */
 ireal ivec3dot(const ivec3 *l, const ivec3 *r) {
@@ -389,9 +389,9 @@ ireal ivec3dot(const ivec3 *l, const ivec3 *r) {
 		+ l->u.v.z * r->u.v.z;
 }
 
-/* 乘积 
+/* 乘积
  * https://en.wikipedia.org/wiki/Cross_product
- * */ 
+ * */
 ivec3 ivec3cross(const ivec3 *l, const ivec3 *r) {
 	ivec3 vec;
 	vec.u.v.x = l->u.v.y * r->u.v.z - l->u.v.z * r->u.v.y;
@@ -828,7 +828,7 @@ iarray *iarraymake(size_t capacity, const iarrayentry *entry) {
     array->free = _iarray_entry_free;
     array->entry = entry;
     iretain(array);
-    
+
     return array;
 }
 
@@ -869,7 +869,7 @@ int iarrayremove(iarray *arr, int index) {
 
     icheckret(arr, iino);
     icheckret(index>=0 && index<arr->len, iino);
-    
+
     if (!(arr->entry->flag & EnumArrayFlagSimple)) {
         arr->entry->swap(arr, index, -1);
     }
@@ -892,7 +892,7 @@ static size_t _iarray_just_capacity(iarray *arr, size_t newcapacity) {
     char* newbuffer;
     newbuffer = irealloc(arr->buffer, newcapacity * arr->entry->size);
     icheckret(newbuffer, arr->capacity);
-    
+
     arr->buffer = newbuffer;
     arr->capacity = newcapacity;
     return arr->capacity;
@@ -909,7 +909,7 @@ static size_t _iarray_be_capacity(iarray *arr, size_t capacity) {
     do {
         newcapacity = newcapacity * 2;
     } while(newcapacity < capacity);
-    
+
     return _iarray_just_capacity(arr, newcapacity);
 }
 
@@ -942,7 +942,7 @@ void iarraytruncate(iarray *arr, size_t len) {
 
     icheck(arr);
     icheck(arr->len > len);
-    
+
     if (arr->entry->flag & EnumArrayFlagSimple) {
         /* direct set the length*/
         arr->len = len;
@@ -954,14 +954,14 @@ void iarraytruncate(iarray *arr, size_t len) {
         /* remove one by one*/
         for(i=arr->len; i>len; i--) {
             iarrayremove(arr, i-1);
-        }       
+        }
     }
 }
 
 /* 缩减容量  */
 size_t iarrayshrinkcapacity(iarray *arr, size_t capacity) {
     icheckret(arr->capacity > capacity, arr->capacity);
-    
+
     capacity = imax(arr->len, capacity);
     return _iarray_just_capacity(arr, capacity);
 }
@@ -969,10 +969,10 @@ size_t iarrayshrinkcapacity(iarray *arr, size_t capacity) {
 /* 堆排序 - 堆调整 */
 static void _iarray_heap_shift(iarray *arr,
                       int ind, int end) {
-    
+
     int i = ind;
     int c = 2 * i + 1;
-    
+
     while(c <= end) {
         if (c +1 <=end && arr->entry->cmp(arr, c, c+1) < 0 ) {
             c++;
@@ -981,7 +981,7 @@ static void _iarray_heap_shift(iarray *arr,
             break;
         } else {
             arr->entry->swap(arr, i, c);
-            
+
             i = c;
             c = 2*i + 1;
         }
@@ -995,7 +995,7 @@ static void _iarray_sort_heap(iarray *arr,
     for (i=(end-1)/2; i>=start; i--) {
         _iarray_heap_shift(arr, i, end);
     }
-    
+
     for (j=start; j<=end; ++j) {
         arr->entry->swap(arr, start, end-start-j);
         _iarray_heap_shift(arr, start, end - start - j - 1);
@@ -1005,7 +1005,7 @@ static void _iarray_sort_heap(iarray *arr,
 /* 排序 */
 void iarraysort(iarray *arr) {
     icheck(arr->len);
-    
+
     _iarray_sort_heap(arr, 0, arr->len-1);
 }
 
@@ -1343,7 +1343,7 @@ static inode* _iaddnodetoparent(imap *map, inode *node, int codei, int idx, cons
 	return child;
 }
 
-/* 
+/*
  * 把节点从 有向图里面拿出来， 没有任何一个节点可以到他
  */
 void ineighborsclean(inode *node) {
@@ -1372,7 +1372,7 @@ void ineighborsclean(inode *node) {
 	node->neighbors = NULL;
 }
 
-/* 
+/*
  * 没有做重复性的检查
  * 让 node ==> to
  */
@@ -1387,8 +1387,8 @@ void ineighborsadd(inode *node, inode *to) {
     ireflistadd(to->neighbors, irefcast(node));
 }
 
-/* 
- * 没有做重复性的检查 
+/*
+ * 没有做重复性的检查
  * 让 node !==> to
  */
 void ineighborsdel(inode *node, inode *to) {
@@ -1547,7 +1547,7 @@ int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop
 				&& !_state_is(node->state, EnumNodeStateStatic) /* 不是静态节点 */
 				&& node->childcnt == 0 /* 孩子节点为0 */
 				&& node->unitcnt == 0 /* 上面绑定的单元节点也为空 */
-		   ) { 
+		   ) {
 			_iremovenodefromparent(map, node);
 		}
 	}
@@ -1721,7 +1721,7 @@ static int gmoveforbid[][4] = {
 	{0,		0,		'C',	'D'},
 	/* EnumCodeMoveDown */
 	/* B && D Can Be Moved Down*/
-	{'A',	0,		'C',	0}, 
+	{'A',	0,		'C',	0},
 	/* EnumCodeMoveUp */
 	/* A && C Can Be Moved Up*/
 	{0,		'B',	0,		'D'},

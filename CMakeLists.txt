@@ -2,7 +2,7 @@
 cmake_minimum_required (VERSION 2.8)
 set(CMAKE_MACOSX_RPATH 1)
 
-#set(CMAKE_C_FLAGS "-O2 -Wall -Werror=declaration-after-statement -std=c89 -pedantic -Dinline='' -Wno-c99-extensions -Wno-variadic-macros -Wno-comment -Wno-unused-function")
+#set(CMAKE_C_FLAGS "-O2 -Wall -Werror=declaration-after-statement -std=c89 -pedantic -Dinline='' -Wno-c99-extensions -Wno-variadic-macros -Wno-unused-function")
 
 # 项目信息
 project (aoi)
