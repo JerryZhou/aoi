@@ -188,13 +188,13 @@ static int lua__map_get_state(lua_State *L)
 	imap * map = CHECK_AOI_MAP(L, 1);
 	lua_newtable(L);
 
-	lua_pushnumber(L, map->state.nodecount);
+	lua_pushnumber(L, (int)map->state.nodecount);
 	lua_setfield(L, -2, "nodecount");
 
-	lua_pushnumber(L, map->state.leafcount);
+	lua_pushnumber(L, (int)map->state.leafcount);
 	lua_setfield(L, -2, "leafcount");
 
-	lua_pushnumber(L, map->state.unitcount);
+	lua_pushnumber(L, (int)map->state.unitcount);
 	lua_setfield(L, -2, "unitcount");
 
 	return 1;
@@ -206,14 +206,14 @@ static int lua__map_unit_add(lua_State *L)
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
 
 	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
-	lua_pushnumber(L, unit->id);
+	lua_pushinteger(L, (lua_Integer)unit->id);
 	lua_rawget(L, -2);
 
 	if (lua_isnil(L, -1)) {
 		imapaddunit(map, unit);
 
 		lua_pop(L, 1);
-		lua_pushnumber(L, unit->id);
+		lua_pushinteger(L, (lua_Integer)unit->id);
 		lua_pushvalue(L, 2);
 		lua_rawset(L, -3);
 	}
@@ -225,10 +225,10 @@ static int lua__map_unit_del_byid(lua_State *L)
 {
 	iunit * unit = NULL;
 	imap * map = CHECK_AOI_MAP(L, 1);
-	iid id = (iid)luaL_checknumber(L, 2);
+	iid id = (iid)luaL_checkinteger(L, 2);
 
 	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
-	lua_pushnumber(L, id);
+	lua_pushinteger(L, (lua_Integer)id);
 	lua_rawget(L, -2);
 	if (lua_isnoneornil(L, -1)) {
 		DLOG("%s,id=%lld not found\n", __FUNCTION__, id);
@@ -238,7 +238,7 @@ static int lua__map_unit_del_byid(lua_State *L)
 	unit = CHECK_AOI_UNIT(L, -1);
 	imapremoveunit(map, unit);
 
-	lua_pushnumber(L, id);
+	lua_pushinteger(L, (lua_Integer)id);
 	lua_pushnil(L);
 	lua_rawset(L, 3);
 	DLOG("%s,id=%lld removed\n", __FUNCTION__, id);
@@ -255,7 +255,7 @@ static int lua__map_unit_del(lua_State *L)
 	imapremoveunit(map, unit);
 
 	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
-	lua_pushnumber(L, unit->id);
+	lua_pushinteger(L, (lua_Integer)unit->id);
 	lua_pushnil(L);
 	lua_rawset(L, -3);
 	return 0;
@@ -319,8 +319,8 @@ static int lua__map_unit_search(lua_State *L)
 		iunit *unit = icast(iunit, joint->value);
 		iid id = unit->id;
 
-		lua_pushnumber(L, id);
-		lua_pushnumber(L, id);
+		lua_pushinteger(L, (lua_Integer)id);
+		lua_pushinteger(L, (lua_Integer)id);
 		lua_rawget(L, -4);
 		lua_rawset(L, -3);
 
@@ -363,8 +363,8 @@ static int lua__map_searchcircle(lua_State *L)
 		iunit *unit = icast(iunit, joint->value);
 		iid id = unit->id;
 
-		lua_pushnumber(L, id);
-		lua_pushnumber(L, id);
+		lua_pushinteger(L, (lua_Integer)id);
+		lua_pushinteger(L, (lua_Integer)id);
 		lua_rawget(L, -4);
 		lua_rawset(L, -3);
 
@@ -385,7 +385,7 @@ static int lua__unit_new(lua_State *L)
 {
 	iunit *u = NULL;
 	lua_Number x, y;
-	iid id = (iid)luaL_checknumber(L, 1);
+	iid id = (iid)luaL_checkinteger(L, 1);
 	luaL_checktype(L, 2, LUA_TTABLE);
 	lua_rawgeti(L, 2, 1);
 	x = luaL_checknumber(L, -1);
@@ -440,15 +440,15 @@ static int lua__unit_gc(lua_State *L)
 static int lua__unit_get_id(lua_State *L)
 {
 	iunit * unit = CHECK_AOI_UNIT(L, 1);
-	lua_pushnumber(L, unit->id);
+	lua_pushinteger(L, (lua_Integer)unit->id);
 	return 1;
 }
 
 static int lua__unit_get_pos(lua_State *L)
 {
 	iunit * unit = CHECK_AOI_UNIT(L, 1);
-	lua_pushnumber(L, unit->pos.x);
-	lua_pushnumber(L, unit->pos.y);
+	lua_pushnumber(L, (lua_Integer)unit->pos.x);
+	lua_pushnumber(L, (lua_Integer)unit->pos.y);
 	return 2;
 }
 
@@ -493,21 +493,21 @@ static int lua__meta_cache_clear(lua_State *L)
 static int lua__getcurmicro(lua_State *L)
 {
 	int64_t ret = igetcurmicro();
-	lua_pushnumber(L, ret);
+	lua_pushnumber(L, (lua_Number)ret);
 	return 1;
 }
 
 static int lua__getcurtick(lua_State *L)
 {
 	int64_t ret = igetcurtick();
-	lua_pushnumber(L, ret);
+	lua_pushnumber(L, (lua_Number)ret);
 	return 1;
 }
 
 static int lua__getnextmicro(lua_State *L)
 {
 	int64_t ret = igetnextmicro();
-	lua_pushnumber(L, ret);
+	lua_pushnumber(L, (lua_Number)ret);
 	return 1;
 }
 
