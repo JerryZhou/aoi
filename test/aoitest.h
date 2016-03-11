@@ -3540,4 +3540,57 @@ SP_CASE(iarray_iref, iarrayset) {
     _arr_iref_try_free = 0;
 }
 
+SP_SUIT(islice);
+
+SP_CASE(islice, islicemake) {
+    
+    iarray *arr = iarraymakeint(8);
+    int values[] = {0, 1, 2};
+    iarrayinsert(arr, 0, values, 3);
+    
+    {
+        islice *slice = islicemake(arr, 0, 0, 0);
+        SP_EQUAL(islicelen(slice), 0);
+        SP_EQUAL(islicecapacity(slice), 0);
+        
+        islicefree(slice);
+    }
+    
+    {
+        islice *slice = islicemake(arr, 0, 1, 1);
+        SP_EQUAL(islicelen(slice), 1);
+        SP_EQUAL(islicecapacity(slice), 1);
+        
+        islicefree(slice);
+    }
+    
+    {
+        islice *slice = islicemake(arr, 0, 1, 0);
+        SP_EQUAL(islicelen(slice), 1);
+        SP_EQUAL(islicecapacity(slice), 1);
+        
+        islicefree(slice);
+    }
+    
+    
+    {
+        islice *slice = islicemake(arr, 0, 1, 2);
+        SP_EQUAL(islicelen(slice), 1);
+        SP_EQUAL(islicecapacity(slice), 2);
+        
+        islicefree(slice);
+    }
+    
+    
+    {
+        islice *slice = islicemake(arr, 1, 3, 9);
+        SP_EQUAL(islicelen(slice), 2);
+        SP_EQUAL(islicecapacity(slice), 7);
+        
+        islicefree(slice);
+    }
+    
+    iarrayfree(arr);
+}
+
 #endif
