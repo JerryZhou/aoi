@@ -559,16 +559,15 @@ typedef enum EnumArrayFlag {
     EnumArrayFlagNone = 0,
 
     /* 移除元素的时候，
-     * 不移动数组，直接从后面替补
-     * */
+     * 不移动数组，直接从后面替补 * */
     EnumArrayFlagKeepOrder = 1<<1,  /*是否保持有序*/
 
     /*是否是简单数组,
      *单元不需要通过swap或者assign去释放
      *truncate 的时候可以直接设置长度
      *简单数组实现的assign 函数必须实现 memmove 语义
-     *memmove 可以处理内存重叠问题
-     **/
+     *memmove 可以处理内存重叠问题 
+     *标志位只有设置在数组的entry才有效，不可被更改*/
     EnumArrayFlagSimple = 1<<2,
 
     /*自动缩减存储容量*/
@@ -576,6 +575,10 @@ typedef enum EnumArrayFlag {
     
     /* MemSet Pennding Memory */
     EnumArrayFlagMemsetZero = 1<<4,
+    
+    /* 数组被slice 操作过, 数组不能执行shirk, remove, truncate 操作
+     * 数组的 insert 操作如果导致需要数组扩容也会失败*/
+    EnumArrayFlagSliced = 1<<5,
 }EnumArrayFlag;
 
 /* 数组基础属性, 类型元信息 */
@@ -676,7 +679,8 @@ iarray* iarraymakeiref(size_t capacity);
 /*
  * 与 slice 搭配的是 array
  * array 是固定容量的数组，容量不变
- */
+ * 数组不能执行 remove, shrink, truncate 操作
+ **/
 typedef struct islice {
     irefdeclare;
 
@@ -693,9 +697,36 @@ typedef struct islice {
     
 /* 左闭右开的区间 [begin, end) */
 islice *islicemake(iarray *arr, int begin, int end, int capacity);
-    
+
 /* 左闭右开的区间 [begin, end) */
-islice *islicemakeby(islice *arr, int begin, int end);
+islice *islicemakeby(islice *slice, int begin, int end, int capacity);
+    
+/* 通过参数创建 "begin:end:capacity"
+ * islicemakearg(arr, ":")
+ * islicemakearg(arr, ":1")
+ * islicemakearg(arr, ":1:5")
+ * islicemakearg(arr, "3:1:5")
+ * islicemakearg(arr, "3:")
+ */
+islice *islicemakearg(iarray *arr, const char* args);
+    
+/* 通过参数创建 "begin:end:capacity"
+ * islicemakeargby(arr, ":")
+ * islicemakeargby(arr, ":1")
+ * islicemakeargby(arr, ":1:5")
+ * islicemakeargby(arr, "3:1:5")
+ * islicemakeargby(arr, "3:")
+ */
+islice *islicemakeargby(islice *slice, const char* args);
+    
+  
+/* 从array创建slice, 创建的slice 总数享有 父节点的最大容量 */
+#define isliced(arr, begin, end) islicemake((arr), (begin), (end), (int)((arr)->capacity))
+/* 从slice创建子slice, 创建的slice 总数享有 父节点的最大容量 */
+#define islicedby(slice, begin, end) islicemakeby((slice), (begin), (end), islicecapacity(slice))
+    
+/* 参数 解析 */
+void isliceparamsparse(int *params, const char* args, const char delim);
     
 /* 释放 */
 void islicefree(islice *slice);
@@ -706,15 +737,17 @@ size_t islicelen(const islice *slice);
 /* 容量 */
 size_t islicecapacity(const islice *slice);
     
-/* 附加 
- * 用法: slice = isliceappend(slice, append);
- * */
-islice* isliceappend(islice *slice, const islice *append);
+/* 附加
+ * 用法: slice = isliceappendvalues(slice, values, count); */
+islice* isliceappendvalues(islice* slice, const void *values, int count);
     
+/* 附加
+ * 用法: slice = isliceappend(slice, append); */
+islice* isliceappend(islice *slice, const islice *append);
+   
 /* 
  * 增加元素 
- * 用法 : slice = isliceadd(slice, i);
- * */
+ * 用法 : slice = isliceadd(slice, i); */
 islice* isliceadd(islice *slice, const void *value);
     
 /* 设置值*/

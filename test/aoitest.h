@@ -3593,4 +3593,98 @@ SP_CASE(islice, islicemake) {
     iarrayfree(arr);
 }
 
+SP_CASE(islice, islicemakeby) {
+    /* arr[0:8] */
+    iarray *arr = iarraymakeint(8);
+    int values[] = {0, 1, 2};
+    iarrayinsert(arr, 0, values, 3);
+    
+    /* slice = arr[0:3:8]  */
+    islice *slice_0_3_8 = isliced(arr, 0, 3);
+    SP_EQUAL(islicelen(slice_0_3_8), 3);
+    SP_EQUAL(islicecapacity(slice_0_3_8), 8);
+    SP_EQUAL(isliceof(slice_0_3_8, int, 0), 0);
+    SP_EQUAL(isliceof(slice_0_3_8, int, 1), 1);
+    SP_EQUAL(isliceof(slice_0_3_8, int, 2), 2);
+    
+    /* child = slice[1:2:8] */
+    islice *child = islicedby(slice_0_3_8, 1, 2);
+    SP_EQUAL(islicelen(child), 1);
+    SP_EQUAL(islicecapacity(child), 7);
+    SP_EQUAL(isliceof(child, int, 0), 1);
+    SP_EQUAL(isliceat(child, 1), NULL);
+    
+    /* sub = child[1:1:7] */
+    islice* sub = islicedby(child, 1, 1);
+    SP_EQUAL(islicelen(sub), 0);
+    SP_EQUAL(islicecapacity(sub), 6);
+    SP_EQUAL(isliceat(sub, 0), NULL);
+    
+    /* xslice = slice[8:8]
+     */
+    islice *xslice = isliced(arr, 8, 8);
+    
+    SP_EQUAL(islicelen(xslice), 0);
+    SP_EQUAL(islicecapacity(xslice), 0);
+    
+    islice *yslice = isliced(arr, 5, 5);
+    
+    SP_EQUAL(islicelen(yslice), 0);
+    SP_EQUAL(islicecapacity(yslice), 3);
+    
+    /**/
+    int aps[] = {100, 200};
+    isliceadd(yslice, aps);
+    
+    SP_EQUAL(islicelen(yslice), 1);
+    SP_EQUAL(islicecapacity(yslice), 3);
+    SP_EQUAL(isliceof(yslice, int, 0), 100);
+    
+    SP_EQUAL(iarraylen(arr), 4);
+    SP_EQUAL(iarrayof(arr, int, 3), 100);
+    
+    islicefree(yslice);
+    
+    islicefree(xslice);
+    
+    islicefree(child);
+    
+    islicefree(sub);
+    
+    islicefree(slice_0_3_8);
+    
+    iarrayfree(arr);
+}
+
+#define __slice_arr(arr, ...) islicemakearg(arr, #__VA_ARGS__)
+
+SP_CASE(islice, islicelen_islicecapacity) {
+    /* arr[0:8] */
+    iarray *arr = iarraymakeint(8);
+    int values[] = {0, 1, 2};
+    iarrayinsert(arr, 0, values, 3);
+    
+    islice *slice0 = __slice_arr(arr);
+    SP_EQUAL(islicelen(slice0), 3);
+    SP_EQUAL(islicecapacity(slice0), 8);
+    islicefree(slice0);
+    
+    islice *slice1 = __slice_arr(arr, 2:);
+    SP_EQUAL(islicelen(slice0), 1);
+    SP_EQUAL(islicecapacity(slice0), 6);
+    islicefree(slice1);
+    
+    islice *slice2 = __slice_arr(arr, :1);
+    SP_EQUAL(islicelen(slice0), 1);
+    SP_EQUAL(islicecapacity(slice0), 8);
+    islicefree(slice2);
+    
+    islice *slice3 = __slice_arr(arr, :1:5);
+    SP_EQUAL(islicelen(slice0), 1);
+    SP_EQUAL(islicecapacity(slice0), 5);
+    islicefree(slice3);
+    
+    iarrayfree(arr);
+}
+
 #endif
