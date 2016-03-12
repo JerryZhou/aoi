@@ -1298,6 +1298,96 @@ iarray* iarraymakeiref(size_t capacity) {
     return iarraymake(capacity, &_arr_entry_iref);
 }
 
+/* 定义ipos 数组 */
+static const iarrayentry _arr_entry_ipos = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ipos),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 ipos 数组*/
+iarray* iarraymakeipos(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_ipos);
+}
+
+/* 定义isize 数组 */
+static const iarrayentry _arr_entry_isize = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(isize),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 isize 数组*/
+iarray* iarraymakeisize(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_isize);
+}
+
+/* 定义irect 数组 */
+static const iarrayentry _arr_entry_irect = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(irect),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 irect 数组*/
+iarray* iarraymakeirect(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_irect);
+}
+
+/* 定义icircle 数组 */
+static const iarrayentry _arr_entry_icircle = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(icircle),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};   
+/* 内置的 icircle 数组*/
+iarray* iarraymakeicircle(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_icircle);
+}
+
+/* 定义ivec2 数组 */
+static const iarrayentry _arr_entry_ivec2 = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ivec2),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 ivec2 数组*/
+iarray* iarraymakeivec2(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_ivec2);
+}
+
+/* 定义ivec3 数组 */
+static const iarrayentry _arr_entry_ivec3 = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ivec3),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 ivec3 数组*/
+iarray* iarraymakeivec3(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_ivec3);
+}
+
 /*************************************************************/
 /* islice                                                    */
 /*************************************************************/

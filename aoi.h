@@ -669,6 +669,24 @@ iarray* iarraymakechar(size_t capacity);
 /* 内置的引用数组 */
 iarray* iarraymakeiref(size_t capacity);
     
+/* 内置的 ipos 数组*/
+iarray* iarraymakeipos(size_t capacity);
+    
+/* 内置的 isize 数组*/
+iarray* iarraymakeisize(size_t capacity);
+    
+/* 内置的 irect 数组*/
+iarray* iarraymakeirect(size_t capacity);
+    
+/* 内置的 icircle 数组*/
+iarray* iarraymakeicircle(size_t capacity);
+    
+/* 内置的 ivec2 数组*/
+iarray* iarraymakeivec2(size_t capacity);
+    
+/* 内置的 ivec3 数组*/
+iarray* iarraymakeivec3(size_t capacity);
+    
 /* 辅助宏，获取*/
 #define iarrayof(arr, type, i) (((type *)iarrayat(arr, i))[0])
 
