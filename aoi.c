@@ -282,8 +282,8 @@ ireal idistancepow2(const ipos *p, const ipos *t) {
 /* 两点相减得到向量 */
 ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1) {
 	ivec2 vec;
-	vec.u.v.x = p1->x - p0->x;
-	vec.u.v.y = p1->y - p0->y;
+	vec.v.x = p1->x - p0->x;
+	vec.v.y = p1->y - p0->y;
 	return vec;
 }
 
@@ -291,38 +291,38 @@ ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1) {
 ireal ivec2dot(const ivec2 *l, const ivec2 *r) {
 	icheckret(l, 0);
 	icheckret(r, 0);
-	return l->u.v.x * r->u.v.x + l->u.v.y + r->u.v.y;
+	return l->v.x * r->v.x + l->v.y + r->v.y;
 }
 
 /* 减法 */
 ivec2 ivec2subtract(const ivec2 *l, const ivec2 *r) {
 	ivec2 vec;
-	vec.u.v.x = r->u.v.x - l->u.v.x;
-	vec.u.v.y = r->u.v.y - l->u.v.y;
+	vec.v.x = r->v.x - l->v.x;
+	vec.v.y = r->v.y - l->v.y;
 	return vec;
 }
 
 /* 加法*/
 ivec2 ivec2add(const ivec2 *l, const ivec2 *r) {
 	ivec2 vec;
-	vec.u.v.x = r->u.v.x + l->u.v.x;
-	vec.u.v.y = r->u.v.y + l->u.v.y;
+	vec.v.x = r->v.x + l->v.x;
+	vec.v.y = r->v.y + l->v.y;
 	return vec;
 }
 
 /* 乘法 */
 ivec2 ivec2multipy(const ivec2 *l, const ireal a) {
 	ivec2 vec;
-	vec.u.v.x = l->u.v.x * a;
-	vec.u.v.y = l->u.v.y * a;
+	vec.v.x = l->v.x * a;
+	vec.v.y = l->v.y * a;
 	return vec;
 }
 
 /* 绝对值 */
 ivec2 ivec2abs(const ivec2* l) {
 	ivec2 vec;
-	vec.u.v.x = fabs(l->u.v.x);
-	vec.u.v.y = fabs(l->u.v.y);
+	vec.v.x = fabs(l->v.x);
+	vec.v.y = fabs(l->v.y);
 	return vec;
 }
 
@@ -357,27 +357,27 @@ ivec2 ivec2perpendicular(const ivec2 *l, const ivec2 *r) {
 /* 加法*/
 ivec3 ivec3add(const ivec3 *l, const ivec3 *r) {
 	ivec3 vec;
-	vec.u.v.x = r->u.v.x + l->u.v.x;
-	vec.u.v.y = r->u.v.y + l->u.v.y;
-	vec.u.v.z = r->u.v.z + l->u.v.z;
+	vec.v.x = r->v.x + l->v.x;
+	vec.v.y = r->v.y + l->v.y;
+	vec.v.z = r->v.z + l->v.z;
 	return vec;
 }
 
 /* 减法 */
 ivec3 ivec3subtract(const ivec3 *l, const ivec3 *r) {
 	ivec3 vec;
-	vec.u.v.x = r->u.v.x - l->u.v.x;
-	vec.u.v.y = r->u.v.y - l->u.v.y;
-	vec.u.v.z = r->u.v.z - l->u.v.z;
+	vec.v.x = r->v.x - l->v.x;
+	vec.v.y = r->v.y - l->v.y;
+	vec.v.z = r->v.z - l->v.z;
 	return vec;
 }
 
 /* 乘法 */
 ivec3 ivec3multipy(const ivec3 *l, ireal a) {
 	ivec3 vec;
-	vec.u.v.x = l->u.v.x * a;
-	vec.u.v.y = l->u.v.y * a;
-	vec.u.v.z = l->u.v.z * a;
+	vec.v.x = l->v.x * a;
+	vec.v.y = l->v.y * a;
+	vec.v.z = l->v.z * a;
 	return vec;
 }
 
@@ -385,9 +385,9 @@ ivec3 ivec3multipy(const ivec3 *l, ireal a) {
  * https://en.wikipedia.org/wiki/Dot_product
  * */
 ireal ivec3dot(const ivec3 *l, const ivec3 *r) {
-	return l->u.v.x * r->u.v.x
-		+ l->u.v.y * r->u.v.y
-		+ l->u.v.z * r->u.v.z;
+	return l->v.x * r->v.x
+		+ l->v.y * r->v.y
+		+ l->v.z * r->v.z;
 }
 
 /* 乘积
@@ -395,9 +395,9 @@ ireal ivec3dot(const ivec3 *l, const ivec3 *r) {
  * */
 ivec3 ivec3cross(const ivec3 *l, const ivec3 *r) {
 	ivec3 vec;
-	vec.u.v.x = l->u.v.y * r->u.v.z - l->u.v.z * r->u.v.y;
-	vec.u.v.y = l->u.v.z * r->u.v.x - l->u.v.x * r->u.v.z;
-	vec.u.v.z = l->u.v.x * r->u.v.y - l->u.v.y * r->u.v.x;
+	vec.v.x = l->v.y * r->v.z - l->v.z * r->v.y;
+	vec.v.y = l->v.z * r->v.x - l->v.x * r->v.z;
+	vec.v.z = l->v.x * r->v.y - l->v.y * r->v.x;
 	return vec;
 }
 
@@ -414,9 +414,9 @@ ireal ivec3length(const ivec3 *l) {
 /* 绝对值 */
 ivec3 ivec3abs(const ivec3* l) {
 	ivec3 vec;
-	vec.u.v.x = fabs(l->u.v.x);
-	vec.u.v.y = fabs(l->u.v.y);
-	vec.u.v.z = fabs(l->u.v.z);
+	vec.v.x = fabs(l->v.x);
+	vec.v.y = fabs(l->v.y);
+	vec.v.z = fabs(l->v.z);
 	return vec;
 }
 
@@ -488,12 +488,12 @@ int irectintersect(const irect *con, const icircle *c) {
 	 * ivec2 p = {c->pos.x, c->pos.y};
 	 */
 	do {
-		ivec2 v = {{{fabs(c->pos.x - con->pos.x), fabs(c->pos.y - con->pos.y)}}};
-		ivec2 h = {{{con->size.w, con->size.h}}};
-		ivec2 u =  {{{v.u.v.x - h.u.v.x, v.u.v.y - h.u.v.y}}};
-		u.u.v.x = u.u.v.x < 0 ? 0 : u.u.v.x;
-		u.u.v.y = u.u.v.y < 0 ? 0 : u.u.v.y;
-		return u.u.v.x * u.u.v.x + u.u.v.y * u.u.v.y < c->radius * c->radius;
+		ivec2 v = {{fabs(c->pos.x - con->pos.x), fabs(c->pos.y - con->pos.y)}};
+		ivec2 h = {{con->size.w, con->size.h}};
+		ivec2 u =  {{v.v.x - h.v.x, v.v.y - h.v.y}};
+		u.v.x = u.v.x < 0 ? 0 : u.v.x;
+		u.v.y = u.v.y < 0 ? 0 : u.v.y;
+		return u.v.x * u.v.x + u.v.y * u.v.y < c->radius * c->radius;
 	} while(0);
 	return 0;
 }
@@ -1663,12 +1663,12 @@ void ipolygon3dadd(ipolygon3d *poly, const ivec3 *v, int nums) {
     /* update the min and max*/
     for (j=0; j<nums; ++j) {
         for (i=0; i<3; ++i) {
-            if (v[j].u.values[i] > poly->max.u.values[i]) {
+            if (v[j].values[i] > poly->max.values[i]) {
                 /* for max */
-                poly->max.u.values[i] = v[j].u.values[i];
-            } else if (v[j].u.values[i] < poly->min.u.values[i]) {
+                poly->max.values[i] = v[j].values[i];
+            } else if (v[j].values[i] < poly->min.values[i]) {
                 /* for min */
-                poly->min.u.values[i] = v[j].u.values[i];
+                poly->min.values[i] = v[j].values[i];
             }
         }
     }
@@ -1714,12 +1714,12 @@ void ipolygon2dadd(ipolygon2d *poly, const ivec2 *v, int nums) {
     /* update the min and max*/
     for (j=0; j<nums; ++j) {
         for (i=0; i<2; ++i) {
-            if (v[j].u.values[i] > poly->max.u.values[i]) {
+            if (v[j].values[i] > poly->max.values[i]) {
                 /* for max */
-                poly->max.u.values[i] = v[j].u.values[i];
-            } else if (v[j].u.values[i] < poly->min.u.values[i]) {
+                poly->max.values[i] = v[j].values[i];
+            } else if (v[j].values[i] < poly->min.values[i]) {
                 /* for min */
-                poly->min.u.values[i] = v[j].u.values[i];
+                poly->min.values[i] = v[j].values[i];
             }
         }
     }
@@ -1727,6 +1727,44 @@ void ipolygon2dadd(ipolygon2d *poly, const ivec2 *v, int nums) {
     /* add vec2 */
     poly->slice = isliceappendvalues(poly->slice, v, nums);
 }
+
+/* if the point in polygon
+ * http://stackoverflow.com/questions/217578/how-can-i-determine-whether-a-2d-point-is-within-a-polygon
+ * https://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+ **/
+int ipolygon2dcontains(const ipolygon2d *poly, const ivec2 *v) {
+    int inside = iino;
+    int i, j, n;
+    ivec2 *ui, *uj;
+    
+    icheckret(v, iiok);
+    icheckret(poly, iino);
+    
+    /* beyond the bounding box*/
+    if (v->v.x < poly->min.v.x ||
+        v->v.x > poly->max.v.x ||
+        v->v.y < poly->min.v.y ||
+        v->v.y > poly->max.v.y) {
+        return iino;
+    }
+    
+    n = islicelen(poly->slice);
+    for (i = 0, j = n-1; i<n; j = i++) {
+        ui = (ivec2*)isliceat(poly->slice, i);
+        uj = (ivec2*)isliceat(poly->slice, j);
+        if ((ui->v.y>v->v.y) != (uj->v.y > v->v.y) &&
+            v->v.x < ((uj->v.x - ui->v.x)
+                        * (v->v.y - ui->v.y)
+                        / (uj->v.y - ui->v.y)
+                        + ui->v.x) ) {
+            inside = !inside;
+        }
+    }
+    
+    return inside;
+}
+
+
 
 /* cache 的 绑定在 ref 上的回调 */
 void _ientrywatch_cache(iref *ref) {

@@ -109,13 +109,11 @@ ireal idistancepow2(const ipos *p, const ipos *t);
 /* 向量,  完善基本的数学方法:
  *  加法 ; 减法 ; 乘法 ; 除法 ; 点积(内积) ; 乘积(外积) ; 长度
  * */
-typedef struct ivec2 {
-    union {
-        ireal values[2];
-        struct {
-            ireal x, y;
-        } v;
-    } u;
+typedef union ivec2 {
+    ireal values[2];
+    struct {
+        ireal x, y;
+    } v;
 }ivec2;
 
 /* 两点相减得到向量 */
@@ -157,13 +155,11 @@ ivec2 ivec2perpendicular(const ivec2 *l, const ivec2 *r);
 /*************************************************************/
 
 /* 向量 完善基本的数学方法 */
-typedef struct ivec3 {
-    union {
-        ireal values[3];
-        struct {
-            ireal x, y, z;
-        }v;
-    }u;
+typedef union ivec3 {
+    ireal values[3];
+    struct {
+        ireal x, y, z;
+    }v;
 }ivec3;
 
 /* 两点相减得到向量 */
@@ -781,7 +777,7 @@ const void* isliceat(const islice *slice, int index);
 #define isliceof(slice, type, i) (((type *)isliceat(slice, i))[0])
     
 /*************************************************************/
-/* ipolygon                                                  */
+/* ipolygon3d                                                */
 /*************************************************************/
     
 /* polygon 3d definition */
@@ -803,6 +799,10 @@ void ipolygon3dfree(ipolygon3d *);
 /* add ivec3 to polygon*/
 void ipolygon3dadd(ipolygon3d *poly, const ivec3 *v, int nums);
    
+/*************************************************************/
+/* ipolygon2d                                                */
+/*************************************************************/
+ 
 /* polygon 2d definition */
 typedef struct ipolygon2d {
     irefdeclare;
@@ -821,6 +821,9 @@ void ipolygon2dfree(ipolygon2d *);
     
 /* add ivec2 to polygon*/
 void ipolygon2dadd(ipolygon2d *poly, const ivec2 *v, int nums);
+    
+/* if the point in polygon*/
+int ipolygon2dcontains(const ipolygon2d *poly, const ivec2 *v);
 
 /*************************************************************/
 /* irefcache                                                 */
