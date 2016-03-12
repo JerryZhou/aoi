@@ -1748,6 +1748,8 @@ int ipolygon2dcontains(const ipolygon2d *poly, const ivec2 *v) {
         return iino;
     }
     
+    /* https://en.wikipedia.org/wiki/Point_in_polygon
+     */
     n = islicelen(poly->slice);
     for (i = 0, j = n-1; i<n; j = i++) {
         ui = (ivec2*)isliceat(poly->slice, i);
