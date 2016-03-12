@@ -3658,6 +3658,20 @@ SP_CASE(islice, islicemakeby) {
 
 #define __slice_arr(arr, ...) islicemakearg(arr, #__VA_ARGS__)
 
+void __slice_print(islice *s) {
+    printf("[");
+    for (int i=0; i <islicelen(s); ++i) {
+        int v = isliceof(s, int, i);
+        printf("%d%s", v, i==islicelen(s)-1 ? "" : ", ");
+    }
+    printf("]");
+}
+
+void __slice_println(islice *s) {
+    __slice_print(s);
+    printf("%s", "\n");
+}
+
 SP_CASE(islice, islicelen_islicecapacity) {
     /* arr[0:8] */
     iarray *arr = iarraymakeint(8);
@@ -3665,24 +3679,34 @@ SP_CASE(islice, islicelen_islicecapacity) {
     iarrayinsert(arr, 0, values, 3);
     
     islice *slice0 = __slice_arr(arr);
+    __slice_println(slice0);
     SP_EQUAL(islicelen(slice0), 3);
     SP_EQUAL(islicecapacity(slice0), 8);
     islicefree(slice0);
     
     islice *slice1 = __slice_arr(arr, 2:);
-    SP_EQUAL(islicelen(slice0), 1);
-    SP_EQUAL(islicecapacity(slice0), 6);
+    __slice_println(slice1);
+    SP_EQUAL(islicelen(slice1), 1);
+    SP_EQUAL(islicecapacity(slice1), 6);
     islicefree(slice1);
     
     islice *slice2 = __slice_arr(arr, :1);
-    SP_EQUAL(islicelen(slice0), 1);
-    SP_EQUAL(islicecapacity(slice0), 8);
+    __slice_println(slice2);
+    SP_EQUAL(islicelen(slice2), 1);
+    SP_EQUAL(islicecapacity(slice2), 8);
     islicefree(slice2);
     
     islice *slice3 = __slice_arr(arr, :1:5);
-    SP_EQUAL(islicelen(slice0), 1);
-    SP_EQUAL(islicecapacity(slice0), 5);
+    __slice_println(slice3);
+    SP_EQUAL(islicelen(slice3), 1);
+    SP_EQUAL(islicecapacity(slice3), 5);
     islicefree(slice3);
+    
+    islice *slice4 = __slice_arr(arr, :0:5);
+    __slice_println(slice4);
+    SP_EQUAL(islicelen(slice4), 0);
+    SP_EQUAL(islicecapacity(slice4), 5);
+    islicefree(slice4);
     
     iarrayfree(arr);
 }
