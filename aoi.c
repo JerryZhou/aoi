@@ -1626,6 +1626,108 @@ const void* isliceat(const islice *slice, int index) {
     return iarrayat(slice->array, slice->begin+index);
 }
 
+/* free resouces of polygon3d */
+static void _ipolygon3d_entry_free(iref *ref) {
+    ipolygon3d *poly = (ipolygon3d*)ref;
+    irelease(poly->slice);
+    poly->slice = NULL;
+    
+    iobjfree(poly);
+}
+
+/* create a polygon 3d*/
+ipolygon3d *ipolygon3dmake(size_t capacity){
+    ipolygon3d *poly = iobjmalloc(ipolygon3d);
+    iarray* array = iarraymakeivec3(capacity);
+    poly->slice = isliced(array, 0, 0);
+    poly->free = _ipolygon3d_entry_free;
+    
+    irelease(array);
+    iretain(poly);
+    return poly;
+}
+
+/* free a polygon 3d*/
+void ipolygon3dfree(ipolygon3d *poly) {
+    irelease(poly);
+}
+
+/* add ivec3 to polygon*/
+void ipolygon3dadd(ipolygon3d *poly, const ivec3 *v, int nums) {
+    int i;
+    int j;
+    icheck(v);
+    icheck(poly);
+    icheck(nums);
+    
+    /* update the min and max*/
+    for (j=0; j<nums; ++j) {
+        for (i=0; i<3; ++i) {
+            if (v[j].u.values[i] > poly->max.u.values[i]) {
+                /* for max */
+                poly->max.u.values[i] = v[j].u.values[i];
+            } else if (v[j].u.values[i] < poly->min.u.values[i]) {
+                /* for min */
+                poly->min.u.values[i] = v[j].u.values[i];
+            }
+        }
+    }
+    
+    /* add vec3 */
+    poly->slice = isliceappendvalues(poly->slice, v, nums);
+}
+
+
+/* free resouces of polygon3d */
+static void _ipolygon2d_entry_free(iref *ref) {
+    ipolygon2d *poly = (ipolygon2d*)ref;
+    irelease(poly->slice);
+    poly->slice = NULL;
+    
+    iobjfree(poly);
+}
+
+/* create a polygon 2d*/
+ipolygon2d *ipolygon2dmake(size_t capacity) {
+    ipolygon2d *poly = iobjmalloc(ipolygon2d);
+    iarray* array = iarraymakeivec2(capacity);
+    poly->slice = isliced(array, 0, 0);
+    poly->free = _ipolygon2d_entry_free;
+    
+    irelease(array);
+    iretain(poly);
+    return poly;
+}
+
+/* free a polygon 2d*/
+void ipolygon2dfree(ipolygon2d *poly) {
+    irelease(poly);
+}
+
+/* add ivec2 to polygon*/
+void ipolygon2dadd(ipolygon2d *poly, const ivec2 *v, int nums) {
+    int i;
+    int j;
+    icheck(v);
+    icheck(poly);
+    
+    /* update the min and max*/
+    for (j=0; j<nums; ++j) {
+        for (i=0; i<2; ++i) {
+            if (v[j].u.values[i] > poly->max.u.values[i]) {
+                /* for max */
+                poly->max.u.values[i] = v[j].u.values[i];
+            } else if (v[j].u.values[i] < poly->min.u.values[i]) {
+                /* for min */
+                poly->min.u.values[i] = v[j].u.values[i];
+            }
+        }
+    }
+    
+    /* add vec2 */
+    poly->slice = isliceappendvalues(poly->slice, v, nums);
+}
+
 /* cache 的 绑定在 ref 上的回调 */
 void _ientrywatch_cache(iref *ref) {
 	irefcache *cache = NULL;

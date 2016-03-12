@@ -353,7 +353,10 @@ int imetaregister(const char* name, int size, int capacity);
     __ideclaremeta(isearchresult, 0),         \
     __ideclaremeta(irefautoreleasepool, 0),   \
     __ideclaremeta(iarray, 0),                \
-    __ideclaremeta(islice, 0)
+    __ideclaremeta(islice, 0),                \
+    __ideclaremeta(ipolygon3d, 0),            \
+    __ideclaremeta(ipolygon2d, 0)
+    
 
 /* 定义所有元信息索引 */
 typedef enum EnumMetaTypeIndex {
@@ -776,6 +779,48 @@ const void* isliceat(const islice *slice, int index);
     
 /* 辅助宏，获取*/
 #define isliceof(slice, type, i) (((type *)isliceat(slice, i))[0])
+    
+/*************************************************************/
+/* ipolygon                                                  */
+/*************************************************************/
+    
+/* polygon 3d definition */
+typedef struct ipolygon3d {
+    irefdeclare;
+    
+    /*ivec3 slice*/
+    islice *slice;
+    ivec3 max;
+    ivec3 min;
+}ipolygon3d;
+    
+/* create a polygon 3d*/
+ipolygon3d *ipolygon3dmake(size_t capacity);
+    
+/* free a polygon 3d*/
+void ipolygon3dfree(ipolygon3d *);
+    
+/* add ivec3 to polygon*/
+void ipolygon3dadd(ipolygon3d *poly, const ivec3 *v, int nums);
+   
+/* polygon 2d definition */
+typedef struct ipolygon2d {
+    irefdeclare;
+    
+    /*ivec2 slice*/
+    islice *slice;
+    ivec2 max;
+    ivec2 min;
+}ipolygon2d;
+    
+/* create a polygon 2d*/
+ipolygon2d *ipolygon2dmake(size_t capacity);
+    
+/* free a polygon 2d*/
+void ipolygon2dfree(ipolygon2d *);
+    
+/* add ivec2 to polygon*/
+void ipolygon2dadd(ipolygon2d *poly, const ivec2 *v, int nums);
 
 /*************************************************************/
 /* irefcache                                                 */
