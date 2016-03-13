@@ -10,6 +10,7 @@
 #define ml_aoitest_h
 
 #include "aoi.h"
+#include "navi.h"
 #include "simpletest.h"
 
 // 清理掉所有缓存并打印内存日志
@@ -3709,6 +3710,14 @@ SP_CASE(islice, islicelen_islicecapacity) {
     islicefree(slice4);
     
     iarrayfree(arr);
+}
+
+SP_SUIT(inavi);
+
+SP_CASE(inavi, nothing) {
+    inavi_mm_init();
+
+    SP_TRUE(1);
 }
 
 #endif

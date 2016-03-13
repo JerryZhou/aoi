@@ -8,7 +8,7 @@ set(CMAKE_C_FLAGS "-O2 -Wall -Werror=declaration-after-statement -std=c89 -pedan
 project (aoi)
 
 # aoi 库文件
-add_library(aoi STATIC aoi.c aoi.h)
+add_library(aoi STATIC aoi.c aoi.h navi.c navi.h)
 
 # aoi 单元测试
 include_directories(${CMAKE_SOURCE_DIR})

@@ -11,5 +11,26 @@ with minimal memory cost,
 Please see examples for more details.
 */
 
-#include "navimesh.h"
+#include "navi.h"
 
+/*************************************************************/
+/* implement the new type for iimeta system                  */
+/*************************************************************/
+
+/* implement meta for inavinode */
+irealdeclareregister(inavinode);
+
+/* implement meta for inavimap */
+irealdeclareregister(inavimap);
+
+
+/* NB!! should call first before call any navi funcs 
+ * will registing all the navi types to meta system
+ * */
+int inavi_mm_init() {
+
+    irealimplementregister(inavinode, 0);
+    irealimplementregister(inavimap, 0);
+
+    return iiok;
+}
