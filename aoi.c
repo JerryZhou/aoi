@@ -438,6 +438,43 @@ ivec3 ivec3perpendicular(const ivec3 *l, const ivec3 *r) {
 	return ivec3subtract(l, &p);
 }
 
+/*************************************************************/
+/* iline2d                                                   */
+/*************************************************************/
+
+/* start ==> end */
+ivec2 iline2ddirection(const iline2d *line) {
+    ivec2 v = ivec2subtractpoint(&line->end, &line->start);
+    return ivec2normalize(&v);
+}
+
+/* start ==> end , rorate -90 */
+ivec2 iline2dnormal(const iline2d *line) {
+    ireal y;
+    ivec2 v = iline2ddirection(line);
+    y = v.v.y;
+    v.v.y = -v.v.x;
+    v.v.x = y;
+    return v;
+}
+
+/**/
+ireal iline2dlength(const iline2d *line) {
+    ivec2 v = ivec2subtractpoint(&line->end, &line->start);
+    return ivec2length(&v);
+}
+
+/*
+ * Determines the signed distance from a point to this line. Consider the line as
+ * if you were standing on start of the line looking towards end. Posative distances
+ * are to the right of the line, negative distances are to the left.
+ * */
+ireal iline2dsigneddistance(const iline2d *line, const ipos *point) {
+    ivec2 v = ivec2subtractpoint(point, &line->start);
+    ivec2 normal = iline2dnormal(line);
+    return ivec2dot(&v, &normal);
+}
+
 /* 判断矩形包含关系 */
 int irectcontains(const irect *con, const irect *r) {
 	icheckret(con, iino);

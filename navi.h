@@ -69,7 +69,7 @@ typedef struct inavimap {
 }inavimap;
 
 /* pathfind  */
-ireflist ipathfind(iunit *unit, inavinode *from, inavinode *to); 
+ireflist* ipathfind(iunit *unit, inavinode *from, inavinode *to); 
 
 
 /*************************************************************/

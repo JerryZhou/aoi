@@ -13,6 +13,12 @@ Please see examples for more details.
 
 #include "navi.h"
 
+/* pathfind  */
+ireflist* ipathfind(iunit *unit, inavinode *from, inavinode *to) {
+    return NULL;
+}
+
+
 /*************************************************************/
 /* implement the new type for iimeta system                  */
 /*************************************************************/

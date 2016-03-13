@@ -144,6 +144,9 @@ ireal ivec2length(const ivec2 *l);
 /* 绝对值 */
 ivec2 ivec2abs(const ivec2* l);
 
+/* 归一化 */
+ivec2 ivec2normalize(const ivec2 *l);
+
 /* 平行分量, 确保 r 已经归一化 */
 ivec2 ivec2parallel(const ivec2 *l, const ivec2 *r);
 
@@ -197,6 +200,71 @@ ivec3 ivec3parallel(const ivec3 *l, const ivec3 *r);
 
 /* 垂直分量, 确保 r 已经归一化 */
 ivec3 ivec3perpendicular(const ivec3 *l, const ivec3 *r);
+
+
+/*************************************************************/
+/* iline2d                                                   */
+/*************************************************************/
+typedef struct iline2d {
+    ipos start;
+    ipos end;
+}iline2d;
+
+/* start ==> end */
+ivec2 iline2ddirection(const iline2d *line);
+
+/* start ==> end , rorate -90 */
+ivec2 iline2dnormal(const iline2d *line);
+
+/**/
+ireal iline2dlength(const iline2d *line);
+
+/*
+ * Determines the signed distance from a point to this line. Consider the line as
+ * if you were standing on start of the line looking towards end. Posative distances
+ * are to the right of the line, negative distances are to the left.
+ * */
+ireal iline2dsigneddistance(const iline2d *line, const ipos *point);
+
+/*
+ * point classify
+ * */
+typedef enum EnumPointClass{
+    EnumPointClass_On,      /* The point is on, or very near, the line  */
+    EnumPointClass_Left,    /* looking from endpoint A to B, the test point is on the left */
+    EnumPointClass_Right    /* looking from endpoint A to B, the test point is on the right */
+}EnumPointClass;
+
+/*
+ * Determines the signed distance from a point to this line. Consider the line as
+ * if you were standing on PointA of the line looking towards PointB. Posative distances
+ * are to the right of the line, negative distances are to the left.
+ * */
+int iline2dclassifypoint(const iline2d *line, const ipos *point, ireal epsilon); 
+
+/* 
+ * line classify
+ * */
+enum EnumLineClass {
+    EnumLineClass_Collinear,			/* both lines are parallel and overlap each other */
+    EnumLineClass_Lines_Intersect,      /* lines intersect, but their segments do not */
+    EnumLineClass_Segments_Intersect,	/* both line segments bisect each other */
+    EnumLineClass_A_Bisects_B,          /* line segment B is crossed by line A */
+    EnumLineClass_B_Bisects_A,          /* line segment A is crossed by line B */
+    EnumLineClass_Paralell              /* the lines are paralell */
+}EnumLineClass;
+
+/*
+ * Determines if two segments intersect, and if so the point of intersection. The current
+ * member line is considered line AB and the incomming parameter is considered line CD for
+ * the purpose of the utilized equations.
+ *
+ * A = PointA of the member line
+ * B = PointB of the member line
+ * C = PointA of the provided line
+ * D = PointB of the provided line
+ * */
+int iline2dintersection(const iline2d *line, const iline2d *other,  ipos *intersect);
 
 
 /*************************************************************/
@@ -1041,7 +1109,7 @@ typedef struct inode {
 /* 节点内存管理 */
 inode * imakenode();
 
-/* 从节点数里面移除 */
+/* 从节点图里面移除 */
 void ineighborsclean(inode *node);
 
 /* 在有向图上加上一单向边 */
