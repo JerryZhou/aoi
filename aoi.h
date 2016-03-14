@@ -101,6 +101,17 @@ typedef struct ipos {
 
 /* 计算距离的平方 */
 ireal idistancepow2(const ipos *p, const ipos *t);
+    
+/*************************************************************/
+/* ipos                                                      */
+/*************************************************************/
+typedef struct ipos3 {
+    ireal x, y, z;
+}ipos3;
+    
+/* 计算距离的平方 */
+ireal idistancepow3(const ipos3 *p, const ipos3 *t);
+
 
 /*************************************************************/
 /* ivec2                                                     */
