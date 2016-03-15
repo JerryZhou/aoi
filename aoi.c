@@ -589,9 +589,9 @@ ipos iline2dclosestpoint(const iline2d *line, const ipos *center, ireal epsilon)
     ireal line_len = iline2dlength(line);
     
     ireal projlen = ivec2dot(&start_to_center, &line_direction);
-    if (fabs(projlen) < epsilon) {
+    if (ireal_less_than(projlen, 0, epsilon)) {
         closest = line->start;
-    } else if ( fabs(projlen) > line_len){
+    } else if ( ireal_greater_than(projlen, line_len, epsilon)){
         closest = line->end;
     } else {
         closest.x = line_direction.v.x * projlen;

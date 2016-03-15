@@ -98,11 +98,19 @@ typedef double ireal;
 /*与零比较*/
 #define ireal_equal_zero(a) ireal_equal(a, 0)
     
+/* 比较: 小于 */
+#define ireal_less_than(a, b, eps) ((a-b) < -eps)
+#define ireal_less(a, b) ireal_less_than(a, b, iepsilon)
+    
+/* 比较: 大于 */
+#define ireal_greater_than(a, b, eps) ((a-b) > eps)
+#define ireal_greater(a, b) ireal_greater_than(a, b, iepsilon) 
+    
 /*小于 0*/
-#define ireal_less_zero(a) ireal_equal(a, -iepsilon)
+#define ireal_less_zero(a) ireal_less_than(a, 0, iepsilon)
     
 /*大于 0*/
-#define ireal_greater_zero(a) ireal_equal(a, -iepsilon)
+#define ireal_greater_zero(a) ireal_greater_than(a, 0, iepsilon)
 
 /* 编号 */
 typedef int64_t iid;
