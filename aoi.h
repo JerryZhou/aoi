@@ -177,7 +177,7 @@ typedef union ivec3 {
 }ivec3;
 
 /* 两点相减得到向量 */
-/* ivec3 ivec3subtractpoint(const ipos *p0, const ipos *p1);*/
+ivec3 ivec3subtractpoint(const ipos3 *p0, const ipos3 *p1);
 
 /* 加法*/
 ivec3 ivec3add(const ivec3 *l, const ivec3 *r);
@@ -211,7 +211,6 @@ ivec3 ivec3parallel(const ivec3 *l, const ivec3 *r);
 
 /* 垂直分量, 确保 r 已经归一化 */
 ivec3 ivec3perpendicular(const ivec3 *l, const ivec3 *r);
-
 
 /*************************************************************/
 /* iline2d                                                   */
@@ -277,6 +276,34 @@ enum EnumLineClass {
  * */
 int iline2dintersection(const iline2d *line, const iline2d *other,  ipos *intersect);
 
+/*************************************************************/
+/* iplane                                                    */
+/*************************************************************/
+    
+/*
+ * A Plane in 3D Space represented in point-normal form (Ax + By + Cz + D = 0).
+ * The convention for the distance constant D is:
+ * D = -(A, B, C) dot (X, Y, Z) */
+typedef struct iplane {
+    ivec3 normal;
+    ipos3 pos;
+    ireal distance;
+}iplane;
+    
+/* Setup Plane object given a clockwise ordering of 3D points */
+void iplaneset(iplane *plane, const ipos3 *a, const ipos3 *b, const ipos3 *c);
+    
+/* TODO */
+ireal iplanesigneddistance(const iplane *plane, const ipos3 *p);
+    
+/* Given Z and Y, Solve for X on the plane */
+ireal iplanesolveforx(iplane *plane, ireal y, ireal z);
+    
+/* Given X and Z, Solve for Y on the plane */
+ireal iplanesolvefory(iplane *plane, ireal x, ireal z);
+    
+/* Given X and Y, Solve for Z on the plane */
+ireal iplanesolveforz(iplane *plane, ireal x, ireal y);
 
 /*************************************************************/
 /* isize                                                     */
@@ -731,7 +758,32 @@ size_t iarrayshrinkcapacity(iarray *arr, size_t capacity);
 
 /* 排序 */
 void iarraysort(iarray *arr);
+
+/*************************************************************/
+/* iheap                                                     */
+/*************************************************************/
+
+/* 建立 堆操作 */
+void iheapbuild(iarray *arr);
+
+/* 堆操作: 增加一个元素 */
+void iheapadd(iarray *arr, const void *value);
+
+/* 堆操作: 获取堆顶元素 */
+const void *iheappeek(iarray *arr);
+
+/* 堆操作: 移除堆顶元素*/
+void iheappop(iarray *arr);
+
+/* 堆操作: 移除指定的位置的元素, 仍然保持堆 */
+void iheapdelete(iarray *arr, int index);
     
+/*************************************************************/
+/* iarray: int, ireal, int64, char, iref                     */
+/* iarray: iref                                              */
+/* iarray: icircle, ivec2, ivec3, ipos, isize, irect         */
+/*************************************************************/
+
 /* 内置的整数数组 */
 iarray* iarraymakeint(size_t capacity);
     

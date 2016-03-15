@@ -362,6 +362,19 @@ ivec2 ivec2perpendicular(const ivec2 *l, const ivec2 *r) {
 	return ivec2subtract(l, &p);
 }
 
+/*************************************************************/
+/* ivec3                                                     */
+/*************************************************************/
+
+/* 两点相减得到向量 */
+ivec3 ivec3subtractpoint(const ipos3 *p0, const ipos3 *p1) {
+    ivec3 v;
+    v.v.x = p1->x - p0->x;
+    v.v.y = p1->y - p0->y;
+    v.v.z = p1->z - p0->z;
+    return v;
+}
+
 /* 加法*/
 ivec3 ivec3add(const ivec3 *l, const ivec3 *r) {
 	ivec3 vec;
@@ -566,6 +579,79 @@ int iline2dintersection(const iline2d *line, const iline2d *other,  ipos *inters
     
     return EnumLineClass_Lines_Intersect;
 }
+
+/*************************************************************/
+/* iplane                                                    */
+/*************************************************************/
+
+/* Setup Plane object given a clockwise ordering of 3D points */
+void iplaneset(iplane *plane, const ipos3 *a, const ipos3 *b, const ipos3 *c) {
+    ivec3 ab = ivec3subtractpoint(a, b);
+    ivec3 ac = ivec3subtractpoint(a, c);
+    ivec3 normal = ivec3cross(&ab, &ac);
+    ivec3 p = {{a->x, a->y, a->z}}; /*change to vec3*/
+    
+    plane->normal = ivec3normalize(&normal);
+    plane->pos = *a;
+    plane->distance = ivec3dot(&p, &plane->normal);
+}
+
+/* TODO: */
+ireal iplanesigneddistance(const iplane *plane, const ipos3 *p) {
+    return 0;
+}
+
+/* Given Z and Y, Solve for X on the plane */
+ireal iplanesolveforx(iplane *plane, ireal y, ireal z) {
+    /*
+     * Ax + By + Cz + D = 0
+     * Ax = -(By + Cz + D)
+     * x = -(By + Cz + D)/A */
+    
+    if (plane->normal.values[0] ) {
+        return ( -(plane->normal.values[1]*y
+                   + plane->normal.values[2]*z
+                   + plane->distance) / plane->normal.values[0] );
+    }
+    
+    return (0.0f);
+}
+    
+/* Given X and Z, Solve for Y on the plane */
+ireal iplanesolvefory(iplane *plane, ireal x, ireal z) {
+    /*
+     * Ax + By + Cz + D = 0
+     * By = -(Ax + Cz + D)
+     * y = -(Ax + Cz + D)/B */
+    
+    if (plane->normal.values[1]) {
+        return ( -(plane->normal.values[0]*x
+                   + plane->normal.values[2]*z
+                   + plane->distance) / plane->normal.values[1] );
+    }
+    
+    return (0.0f);
+ 
+}
+    
+/* Given X and Y, Solve for Z on the plane */
+ireal iplanesolveforz(iplane *plane, ireal x, ireal y) {
+    /*Ax + By + Cz + D = 0
+     * Cz = -(Ax + By + D)
+     * z = -(Ax + By + D)/C */
+    
+    if (plane->normal.values[2]) {
+        return ( -(plane->normal.values[0]*x
+                   + plane->normal.values[1]*y
+                   + plane->distance) / plane->normal.values[2] );
+    }
+    
+    return (0.0f);
+}
+
+/*************************************************************/
+/* irect                                                    */
+/*************************************************************/
 
 /* 判断矩形包含关系 */
 int irectcontains(const irect *con, const irect *r) {
@@ -1200,17 +1286,23 @@ static void _iarray_heap_shift(iarray *arr,
     }
 }
 
-/* 堆排序 */
-static void _iarray_sort_heap(iarray *arr,
-                int start, int end) {
-    int i, j;
+/* 在 [start, end] 上建立堆 */
+static void _iarray_heap_build(iarray *arr, int start, int end) {
+    int i;
     for (i=(end-1)/2; i>=start; i--) {
         _iarray_heap_shift(arr, i, end);
     }
+}
 
-    for (j=start; j<=end; ++j) {
-        arr->entry->swap(arr, start, end-start-j);
-        _iarray_heap_shift(arr, start, end - start - j - 1);
+/* 堆排序 */
+static void _iarray_sort_heap(iarray *arr,
+                int start, int end) {
+    int i;
+    _iarray_heap_build(arr, start, end);
+
+    for (i=start; i<=end; ++i) {
+        arr->entry->swap(arr, start, end-start-i);
+        _iarray_heap_shift(arr, start, end - start - i - 1);
     }
 }
 
@@ -1220,6 +1312,60 @@ void iarraysort(iarray *arr) {
 
     _iarray_sort_heap(arr, 0, arr->len-1);
 }
+
+/*************************************************************/
+/* iheap                                                     */
+/*************************************************************/
+
+
+/* 建立 堆操作 */
+void iheapbuild(iarray *arr) {
+    _iarray_heap_build(arr, 0, iarraylen(arr));
+}
+
+/* 建立 堆操作 */
+void iheapadd(iarray *arr, const void *value) {
+    int index = iarraylen(arr);
+    int parent;
+    iarrayadd(arr, value);
+
+    while(index > 0) {
+        parent = (index-1) / 2;
+        if ( arr->entry->cmp(arr, index, parent) > 0) {
+            arr->entry->swap(arr, index, parent);
+            index = parent;
+        } else {
+            break;
+        }
+    }
+}
+
+/* 堆操作: 获取堆顶元素 */
+const void *iheappeek(iarray *arr) {
+    icheckret(iarraylen(arr) > 0, NULL);
+    return iarrayat(arr, 0);
+}
+
+/* 堆操作: 移除堆顶元素*/
+void iheappop(iarray *arr) {
+    iheapdelete(arr, 0);
+}
+
+/* 堆操作: 移除指定的位置的元素, 仍然保持堆 */
+void iheapdelete(iarray *arr, int index) {
+    icheck(index>=0 && index<iarraylen(arr));
+
+    /*swap last one*/
+    arr->entry->swap(arr, index, iarraylen(arr)-1);
+    /*array remove it*/
+    iarrayremove(arr, iarraylen(arr)-1);
+
+    /*adjust the heap to be still on*/
+    if (iarraylen(arr) > 0 ) {
+        _iarray_heap_shift(arr, index, iarraylen(arr)-1);
+    }
+}
+
 
 /*************************************************************/
 /* iarray - copy                                             */
