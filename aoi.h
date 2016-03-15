@@ -275,7 +275,11 @@ enum EnumLineClass {
  * D = PointB of the provided line
  * */
 int iline2dintersection(const iline2d *line, const iline2d *other,  ipos *intersect);
+    
+/* Caculating the closest point in the segment to center pos */
+ipos iline2dclosestpoint(const iline2d *line, const ipos *center, ireal epsilon);
 
+    
 /*************************************************************/
 /* iplane                                                    */
 /*************************************************************/
@@ -721,7 +725,7 @@ size_t iarraylen(const iarray *arr);
 size_t iarraycapacity(const iarray *arr);
 
 /* 查询 */
-const void* iarrayat(iarray *arr, int index);
+const void* iarrayat(const iarray *arr, int index);
 
 /* 数组内存缓冲区 */
 void* iarraybuffer(iarray *arr);
@@ -760,17 +764,20 @@ size_t iarrayshrinkcapacity(iarray *arr, size_t capacity);
 void iarraysort(iarray *arr);
 
 /*************************************************************/
-/* iheap                                                     */
+/* iheap（big heap）                                          */
 /*************************************************************/
 
 /* 建立 堆操作 */
 void iheapbuild(iarray *arr);
+    
+/* 堆大小 */
+size_t iheapsize(const iarray *arr);
 
 /* 堆操作: 增加一个元素 */
 void iheapadd(iarray *arr, const void *value);
 
 /* 堆操作: 获取堆顶元素 */
-const void *iheappeek(iarray *arr);
+const void *iheappeek(const iarray *arr);
 
 /* 堆操作: 移除堆顶元素*/
 void iheappop(iarray *arr);
@@ -1352,6 +1359,12 @@ typedef int (*ientryfilter)(imap *map, const struct ifilter *filter, const iunit
 
 /* 过滤器指纹入口 */
 typedef int64_t (*ientryfilterchecksum)(imap *map, const struct ifilter *filter);
+    
+/* 包装线段过滤器参数 */
+typedef  struct ifilterline {
+    iline2d line;
+    ireal epsilon;
+}ifilterline;
 
 /* 过滤器上下文 */
 typedef struct ifilter {
@@ -1363,6 +1376,7 @@ typedef struct ifilter {
             icircle circle;
             irect rect;
             icode code;
+            ifilterline line;
             int64_t id;
         }u;
         /* 复合过滤器 */
@@ -1403,6 +1417,9 @@ ifilter *ifiltermake_circle(const ipos *pos, ireal range);
 
 /* rect 过滤器 */
 ifilter *ifiltermake_rect(const ipos *pos, const isize *size);
+    
+/* line2d 过滤器 */
+ifilter *ifiltermake_line2d(const ipos *from, const ipos *to, ireal epsilon);
 
 /* 搜集树上的所有单元, 调用完后必须调用imapcollectcleanunittag */
 void imapcollectunit(imap *map, const inode *node, ireflist *list, const ifilter *filter, ireflist *snap);
@@ -1461,6 +1478,10 @@ void imapsearchfromrectwithfilter(imap *map, const irect *rect,
 /* 从地图上搜寻单元 */
 void imapsearchfrompos(imap *map, const ipos *pos,
                        isearchresult *result, ireal range);
+    
+/* 从地图上搜寻单元: 视野检测*/
+void imaplineofsight(imap *map, const ipos *from,
+                     const ipos *to, isearchresult *result);
 
 /* 从地图上搜寻单元, 不包括自己 */
 void imapsearchfromunit(imap *map, iunit *unit,

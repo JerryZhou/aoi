@@ -580,6 +580,27 @@ int iline2dintersection(const iline2d *line, const iline2d *other,  ipos *inters
     return EnumLineClass_Lines_Intersect;
 }
 
+/* Caculating the closest point in the segment to center pos */
+ipos iline2dclosestpoint(const iline2d *line, const ipos *center, ireal epsilon) {
+    ipos closest;
+    
+    ivec2 start_to_center = ivec2subtractpoint(center, &line->start);
+    ivec2 line_direction = iline2ddirection(line);
+    ireal line_len = iline2dlength(line);
+    
+    ireal projlen = ivec2dot(&start_to_center, &line_direction);
+    if (fabs(projlen) < epsilon) {
+        closest = line->start;
+    } else if ( fabs(projlen) > line_len){
+        closest = line->end;
+    } else {
+        closest.x = line_direction.v.x * projlen;
+        closest.y = line_direction.v.y * projlen;
+    }
+    
+    return closest;
+}
+
 /*************************************************************/
 /* iplane                                                    */
 /*************************************************************/
@@ -1076,7 +1097,7 @@ size_t iarraycapacity(const iarray *arr) {
 
 /* 查询 */
 #define __arr_i(arr, i) ((void*)((arr)->buffer + (i) * (arr)->entry->size))
-const void* iarrayat(iarray *arr, int index) {
+const void* iarrayat(const iarray *arr, int index) {
     icheckret(arr, NULL);
     icheckret(index>=0 && index<arr->len, NULL);
 
@@ -1323,10 +1344,15 @@ void iheapbuild(iarray *arr) {
     _iarray_heap_build(arr, 0, iarraylen(arr));
 }
 
+/* 堆大小 */
+size_t iheapsize(const iarray *arr) {
+    return iarraylen(arr);
+}
+
 /* 建立 堆操作 */
 void iheapadd(iarray *arr, const void *value) {
-    int index = iarraylen(arr);
     int parent;
+    int index = iarraylen(arr);
     iarrayadd(arr, value);
 
     while(index > 0) {
@@ -1341,7 +1367,7 @@ void iheapadd(iarray *arr, const void *value) {
 }
 
 /* 堆操作: 获取堆顶元素 */
-const void *iheappeek(iarray *arr) {
+const void *iheappeek(const iarray *arr) {
     icheckret(iarraylen(arr) > 0, NULL);
     return iarrayat(arr, 0);
 }
@@ -3453,6 +3479,52 @@ ifilter *ifiltermake_rect(const ipos *pos, const isize *size) {
 	return filter;
 }
 
+/* 线段过滤 
+ * 先求出线段上离圆心最近的点，然后算距离
+ * http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html
+ */
+static int _ientryfilter_line(imap *map,  const ifilter *filter, const iunit* unit) {
+    const ipos *center = &unit->pos;
+    const iline2d *line = &filter->s.u.line.line;
+    ireal epsilon = filter->s.u.line.epsilon;
+    ireal distanceradius = epsilon;
+    ipos closest = iline2dclosestpoint(line, center, epsilon);
+    
+#if iiradius
+    distanceradius += unit->radius * unit->radius;
+#endif
+   
+    if (idistancepow2(center, &closest) < distanceradius) {
+        return iiok;
+    }
+    return iino;
+}
+
+/* 线段过滤器的指纹信息 */
+static int64_t _ientryfilterchecksum_line(imap *map, const ifilter *d) {
+	int64_t hash = 0;
+
+	/* line */
+	_ihash(&hash, __realint(d->s.u.line.line.start.x));
+	_ihash(&hash, __realint(d->s.u.line.line.start.y));
+	_ihash(&hash, __realint(d->s.u.line.line.end.x));
+	_ihash(&hash, __realint(d->s.u.line.line.end.y));
+	_ihash(&hash, __realint(d->s.u.line.epsilon));
+
+	return hash;
+}
+
+/*线段过滤器*/
+ifilter *ifiltermake_line2d(const ipos *from, const ipos *to, ireal epsilon) {
+    ifilter *filter = ifiltermake();
+    filter->s.u.line.line.start = *from;
+    filter->s.u.line.line.end = *to;
+    filter->s.u.line.epsilon = epsilon;
+    filter->entry = _ientryfilter_line;
+    filter->entrychecksum =_ientryfilterchecksum_line;
+    return filter;
+}
+
 /* 搜集树上的所有单元 */
 void imapcollectunit(imap *map, const inode *node, ireflist *list, const ifilter *filter, ireflist *snap) {
 	int i;
@@ -3816,6 +3888,12 @@ void imapsearchfrompos(imap *map, const ipos *pos,
 	imapsearchfromrectwithfilter(map, &rect, result, filter);
 
 	ifilterfree(filter);
+}
+
+/* 从地图上搜寻单元: 视野检测*/
+void imaplineofsight(imap *map, const ipos *from,
+                     const ipos *to, isearchresult *result) {
+    
 }
 
 /* 从地图上搜寻单元 */
