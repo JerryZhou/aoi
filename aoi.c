@@ -290,8 +290,8 @@ ireal idistancepow3(const ipos3 *p, const ipos3 *t) {
 /* 两点相减得到向量 */
 ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1) {
 	ivec2 vec;
-	vec.v.x = p1->x - p0->x;
-	vec.v.y = p1->y - p0->y;
+	vec.v.x = p0->x - p1->x;
+	vec.v.y = p0->y - p1->y;
 	return vec;
 }
 
@@ -299,7 +299,7 @@ ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1) {
 ireal ivec2dot(const ivec2 *l, const ivec2 *r) {
 	icheckret(l, 0);
 	icheckret(r, 0);
-	return l->v.x * r->v.x + l->v.y + r->v.y;
+	return l->v.x * r->v.x + l->v.y * r->v.y;
 }
 
 /* 减法 */
@@ -369,9 +369,9 @@ ivec2 ivec2perpendicular(const ivec2 *l, const ivec2 *r) {
 /* 两点相减得到向量 */
 ivec3 ivec3subtractpoint(const ipos3 *p0, const ipos3 *p1) {
     ivec3 v;
-    v.v.x = p1->x - p0->x;
-    v.v.y = p1->y - p0->y;
-    v.v.z = p1->z - p0->z;
+    v.v.x = p0->x - p1->x;
+    v.v.y = p0->y - p1->y;
+    v.v.z = p0->z - p1->z;
     return v;
 }
 

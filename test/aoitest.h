@@ -3832,6 +3832,42 @@ SP_CASE(iheap, iheapdelete) {
     iarrayfree(arr);
 }
 
+SP_SUIT(iline2d);
+
+SP_CASE(iline2d, nothing) {
+    SP_TRUE(1);
+}
+
+SP_CASE(iline2d, iline2ddirection) {
+    iline2d line;
+    line.start.x = 1;
+    line.start.y = 1;
+    
+    line.end.x = 2;
+    line.end.y = 3;
+    
+    ivec2 dir = iline2ddirection(&line);
+    ireal len = iline2dlength(&line);
+    
+    SP_TRUE(ireal_equal(dir.v.x, 1/len));
+    SP_TRUE(ireal_equal(dir.v.y, 2/len));
+}
+
+SP_CASE(iline2d, iline2dnormal) {
+    iline2d line;
+    line.start.x = 0;
+    line.start.y = 0;
+    
+    line.end.x = 3;
+    line.end.y = 4;
+    
+    /*direction: (0.6, 0.8)*/
+    /*direction: (0.8, -0.6)*/
+    ivec2 normal = iline2dnormal(&line);
+    SP_TRUE(ireal_equal(normal.v.x, 0.8));
+    SP_TRUE(ireal_equal(normal.v.y, -0.6));
+}
+
 SP_SUIT(inavi);
 
 SP_CASE(inavi, nothing) {

@@ -85,6 +85,24 @@ int64_t igetnextmicro();
 
 /* 精度 */
 typedef double ireal;
+    
+/* 默认的 epsilon */
+#define iepsilon 0.1e-6
+    
+/* 浮点比较 */
+#define ireal_equal_in(a, b, eps) (fabs((a)-(b)) < (eps))
+    
+/*浮点数相等比较*/
+#define ireal_equal(a, b) ireal_equal_in(a, b, iepsilon)
+    
+/*与零比较*/
+#define ireal_equal_zero(a) ireal_equal(a, 0)
+    
+/*小于 0*/
+#define ireal_less_zero(a) ireal_equal(a, -iepsilon)
+    
+/*大于 0*/
+#define ireal_greater_zero(a) ireal_equal(a, -iepsilon)
 
 /* 编号 */
 typedef int64_t iid;
