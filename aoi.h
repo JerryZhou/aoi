@@ -305,7 +305,7 @@ int iline2dintersection(const iline2d *line, const iline2d *other,  ipos *inters
 /* Caculating the closest point in the segment to center pos */
 ipos iline2dclosestpoint(const iline2d *line, const ipos *center, ireal epsilon);
 
-    
+   
 /*************************************************************/
 /* iplane                                                    */
 /*************************************************************/
@@ -392,6 +392,9 @@ int icirclerelation(const icircle *con, const icircle *c);
 
 /* 矩形与圆是否相交 */
 int irectintersect(const irect *con, const icircle *c);
+    
+/* Caculating the offset that circle should moved to avoid collided with the line */
+ivec2 icircleoffset(const icircle* circle, const iline2d* line);
 
 /* 名字的最大长度 */
 #define IMaxNameLength 32

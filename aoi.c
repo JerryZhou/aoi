@@ -734,6 +734,25 @@ int irectintersect(const irect *con, const icircle *c) {
 	return 0;
 }
 
+/* Caculating the offset that circle should moved to avoid collided with the line */
+ivec2 icircleoffset(const icircle* circle, const iline2d* line) {
+    /*@see http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html */
+    ipos closest = iline2dclosestpoint(line, &circle->pos, iepsilon);
+    ivec2 dist = ivec2subtractpoint(&circle->pos, &closest);
+    ireal distlen = ivec2length(&dist);
+    ivec2 offset = {{0,0}};
+    if (ireal_greater(distlen, circle->radius)) {
+        return offset;
+    }else if(ireal_equal_zero(distlen)) {
+       /*the circle center is on line: move normal in line */
+        offset = iline2dnormal(line);
+        offset = ivec2multipy(&offset, circle->radius);
+        return offset;
+    }
+    /* normalize(dist) * (radius - distlen) */
+    return ivec2multipy(&dist, (circle->radius - distlen) / distlen);
+}
+
 /* 圆形相交: iiok, iino */
 int icircleintersect(const icircle *con, const icircle *c) {
 	ireal ds = 0.0;
