@@ -891,7 +891,7 @@ SP_CASE(icode, nothing) {
 SP_SUIT(iuserdata);
 
 SP_CASE(iuserdata, nothing) {
-    iuserdata u = {0, NULL};
+    iuserdata u = {0, 0, 0, 0, NULL, NULL, NULL, NULL};
     
     SP_EQUAL(u.u1, 0);
     
