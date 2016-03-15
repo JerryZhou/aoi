@@ -3541,6 +3541,7 @@ SP_CASE(iarray_iref, iarrayset) {
     _arr_iref_try_free = 0;
 }
 
+
 SP_SUIT(islice);
 
 SP_CASE(islice, islicemake) {
@@ -3708,6 +3709,125 @@ SP_CASE(islice, islicelen_islicecapacity) {
     SP_EQUAL(islicelen(slice4), 0);
     SP_EQUAL(islicecapacity(slice4), 5);
     islicefree(slice4);
+    
+    iarrayfree(arr);
+}
+
+void __array_print(iarray *s) {
+    printf("[");
+    for (int i=0; i <iarraylen(s); ++i) {
+        int v = iarrayof(s, int, i);
+        printf("%d%s", v, i==iarraylen(s)-1 ? "" : ", ");
+    }
+    printf("]");
+}
+
+void __array_println(iarray *s) {
+    __array_print(s);
+    printf("%s", "\n");
+}
+
+
+
+SP_SUIT(iheap);
+
+SP_CASE(iheap, iheapbuild) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+
+    SP_EQUAL(iarrayof(arr, int, 0), 7);
+
+    iarrayfree(arr);
+}
+
+SP_CASE(iheap, iheapadd) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+
+    SP_EQUAL(iarrayof(arr, int, 0), 7);
+    
+    int v = 8;
+    iheapadd(arr, &v);
+    __array_println(arr);
+    SP_EQUAL(iarrayof(arr, int, 0), 8);
+
+    iarrayfree(arr);
+}
+
+SP_CASE(iheap, iheappeek) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+    
+    SP_EQUAL(iarrayof(arr, int, 0), 7);
+    
+    int * u = (int*)iheappeek(arr);
+    SP_EQUAL(*u, 7);
+    
+    iarrayfree(arr);
+}
+
+
+SP_CASE(iheap, iheappop) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+    
+    SP_EQUAL(iarrayof(arr, int, 0), 7);
+    
+    int * u = (int*)iheappeek(arr);
+    SP_EQUAL(*u, 7);
+    
+    iheappop(arr);
+    
+    u = (int*)iheappeek(arr);
+    SP_EQUAL(*u, 6);
+    
+    iheappop(arr);
+    
+    u = (int*)iheappeek(arr);
+    SP_EQUAL(*u, 5);
+    
+    
+    iarrayfree(arr);
+}
+
+SP_CASE(iheap, iheapdelete) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+    
+    /*[7, 4, 6, 3, 0, 5, 2, 1]*/
+    iheapdelete(arr, 0);
+    /*[6, 4, 5, 3, 0, 1, 2]*/
+    __array_println(arr);
+    SP_EQUAL(*(int*)iheappeek(arr), 6);
+    
+    /*[6, 4, 5, 3, 0, 1, 2]*/
+    iheapdelete(arr, 1);
+    /*[6, 3, 5, 2, 0, 1]*/
+    SP_EQUAL(iarrayof(arr, int, 1), 3);
+    SP_EQUAL(iarrayof(arr, int, 2), 5);
+    SP_EQUAL(iarrayof(arr, int, 3), 2);
+    SP_EQUAL(iarrayof(arr, int, 4), 0);
+    SP_EQUAL(iarrayof(arr, int, 5), 1);
     
     iarrayfree(arr);
 }
