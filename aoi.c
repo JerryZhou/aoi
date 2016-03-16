@@ -272,6 +272,9 @@ int64_t igetnextmicro(){
 	return gseq;
 }
 
+/* zero point */
+const ipos kipos_zero = {0,0};
+
 /* 计算距离的平方 */
 ireal idistancepow2(const ipos *p, const ipos *t) {
 	ireal dx = p->x - t->x;
@@ -285,6 +288,14 @@ ireal idistancepow3(const ipos3 *p, const ipos3 *t) {
 	ireal dy = p->y - t->y;
     ireal dz = p->z - t->z;
 	return dx*dx + dy*dy + dz*dz;
+}
+
+/* 把点在这个方向上进行移动 */
+ipos ivec2movepoint(const ivec2 *dir, ireal dist, const ipos *p) {
+    ipos to = *p;
+    to.x += dir->v.x * dist;
+    to.y += dir->v.y * dist;
+    return to;
 }
 
 /* 两点相减得到向量 */
@@ -582,6 +593,7 @@ int iline2dintersection(const iline2d *line, const iline2d *other,  ipos *inters
 
 /* Caculating the closest point in the segment to center pos */
 ipos iline2dclosestpoint(const iline2d *line, const ipos *center, ireal epsilon) {
+    /*@see http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html */
     ipos closest;
     
     ivec2 start_to_center = ivec2subtractpoint(center, &line->start);
@@ -589,13 +601,13 @@ ipos iline2dclosestpoint(const iline2d *line, const ipos *center, ireal epsilon)
     ireal line_len = iline2dlength(line);
     
     ireal projlen = ivec2dot(&start_to_center, &line_direction);
-    if (ireal_less_than(projlen, 0, epsilon)) {
+    if (projlen <= 0) {
         closest = line->start;
     } else if ( ireal_greater_than(projlen, line_len, epsilon)){
         closest = line->end;
     } else {
-        closest.x = line_direction.v.x * projlen;
-        closest.y = line_direction.v.y * projlen;
+        closest.x = line->start.x + line_direction.v.x * projlen;
+        closest.y = line->start.y + line_direction.v.y * projlen;
     }
     
     return closest;
@@ -3508,12 +3520,13 @@ static int _ientryfilter_line(imap *map,  const ifilter *filter, const iunit* un
     ireal epsilon = filter->s.u.line.epsilon;
     ireal distanceradius = epsilon;
     ipos closest = iline2dclosestpoint(line, center, epsilon);
+    ireal distance;
     
 #if iiradius
     distanceradius += unit->radius * unit->radius;
 #endif
-   
-    if (idistancepow2(center, &closest) < distanceradius) {
+    distance = idistancepow2(center, &closest);
+    if (ireal_less(distance, distanceradius)) {
         return iiok;
     }
     return iino;
@@ -3706,9 +3719,23 @@ int64_t imapchecksumnodelist(imap *map, const ireflist *list, int64_t *maxtick, 
 	return hash;
 }
 
+/* collect the inode and not keep retain */
+inode * _imapcollectnodefrompoint(imap *map, const ipos *point, int level, ireflist *collects) {
+    icode code;
+    inode *node;
+    imapgencode(map, point, &code);
+    node = imapgetnode(map, &code, level, EnumFindBehaviorAccurate);
+    if (node && !_state_is(node->state, EnumNodeStateSearching)) {
+        _state_add(node->state, EnumNodeStateSearching);
+        ireflistadd(collects, irefcast(node));
+        return node;
+    }
+    return NULL;
+}
+
 /* 搜索 */
 void imapsearchfromnode(imap *map, const inode *node,
-		isearchresult* result, ireflist *innodes) {
+		isearchresult* result, const ireflist *innodes) {
 	irefjoint *joint;
 	inode *searchnode;
 	int64_t micro = __Micros;
@@ -3759,55 +3786,136 @@ void imapsearchfromnode(imap *map, const inode *node,
 			node->level, node->code.code, ireflistlen(result->units));
 }
 
+/*to see if we clear the node searching tag*/
+static void _imapsearchcollectnode_withclear(imap *map, const irect *rect, int clear, ireflist *collects) {
+    ipos tpos;
+    inode *tnode = NULL;
+    int i;
+    int level = map->divide;
+    /*
+     *^
+     *|(1)(2)
+     *|(0)(3)
+     *|__________>
+     */
+    ireal offsets[] = {rect->pos.x, rect->pos.y,
+        rect->pos.x, rect->pos.y + rect->size.h,
+        rect->pos.x + rect->size.w, rect->pos.y + rect->size.h,
+        rect->pos.x + rect->size.w, rect->pos.y };
+    
+    /* 可能的节点层级 */
+    while (level > 0 && map->nodesizes[level].h < rect->size.h) {
+        --level;
+    }
+    while (level > 0 && map->nodesizes[level].w < rect->size.w) {
+        --level;
+    }
+    
+    /* 获取可能存在数据的节点 */
+    for (i=0; i<4; ++i) {
+        tpos.x =  offsets[2*i];
+        tpos.y =  offsets[2*i+1];
+        /* 跟刚刚一样的节点 */
+        if (tnode && tpos.x >= tnode->code.pos.x
+            && (tnode->code.pos.x + map->nodesizes[tnode->level].w > tpos.x)
+            && tpos.y >= tnode->code.pos.y
+            && (tnode->code.pos.y + map->nodesizes[tnode->level].h > tpos.y)) {
+            continue;
+        }
+        
+        /* TODO: can use the imapmovecode to optimaze*/
+        _imapcollectnodefrompoint(map, &tpos, level, collects);
+    }
+    
+    /* 清理标记 */
+    if (clear == iiok) {
+        imapcollectcleannodetag(map, collects);
+    }
+}
+
 /* 收集包含指定矩形区域的节点(最多4个) */
 void imapsearchcollectnode(imap *map, const irect *rect, ireflist *collects) {
-	icode code;
-	ipos tpos;
-	inode *tnode = NULL;
-	int i;
-	int level = map->divide;
-	/*
-	 *^
-	 *|(1)(2)
-	 *|(0)(3)
-	 *|__________>
-	 */
-	ireal offsets[] = {rect->pos.x, rect->pos.y,
-		rect->pos.x, rect->pos.y + rect->size.h,
-		rect->pos.x + rect->size.w, rect->pos.y + rect->size.h,
-		rect->pos.x + rect->size.w, rect->pos.y };
+    _imapsearchcollectnode_withclear(map, rect, iiok, collects);
+}
 
-	/* 可能的节点层级 */
-	while (level > 0 && map->nodesizes[level].h < rect->size.h) {
-		--level;
-	}
-	while (level > 0 && map->nodesizes[level].w < rect->size.w) {
-		--level;
-	}
+/**/
+static irect _irect_make_from(const ipos *p, const ipos *t) {
+    irect r;
+    
+    r.pos.x = imin(p->x, t->x);
+    r.pos.y = imin(p->y, t->y);
+    r.size.w = imax(fabs(p->x - t->x), iepsilon);
+    r.size.h = imax(fabs(p->y - t->y), iepsilon);
+    return r;
+}
 
-	/* 获取可能存在数据的节点 */
-	for (i=0; i<4; ++i) {
-		tpos.x =  offsets[2*i];
-		tpos.y =  offsets[2*i+1];
-		/* 跟刚刚一样的节点 */
-		if (tnode && tpos.x >= tnode->code.pos.x
-			&& (tnode->code.pos.x + map->nodesizes[tnode->level].w > tpos.x)
-			&& tpos.y >= tnode->code.pos.y
-			&& (tnode->code.pos.y + map->nodesizes[tnode->level].h > tpos.y)) {
-			continue;
-		}
+/* expand the rect with radius */
+static void _irect_expand_radius(irect *r, ireal radius) {
+    r->pos.x -= radius;
+    r->pos.y -= radius;
+    r->size.w += 2 * radius;
+    r->size.h += 2 * radius;
+}
 
-		/* TODO: can use the imapmovecode to optimaze*/
-		imapgencode(map, &tpos, &code);
-		tnode = imapgetnode(map, &code, level, EnumFindBehaviorAccurate);
-		if (tnode && !_state_is(tnode->state, EnumNodeStateSearching)) {
-			_state_add(tnode->state, EnumNodeStateSearching);
-			ireflistadd(collects, irefcast(tnode));
-		}
-	}
-
-	/* 清理标记 */
-	imapcollectcleannodetag(map, collects);
+/* Collecting nodes that intersected with line with map radius */
+void imapsearchcollectline(imap *map, const iline2d *line, ireflist *collects) {
+    ivec2 line_direction = iline2ddirection(line);
+    ireal line_len = iline2dlength(line);
+    
+    ireal radius = 0;
+    ireal movedelta = 0;
+    
+    ipos start = line->start;
+    ipos begin;
+    ipos end;
+    irect r;
+    
+    int movecnt;
+    int i;
+    int level = map->divide;
+    
+#if iiradius
+    radius += map->maxradius;
+    /* if the radius grater than zero,
+     * we should move back the dir with radius*/
+    if (ireal_greater_zero(radius)) {
+        start = ivec2movepoint(&line_direction, -radius, &start);
+        line_len += 2*radius;
+    }
+#endif
+    
+    /* every step will take max 4 node */
+    /* calcuating the node level */
+    while (level > 0 && map->nodesizes[level].h < line_len/4) {
+        --level;
+    }
+    while (level > 0 && map->nodesizes[level].w < line_len/4) {
+        --level;
+    }
+    /* calcuating the step counts and step delta*/
+    movedelta = imin(map->nodesizes[level].h, map->nodesizes[level].w);
+    movecnt = (int)((line_len + movedelta - iepsilon) / movedelta);
+    
+    /* move step by step*/
+    /* collect all the relatived node */
+    begin = start;
+    for (i=0; i < movecnt; ++i) {
+        /* move one step */
+        end = ivec2movepoint(&line_direction, (i+1) * movedelta, &start);
+        r = _irect_make_from(&begin, &end);
+        
+        /*expand the rect with radius*/
+#if iiradius
+        _irect_expand_radius(&r, map->maxradius);
+#endif
+        
+        /* collect the inode*/
+        _imapsearchcollectnode_withclear(map, &r, iino, collects);
+        begin = end;
+    }
+    
+    /* clean the searing tag in node */
+    imapcollectcleannodetag(map, collects);
 }
 
 /* 计算给定节点列表里面节点的最小公共父节点 */
@@ -3853,26 +3961,9 @@ void imapsearchfromrectwithfilter(imap *map, const irect *rect,
 
 	/* 收集可能的候选节点 */
 	imapsearchcollectnode(map, rect, collects);
-
-	/* 没有任何潜在的节点 */
-	if (ireflistlen(collects) == 0) {
-		ireflistfree(collects);
-        /* 清理以前的搜索结果 */
-        isearchresultclean(result);
-		return;
-	}
-
-	/* 计算父节点 */
-	node = imapcaculatesameparent(map, collects);
-
-	/* 造一个距离过滤器 */
-	ifilteradd(result->filter, filter);
-
-	/* 从节点上搜寻结果 */
-	imapsearchfromnode(map, node, result, collects);
-
-	/* 移除范围过滤器 */
-	ifilterremove(result->filter, filter);
+    
+    /* searching the collects */
+    imapsearchfromcollectwithfilter(map, collects, result, filter);
 
 	/* 释放所有候选节点 */
 	ireflistfree(collects);
@@ -3885,6 +3976,31 @@ void imapsearchfromrectwithfilter(imap *map, const irect *rect,
 			node->code.pos.x, node->code.pos.y,
 			rect->pos.x, rect->pos.y, rect->size.w, rect->size.h,
 			ireflistlen(result->units));
+}
+
+/* Collecting units from nodes(collects) with the filter */
+void imapsearchfromcollectwithfilter(imap *map, const ireflist* collects,
+                                     isearchresult *result, ifilter *filter) {
+    /* parent */
+    inode *node;
+    /* 没有任何潜在的节点 */
+    if (ireflistlen(collects) == 0) {
+        /* 清理以前的搜索结果 */
+        isearchresultclean(result);
+        return;
+    }
+    
+    /* 计算父节点 */
+    node = imapcaculatesameparent(map, collects);
+    
+    /* 造一个距离过滤器 */
+    ifilteradd(result->filter, filter);
+    
+    /* 从节点上搜寻结果 */
+    imapsearchfromnode(map, node, result, collects);
+    
+    /* 移除范围过滤器 */
+    ifilterremove(result->filter, filter);
 }
 
 /* 从地图上搜寻单元, 并附加条件 filter */
@@ -3912,7 +4028,21 @@ void imapsearchfrompos(imap *map, const ipos *pos,
 /* 从地图上搜寻单元: 视野检测*/
 void imaplineofsight(imap *map, const ipos *from,
                      const ipos *to, isearchresult *result) {
+    iline2d line = {*from, *to};
+    /* make node list*/
+    ireflist *collects = ireflistmake();
+    /* make line filter*/
+    ifilter *filter = ifiltermake_line2d(from, to, iepsilon);
     
+    /* collecting the node with line*/
+    imapsearchcollectline(map, &line, collects);
+    
+    /* collect the unit with filter in collects*/
+    imapsearchfromcollectwithfilter(map, collects, result, filter);
+    
+    /* free resouces*/
+    ireflistfree(collects);
+    ifilterfree(filter);
 }
 
 /* 从地图上搜寻单元 */

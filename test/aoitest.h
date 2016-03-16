@@ -3036,6 +3036,135 @@ SP_CASE(searching_bench_right, searchpos){
     imapfree(map);
 }
 
+static void silly_search_lineofsight(imap *map,
+                                     iunit **units,
+                                     int num,
+                                     const iline2d *line,
+                                     isearchresult *result) {
+    ifilter *filter = NULL;
+    
+    int i =0;
+    iunit *unit = NULL;
+    
+    filter = ifiltermake_line2d(&line->start, &line->end, iepsilon);
+    isearchresultclean(result);
+    
+    for (i=0; i<num; ++i) {
+        unit = units[i];
+        /* 是否满足条件 */
+        if (ifilterrun(map, filter, unit) == iiok) {
+            ireflistadd(result->units, irefcast(unit));
+        }
+    }
+}
+
+static void __print_list_unit(const ireflist *list) {
+    printf("[");
+    irefjoint *first = ireflistfirst(list);
+    while (first) {
+        iunit * u = icast(iunit, first->value);
+        printf("%lld%s", u->id, first->next == NULL ? "" :", ");
+        first = first->next;
+    }
+    printf("]\n");
+}
+
+SP_CASE(searching_bench_right, lineofsight_accurate) {
+    static const int MAX_COUNT = 8;
+    static const int MAP_SIZE = 8;
+    ipos pos = {0, 0};
+    isize size = {MAP_SIZE, MAP_SIZE};
+    int divide = 3;
+    iarray *units = iarraymakeiref(MAX_COUNT);
+    int i = 0;
+    int maxunit = MAX_COUNT;
+    iline2d line;
+    isearchresult* resultlfs = isearchresultmake();
+    isearchresult* resultrfs = isearchresultmake();
+    imap *map = imapmake(&pos, &size, divide);
+    
+    for (i=0; i<maxunit; ++i) {
+        iunit *u = imakeunit((iid)i, (ireal)(i), (ireal)(i));
+        /* 给单元加一个随机半径 */
+        u->radius = (ireal)(1);
+        imapaddunit(map, u);
+        iarrayadd(units, &u);
+        
+        ifreeunit(u);
+    }
+    
+    printf("**********************\n");
+#define __x_set_sight(x0, y0, x1, y1) \
+    line.start.x = x0; line.start.y = y0; line.end.x = x1; line.end.y = y1
+    
+    {
+        __x_set_sight(1, 1, 3, 3);
+        silly_search_lineofsight(map, (iunit**)iarraybuffer(units), MAX_COUNT, &line, resultrfs);
+        __print_list_unit(resultrfs->units);
+        imaplineofsight(map, &line.start, &line.end, resultlfs);
+        __print_list_unit(resultlfs->units);
+    }
+    printf("**********************\n");
+    
+    iarrayfree(units);
+    isearchresultfree(resultrfs);
+    isearchresultfree(resultlfs);
+    imapfree(map);
+}
+
+SP_CASE(searching_bench_right, lineofsight) {
+    SP_TRUE(1);
+    
+    static const int MAX_COUNT = 2000;
+    static const int MAP_SIZE = 512;
+    ipos pos = {0, 0};
+    ipos to = {0, 0};
+    iline2d line;
+    isize size = {MAP_SIZE, MAP_SIZE};
+    int divide = 5;
+    iarray *units = iarraymakeiref(MAX_COUNT);
+    int i = 0;
+    int maxunit = MAX_COUNT;
+    int bench = 2000;
+    int maxunitrange = 2;
+    isearchresult* resultlfs = isearchresultmake();
+    isearchresult* resultrfs = isearchresultmake();
+    imap *map = imapmake(&pos, &size, divide);
+    
+    for (i=0; i<maxunit; ++i) {
+        iunit * u = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
+        /* 给单元加一个随机半径 */
+        u->radius = (ireal)(rand()%100)/100*maxunitrange;
+        imapaddunit(map, u);
+        iarrayadd(units, &u);
+        ifreeunit(u);
+    }
+   
+    for(i=0;i<bench; ++i) {
+        pos.x = (ireal)(rand()%MAP_SIZE);
+        pos.y = (ireal)(rand()%MAP_SIZE);
+        to.x = (ireal)(rand()%MAP_SIZE);
+        to.y = (ireal)(rand()%MAP_SIZE);
+        line.start = pos;
+        line.end = to;
+        
+        silly_search_lineofsight(map, (iunit**)iarraybuffer(units), MAX_COUNT, &line, resultrfs);
+        //__print_list_unit(resultrfs->units);
+        
+        imaplineofsight(map, &pos, &to, resultlfs);
+        //__print_list_unit(resultlfs->units);
+        
+        SP_EQUAL(ireflistlen(resultrfs->units), ireflistlen(resultlfs->units));
+        
+        SP_EQUAL(silly_checksum(resultrfs->units), silly_checksum(resultlfs->units));
+    }
+    
+    iarrayfree(units);
+    isearchresultfree(resultlfs);
+    isearchresultfree(resultrfs);
+    imapfree(map);
+}
+
 SP_SUIT(iarray);
 
 static iarray *_iarray_make_int(size_t size) {

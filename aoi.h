@@ -124,6 +124,9 @@ typedef int64_t iid;
 typedef struct ipos {
     ireal x, y;
 }ipos;
+    
+/* zero point */
+extern const ipos kipos_zero;
 
 /* 计算距离的平方 */
 ireal idistancepow2(const ipos *p, const ipos *t);
@@ -155,6 +158,9 @@ typedef union ivec2 {
 
 /* 两点相减得到向量 */
 ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1);
+    
+/* 把点在这个方向上进行移动 */
+ipos ivec2movepoint(const ivec2 *dir, ireal dist, const ipos *p);
 
 /* 加法*/
 ivec2 ivec2add(const ivec2 *l, const ivec2 *r);
@@ -1496,6 +1502,9 @@ void isearchresultrefreshfromsnap(imap *map, isearchresult *result);
 
 /* 收集包含指定矩形局域的节点(最多4个) */
 void imapsearchcollectnode(imap *map, const irect *rect, ireflist *list);
+    
+/* Collecting nodes that intersected with line with map radius */
+void imapsearchcollectline(imap *map, const iline2d *line, ireflist *list);
 
 /* 计算给定节点列表里面节点的最小公共父节点 */
 inode *imapcaculatesameparent(imap *map, const ireflist *collects);
@@ -1503,14 +1512,14 @@ inode *imapcaculatesameparent(imap *map, const ireflist *collects);
 /* 从地图上搜寻单元 irect{pos, size{rangew, rangeh}}, 并附加条件 filter */
 void imapsearchfromrectwithfilter(imap *map, const irect *rect,
                                   isearchresult *result, ifilter *filter);
+    
+/* Collecting units from nodes(collects) with the filter */
+void imapsearchfromcollectwithfilter(imap *map, const ireflist* collects,
+                                     isearchresult *result, ifilter *filter);
 
 /* 从地图上搜寻单元 */
 void imapsearchfrompos(imap *map, const ipos *pos,
                        isearchresult *result, ireal range);
-    
-/* 从地图上搜寻单元: 视野检测*/
-void imaplineofsight(imap *map, const ipos *from,
-                     const ipos *to, isearchresult *result);
 
 /* 从地图上搜寻单元, 不包括自己 */
 void imapsearchfromunit(imap *map, iunit *unit,
@@ -1518,8 +1527,11 @@ void imapsearchfromunit(imap *map, iunit *unit,
 
 /* 搜索: 最后的搜索都会经过这里 */
 void imapsearchfromnode(imap *map, const inode *node,
-                        isearchresult* result, ireflist *innodes);
+                        isearchresult* result, const ireflist *innodes);
 
+/* 从地图上搜寻单元: 视野检测, 没有缓存的*/
+void imaplineofsight(imap *map, const ipos *from,
+                     const ipos *to, isearchresult *result);
 /* 计算节点列表的指纹信息 */
 int64_t imapchecksumnodelist(imap *map, const ireflist *list, int64_t *maxtick, int64_t *maxutick);
 
