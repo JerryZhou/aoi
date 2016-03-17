@@ -717,16 +717,29 @@ typedef struct irefneighbors {
     ireflist *neighbors_from;
     /* 可走的列表 this ===> other */
     ireflist *neighbors_to;
+    
+    /* List joint resouce free entry */
+    irefjoint_entry_res_free neighbors_resfree;
 }irefneighbors;
     
 /*macro declare*/
-#define irefneighborsdeclare irefdeclare; ireflist *neighbors_from; ireflist *neighbors_to
+#define irefneighborsdeclare \
+    irefdeclare; \
+    ireflist *neighbors_from; \
+    ireflist *neighbors_to; \
+    irefjoint_entry_res_free neighbors_resfree
+    
+/* 设置邻居间关系描述的 释放符号 */
+void ineighborsbuild(irefneighbors *neighbors, irefjoint_entry_res_free entry);
     
 /* 从节点图里面移除 */
 void ineighborsclean(irefneighbors *neighbors);
 
 /* 在有向图上加上一单向边 */
 void ineighborsadd(irefneighbors *from, irefneighbors *to);
+    
+/* 在有向图上加上一单向边 */
+void ineighborsaddvalue(irefneighbors *from, irefneighbors *to, void *from_to, void *to_from);
 
 /* 在有向图上移除一条单向边 */
 void ineighborsdel(irefneighbors *from, irefneighbors *to);

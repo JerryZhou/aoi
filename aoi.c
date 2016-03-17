@@ -1092,6 +1092,13 @@ void ireflistfree(ireflist *list) {
 /*************************************************************/
 /* irefneighbors                                             */
 /*************************************************************/
+
+/* 设置邻居间关系描述的 释放符号 */
+void ineighborsbuild(irefneighbors *neighbors, irefjoint_entry_res_free entry) {
+    icheck(neighbors);
+    neighbors->neighbors_resfree = entry;
+}
+
 /*
  * 把节点从 有向图里面拿出来， 没有任何一个节点可以到他
  */
@@ -1123,26 +1130,34 @@ void ineighborsclean(irefneighbors *node) {
 
 /*
  * 没有做重复性的检查
- * 让 node ==> to
+ * 让 from ==> to
  */
-void ineighborsadd(irefneighbors *node, irefneighbors *to) {
-    if (!node->neighbors_to) {
-        node->neighbors_to = ireflistmake();
+void ineighborsadd(irefneighbors *from, irefneighbors *to) {
+    ineighborsaddvalue(from, to, NULL, NULL);
+}
+
+/* 在有向图上加上一单向边 */
+void ineighborsaddvalue(irefneighbors *from, irefneighbors *to, void *from_to, void *to_from) {
+    icheck(from);
+    icheck(to);
+    
+    if (!from->neighbors_to) {
+        from->neighbors_to = ireflistmakeentry(from->neighbors_resfree);
     }
-    ireflistadd(node->neighbors_to, irefcast(to));
+    ireflistaddres(from->neighbors_to, irefcast(to), from_to);
     if (!to->neighbors_from) {
-        to->neighbors_from = ireflistmake();
+        to->neighbors_from = ireflistmakeentry(to->neighbors_resfree);
     }
-    ireflistadd(to->neighbors_from, irefcast(node));
+    ireflistaddres(to->neighbors_from, irefcast(from), to_from);
 }
 
 /*
  * 没有做重复性的检查
- * 让 node !==> to
+ * 让 from !==> to
  */
-void ineighborsdel(irefneighbors *node, irefneighbors *to) {
-    ireflistremove(node->neighbors_to, irefcast(to));
-    ireflistremove(to->neighbors_from, irefcast(node));
+void ineighborsdel(irefneighbors *from, irefneighbors *to) {
+    ireflistremove(from->neighbors_to, irefcast(to));
+    ireflistremove(to->neighbors_from, irefcast(from));
 }
 
 /* 释放数组相关的资源 */
