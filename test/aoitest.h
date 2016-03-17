@@ -974,36 +974,36 @@ SP_CASE(inode, neighborsadd) {
     node_graphics g;
     _inode_prepare_graphics(&g);
     
-    ineighborsadd(g.A, g.B);
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.B));
     
-    SP_EQUAL(g.A->neighbors, NULL);
-    SP_EQUAL(g.B->neighbors_walkable, NULL);
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 1);
-    SP_EQUAL(ireflistfirst(g.B->neighbors)->value, irefcast(g.A));
-    SP_EQUAL(ireflistfirst(g.A->neighbors_walkable)->value, irefcast(g.B));
+    SP_EQUAL(g.A->neighbors_from, NULL);
+    SP_EQUAL(g.B->neighbors_to, NULL);
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 1);
+    SP_EQUAL(ireflistfirst(g.B->neighbors_from)->value, irefcast(g.A));
+    SP_EQUAL(ireflistfirst(g.A->neighbors_to)->value, irefcast(g.B));
     
-    ineighborsadd(g.A, g.D);
-    ineighborsadd(g.B, g.C);
-    ineighborsadd(g.B, g.E);
-    ineighborsadd(g.C, g.D);
-    ineighborsadd(g.D, g.B);
-    ineighborsadd(g.E, g.B);
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.C));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.E));
+    ineighborsadd(icast(irefneighbors, g.C), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.D), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.E), icast(irefneighbors, g.B));
     
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 3);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 3);
     
-    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.C->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.C->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors_from), 1);
     
-    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.D->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.D->neighbors_from), 2);
     
-    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.E->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.E->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.E->neighbors_from), 1);
     
     _inode_free_graphics(&g);
 }
@@ -1012,34 +1012,34 @@ SP_CASE(inode, ineighborsdel) {
     
     node_graphics g;
     _inode_prepare_graphics(&g);
-    ineighborsadd(g.A, g.B);
-    ineighborsadd(g.A, g.D);
-    ineighborsadd(g.B, g.C);
-    ineighborsadd(g.B, g.E);
-    ineighborsadd(g.C, g.D);
-    ineighborsadd(g.D, g.B);
-    ineighborsadd(g.E, g.B);
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.C));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.E));
+    ineighborsadd(icast(irefneighbors, g.C), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.D), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.E), icast(irefneighbors, g.B));
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 3);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 3);
     
-    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.C->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.C->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors_from), 1);
     
-    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.D->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.D->neighbors_from), 2);
     
-    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.E->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.E->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.E->neighbors_from), 1);
     
-    ineighborsdel(g.A, g.B);
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    ineighborsdel(icast(irefneighbors, g.A), icast(irefneighbors, g.B));
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 2);
     
     
     _inode_free_graphics(&g);
@@ -1048,44 +1048,44 @@ SP_CASE(inode, ineighborsdel) {
 SP_CASE(inode, ineighborsclean) {
     node_graphics g;
     _inode_prepare_graphics(&g);
-    ineighborsadd(g.A, g.B);
-    ineighborsadd(g.A, g.D);
-    ineighborsadd(g.B, g.C);
-    ineighborsadd(g.B, g.E);
-    ineighborsadd(g.C, g.D);
-    ineighborsadd(g.D, g.B);
-    ineighborsadd(g.E, g.B);
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.C));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.E));
+    ineighborsadd(icast(irefneighbors, g.C), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.D), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.E), icast(irefneighbors, g.B));
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 3);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 3);
     
-    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.C->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.C->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors_from), 1);
     
-    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.D->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.D->neighbors_from), 2);
     
-    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.E->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.E->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.E->neighbors_from), 1);
     
-    ineighborsclean(g.B);
+    ineighborsclean(icast(irefneighbors, g.B));
     
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 0)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 0);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 0)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 0);
     
-    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.C->neighbors), 0);
+    SP_EQUAL(ireflistlen(g.C->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors_from), 0);
     
-    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 0)
-    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.D->neighbors_to), 0)
+    SP_EQUAL(ireflistlen(g.D->neighbors_from), 2);
     
-    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 0)
-    SP_EQUAL(ireflistlen(g.E->neighbors), 0);
+    SP_EQUAL(ireflistlen(g.E->neighbors_to), 0)
+    SP_EQUAL(ireflistlen(g.E->neighbors_from), 0);
     
     _inode_free_graphics(&g);
 }

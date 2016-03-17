@@ -23,14 +23,26 @@
 #include <stddef.h>
 
 #ifdef _WIN32
+
 #include <windows.h>
 #define snprintf _snprintf
 typedef _int64 int64_t;
+
+#ifndef offsetof
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif /* end of: offsetof */
+
+#ifndef container_of
+#define container_of(ptr, type, member) ({            \
+    const typeof( ((type *)0)->member ) *__mptr = (ptr);\
+    (type *)( (char *)__mptr - offsetof(type,member) );})
+#endif /* end of:container_of */
+
 #else
 #include <stdbool.h>
 #include <inttypes.h>
 #include <sys/time.h>
-#endif
+#endif /* end of: _WIN32 */
 
 /*****
  * AOI: (Area Of Interesting)
@@ -678,6 +690,33 @@ void ireflistremoveall(ireflist *list);
 
 /* 释放列表 */
 void ireflistfree(ireflist *list);
+    
+/*************************************************************/
+/* irefneighbors                                             */
+/*************************************************************/
+typedef struct irefneighbors {
+    irefdeclare;
+    /*
+     * 构成了一个有向图，可在联通上做单向通行
+     * */
+    /* 所有可以到达当前节点的邻居 other ===> this */
+    ireflist *neighbors_from;
+    /* 可走的列表 this ===> other */
+    ireflist *neighbors_to;
+}irefneighbors;
+    
+/*macro declare*/
+#define irefneighborsdeclare irefdeclare; ireflist *neighbors_from; ireflist *neighbors_to
+    
+/* 从节点图里面移除 */
+void ineighborsclean(irefneighbors *neighbors);
+
+/* 在有向图上加上一单向边 */
+void ineighborsadd(irefneighbors *from, irefneighbors *to);
+
+/* 在有向图上移除一条单向边 */
+void ineighborsdel(irefneighbors *from, irefneighbors *to);
+    
 
 /*************************************************************/
 /* iarray                                                    */
@@ -742,6 +781,7 @@ typedef struct iarray {
     size_t len;
     char *buffer;
     int flag;
+    iarray_entry_cmp cmp;
 
     /* 每一种数组类型都需要定义这个 */
     const iarrayentry* entry;
@@ -1166,8 +1206,8 @@ typedef enum EnumNodeState {
 
 /* 节点 */
 typedef struct inode {
-    /* 声明引用对象 */
-    irefdeclare;
+    /* 声明为iref-neighbors */
+    irefneighborsdeclare;
     /* 节点层级: 从1 开始（根节点为0） */
     int   level;
     /* 节点对应的起点坐标编码 code[level-1] */
@@ -1202,26 +1242,10 @@ typedef struct inode {
     struct inode *pre;
     struct inode *next;
 
-    /*
-     * 构成了一个有向图，可在联通上做单向通行
-     * */
-    /* 所有可以到达当前节点的邻居 other ===> this */
-    ireflist *neighbors;
-    /* 可走的列表 this ===> other */
-    ireflist *neighbors_walkable;
 }inode;
 
 /* 节点内存管理 */
 inode * imakenode();
-
-/* 从节点图里面移除 */
-void ineighborsclean(inode *node);
-
-/* 在有向图上加上一单向边 */
-void ineighborsadd(inode *node, inode *to);
-
-/* 在有向图上移除一条单向边 */
-void ineighborsdel(inode *node, inode *to);
 
 /* 释放节点本身 */
 void ifreenode(inode *node);

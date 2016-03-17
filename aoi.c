@@ -1070,6 +1070,62 @@ void ireflistfree(ireflist *list) {
 	iobjfree(list);
 }
 
+/*************************************************************/
+/* irefneighbors                                             */
+/*************************************************************/
+/*
+ * 把节点从 有向图里面拿出来， 没有任何一个节点可以到他
+ */
+void ineighborsclean(irefneighbors *node) {
+    irefjoint* joint = NULL;
+    irefneighbors *neighbor = NULL;
+    icheck(node);
+    
+    /* disconnect to others */
+    joint = ireflistfirst(node->neighbors_to);
+    while (joint) {
+        neighbor = icast(irefneighbors, joint->value);
+        ireflistremove(neighbor->neighbors_from, irefcast(node));
+        joint = joint->next;
+    }
+    ireflistfree(node->neighbors_to);
+    node->neighbors_to = NULL;
+    
+    /* disconnect from others */
+    joint = ireflistfirst(node->neighbors_from);
+    while (joint) {
+        neighbor = icast(irefneighbors, joint->value);
+        ireflistremove(neighbor->neighbors_to, irefcast(node));
+        joint = joint->next;
+    }
+    ireflistfree(node->neighbors_from);
+    node->neighbors_from = NULL;
+}
+
+/*
+ * 没有做重复性的检查
+ * 让 node ==> to
+ */
+void ineighborsadd(irefneighbors *node, irefneighbors *to) {
+    if (!node->neighbors_to) {
+        node->neighbors_to = ireflistmake();
+    }
+    ireflistadd(node->neighbors_to, irefcast(to));
+    if (!to->neighbors_from) {
+        to->neighbors_from = ireflistmake();
+    }
+    ireflistadd(to->neighbors_from, irefcast(node));
+}
+
+/*
+ * 没有做重复性的检查
+ * 让 node !==> to
+ */
+void ineighborsdel(irefneighbors *node, irefneighbors *to) {
+    ireflistremove(node->neighbors_to, irefcast(to));
+    ireflistremove(to->neighbors_from, irefcast(node));
+}
+
 /* 释放数组相关的资源 */
 static void _iarray_entry_free(struct iref* ref) {
     iarray *array = (iarray *)ref;
@@ -1104,6 +1160,7 @@ iarray *iarraymake(size_t capacity, const iarrayentry *entry) {
     array->free = _iarray_entry_free;
     array->entry = entry;
     array->flag = entry->flag;
+    array->cmp = entry->cmp;
     iretain(array);
 
     return array;
@@ -1324,10 +1381,10 @@ static void _iarray_heap_shift(iarray *arr,
     int c = 2 * i + 1;
 
     while(c <= end) {
-        if (c +1 <=end && arr->entry->cmp(arr, c, c+1) < 0 ) {
+        if (c +1 <=end && arr->cmp(arr, c, c+1) < 0 ) {
             c++;
         }
-        if (arr->entry->cmp(arr, i, c) > 0) {
+        if (arr->cmp(arr, i, c) > 0) {
             break;
         } else {
             arr->entry->swap(arr, i, c);
@@ -1388,7 +1445,7 @@ void iheapadd(iarray *arr, const void *value) {
 
     while(index > 0) {
         parent = (index-1) / 2;
-        if ( arr->entry->cmp(arr, index, parent) > 0) {
+        if ( arr->cmp(arr, index, parent) > 0) {
             arr->entry->swap(arr, index, parent);
             index = parent;
         } else {
@@ -2270,7 +2327,7 @@ void ifreenodekeeper(inode *node) {
 	node->units = NULL;
 	node->unitcnt = 0;
 
-	ineighborsclean(node);
+	ineighborsclean(icast(irefneighbors, node));
 	ifreenode(node);
 }
 
@@ -2434,58 +2491,7 @@ static inode* _iaddnodetoparent(imap *map, inode *node, int codei, int idx, cons
 	return child;
 }
 
-/*
- * 把节点从 有向图里面拿出来， 没有任何一个节点可以到他
- */
-void ineighborsclean(inode *node) {
-	irefjoint* joint = NULL;
-	inode *neighbor = NULL;
-	icheck(node);
 
-	/* disconnect to others */
-	joint = ireflistfirst(node->neighbors_walkable);
-	while (joint) {
-		neighbor = icast(inode, joint->value);
-		ireflistremove(neighbor->neighbors, irefcast(node));
-		joint = joint->next;
-	}
-	ireflistfree(node->neighbors_walkable);
-	node->neighbors_walkable = NULL;
-
-	/* disconnect from others */
-	joint = ireflistfirst(node->neighbors);
-	while (joint) {
-		neighbor = icast(inode, joint->value);
-		ireflistremove(neighbor->neighbors_walkable, irefcast(node));
-		joint = joint->next;
-	}
-	ireflistfree(node->neighbors);
-	node->neighbors = NULL;
-}
-
-/*
- * 没有做重复性的检查
- * 让 node ==> to
- */
-void ineighborsadd(inode *node, inode *to) {
-    if (!node->neighbors_walkable) {
-        node->neighbors_walkable = ireflistmake();
-    }
-    ireflistadd(node->neighbors_walkable, irefcast(to));
-    if (!to->neighbors) {
-        to->neighbors = ireflistmake();
-    }
-    ireflistadd(to->neighbors, irefcast(node));
-}
-
-/*
- * 没有做重复性的检查
- * 让 node !==> to
- */
-void ineighborsdel(inode *node, inode *to) {
-    ireflistremove(node->neighbors_walkable, irefcast(to));
-    ireflistremove(to->neighbors, irefcast(node));
-}
 
 /* 移除节点 */
 static int _iremovenodefromparent(imap *map, inode *node) {
@@ -2516,7 +2522,7 @@ static int _iremovenodefromparent(imap *map, inode *node) {
 	node->state = 0;
 
 	/* 清理 邻居 节点*/
-	ineighborsclean(node);
+	ineighborsclean(icast(irefneighbors, node));
 
 #if open_node_utick
 	node->utick = 0;

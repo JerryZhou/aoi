@@ -40,21 +40,35 @@ extern "C" {
 /* inavinode                                                 */
 /*************************************************************/
 
-typedef struct inavinode {
+typedef struct inavicell {
     /* 声明引用对象 */
-    irefdeclare;
+    irefneighborsdeclare;
 
     /* the navi node polygon */
     ipolygon2d *polygon;
+}inavicell;
 
-    /*
-     * 构成了一个有向图，可在联通上做单向通行
-     * */
-    /* 所有可以到达当前节点的邻居 other ===> this */
-    ireflist *neighbors;
-    /* 可走的列表 this ===> other */
-    ireflist *neighbors_walkable;
-}inavinode;
+/* navigation node in path*/
+typedef struct inavinode {
+    irefdeclare;
+    
+    /* cost */
+    ireal cost;
+    
+    /* cell of this node */
+    inavicell *cell;
+    
+    /* cell where we got from */
+    inavicell *from;
+} inavinode;
+
+/* navigation path */
+typedef struct inavipath {
+    irefdeclare;
+    
+    /*nodes list */
+    ireflist *nodes;
+}inavipath;
 
 /*************************************************************/
 /* inavimap                                                 */
@@ -65,19 +79,21 @@ typedef struct inavimap {
     irefdeclare;
 
     /* 所有polygons */
-    ireflist *nodes;
+    iarray *cells;
 }inavimap;
 
-/* pathfind  */
-ireflist* ipathfind(iunit *unit, inavinode *from, inavinode *to); 
+/* navi map find the cell */
+const inavicell* inavimapfind(const inavimap *map, const ipos *pos);
 
+/* navi map find the path */
+int inavimapfindpath(const inavimap *map, const iunit *unit, const ipos *from, const ipos *to, inavipath *path);
 
 /*************************************************************/
 /* declare the new type for iimeta system                    */
 /*************************************************************/
 
-/* declare meta for inavinode */
-iideclareregister(inavinode);
+/* declare meta for inavicell */
+iideclareregister(inavicell);
 
 /* declare meta for inavimap */
 iideclareregister(inavimap);
