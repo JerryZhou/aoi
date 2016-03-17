@@ -660,7 +660,7 @@ typedef struct ireflist {
     /* 列表根节点, 也是列表的第一个节点 */
     irefjoint *root;
     /* 列表长度 */
-    int length;
+    size_t length;
     /* 时间 */
     int64_t tick;
     /* free the res append in list */
@@ -674,7 +674,7 @@ ireflist *ireflistmake();
 ireflist *ireflistmakeentry(irefjoint_entry_res_free entry);
 
 /* 获取列表长度 */
-int ireflistlen(const ireflist *list);
+size_t ireflistlen(const ireflist *list);
 
 /* 获取第一个节点 */
 irefjoint* ireflistfirst(const ireflist *list);
@@ -880,9 +880,13 @@ size_t iheapsize(const iheap *heap);
 
 /* 堆操作: 增加一个元素 */
 void iheapadd(iheap *heap, const void *value);
+    
+/* 堆操作: 调整一个元素 */
+void iheapadjust(iheap *heap, int index);
 
 /* 堆操作: 获取堆顶元素 */
 const void *iheappeek(const iheap *heap);
+#define iheappeekof(heap, type) iarrayof(heap, type, 0)
 
 /* 堆操作: 移除堆顶元素*/
 void iheappop(iheap *heap);
@@ -1085,14 +1089,14 @@ typedef struct irefcache{
     iname name;
 
     ireflist* cache;
-    int capacity;
+    size_t capacity;
 
     icachenewentry newentry;
     icacheenvictedentry envicted;
 }irefcache;
 
 /* 创造一个cache */
-irefcache *irefcachemake(int capacity, icachenewentry newentry);
+irefcache *irefcachemake(size_t capacity, icachenewentry newentry);
 
 /* 从缓存里面取一个 */
 iref *irefcachepoll(irefcache *cache);
@@ -1109,7 +1113,7 @@ void irefcacheclear(irefcache *cache);
 void irefcachefree(irefcache *cache);
 
 /* 当前缓冲区的存储的对象个数 */
-int irefcachesize(irefcache *cache);
+size_t irefcachesize(irefcache *cache);
 
 /* 用宏处理缓存接口: 拿 */
 #define icache(cache, type) ((type*)irefcachepoll(cache))
@@ -1586,6 +1590,7 @@ void imapsearchfromnode(imap *map, const inode *node,
 /* 从地图上搜寻单元: 视野检测, 没有缓存的*/
 void imaplineofsight(imap *map, const ipos *from,
                      const ipos *to, isearchresult *result);
+    
 /* 计算节点列表的指纹信息 */
 int64_t imapchecksumnodelist(imap *map, const ireflist *list, int64_t *maxtick, int64_t *maxutick);
 

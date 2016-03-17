@@ -978,7 +978,7 @@ ireflist *ireflistmakeentry(irefjoint_entry_res_free entry) {
 }
 
 /* 获取列表长度 */
-int ireflistlen(const ireflist *list) {
+size_t ireflistlen(const ireflist *list) {
 	icheckret(list, 0);
 	return list->length;
 }
@@ -1415,7 +1415,7 @@ static void _iarray_heap_shift(iarray *arr,
     int c = 2 * i + 1;
 
     while(c <= end) {
-        if (c +1 <=end && arr->cmp(arr, c, c+1) < 0 ) {
+        if (c+1 <=end && arr->cmp(arr, c, c+1) < 0 ) {
             c++;
         }
         if (arr->cmp(arr, i, c) > 0) {
@@ -1471,13 +1471,10 @@ size_t iheapsize(const iheap *heap) {
     return iarraylen(heap);
 }
 
-/* 建立 堆操作 */
-void iheapadd(iheap *heap, const void *value) {
+/* 向下调整堆 */
+static void _iheapadjustup(iheap *heap, int start, int index) {
     int parent;
-    int index = iarraylen(heap);
-    iarrayadd(heap, value);
-
-    while(index > 0) {
+    while(index > start) {
         parent = (index-1) / 2;
         if ( heap->cmp(heap, index, parent) > 0) {
             heap->entry->swap(heap, index, parent);
@@ -1485,6 +1482,37 @@ void iheapadd(iheap *heap, const void *value) {
         } else {
             break;
         }
+    }
+}
+
+/* 向下调整堆 */
+static void _iheapadjustdown(iheap *heap, int index, int end) {
+    _iarray_heap_shift(heap, index, end);
+}
+
+/* 建立 堆操作 */
+void iheapadd(iheap *heap, const void *value) {
+    int index = iarraylen(heap);
+    iarrayadd(heap, value);
+    
+    /*adjust up*/
+    _iheapadjustup(heap, 0, index);
+}
+
+/* 堆操作: 调整一个元素 */
+void iheapadjust(iheap *heap, int index) {
+    int i = index;
+    int c = 2*i + 1;
+    int start = 0;
+    int end = (int)iheapsize(heap);
+    
+    if (c+1<=end && heap->cmp(heap, c, c+1) < 0) {
+        c++;
+    }
+    if (c <= end && heap->cmp(heap, c, i) > 0) {
+        _iheapadjustup(heap, start, index);
+    } else {
+        _iheapadjustdown(heap, index, end);
     }
 }
 
@@ -2209,7 +2237,7 @@ void _ientrywatch_cache(iref *ref) {
 }
 
 /* 创造一个cache */
-irefcache *irefcachemake(int capacity, icachenewentry newentry) {
+irefcache *irefcachemake(size_t capacity, icachenewentry newentry) {
 	irefcache *cache = iobjmalloc(irefcache);
 	cache->cache = ireflistmake();
 	cache->capacity = capacity;
@@ -2278,7 +2306,7 @@ void irefcachefree(irefcache *cache) {
 }
 
 /* 当前缓冲区的存储的对象个数 */
-int irefcachesize(irefcache *cache) {
+size_t irefcachesize(irefcache *cache) {
 	return ireflistlen(cache->cache);
 }
 
@@ -2956,7 +2984,7 @@ void imapstatedesc(const imap *map, int require,
 	if (require & EnumMapStateNode) {
 		ilog("%s Node: Count=%lld\n", tag, map->state.nodecount);
 		ilog("%s Node-Leaf: Count=%lld\n", tag, map->state.leafcount);
-		ilog("%s Node-Cache: Count=%d\n", tag, irefcachesize(map->nodecache));
+		ilog("%s Node-Cache: Count=%lu\n", tag, irefcachesize(map->nodecache));
 	}
 	/* 单元信息 */
 	if (require & EnumMapStateUnit) {
@@ -3822,7 +3850,7 @@ void imapsearchfromnode(imap *map, const inode *node,
 	/* 性能日志 */
 	iplog(__Since(micro),
 			"[MAP-Unit-Search] Search-Node "
-			"(%d, %s) --> Result: %d Units \n",
+			"(%d, %s) --> Result: %lu Units \n",
 			node->level, node->code.code, ireflistlen(result->units));
 }
 
@@ -4011,7 +4039,7 @@ void imapsearchfromrectwithfilter(imap *map, const irect *rect,
 	/* 性能日志 */
 	iplogwhen(__Since(micro), 10, "[MAP-Unit-Search] Search-Node-Range From: "
 			"(%d, %s: (%.3f, %.3f)) In Rect (%.3f, %.3f , %.3f, %.3f) "
-			"---> Result : %d Units \n",
+			"---> Result : %lu Units \n",
 			node->level, node->code.code,
 			node->code.pos.x, node->code.pos.y,
 			rect->pos.x, rect->pos.y, rect->size.w, rect->size.h,
