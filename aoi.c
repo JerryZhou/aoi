@@ -1428,25 +1428,25 @@ void iarraysort(iarray *arr) {
 
 
 /* 建立 堆操作 */
-void iheapbuild(iarray *arr) {
-    _iarray_heap_build(arr, 0, iarraylen(arr));
+void iheapbuild(iheap *heap) {
+    _iarray_heap_build(heap, 0, iarraylen(heap));
 }
 
 /* 堆大小 */
-size_t iheapsize(const iarray *arr) {
-    return iarraylen(arr);
+size_t iheapsize(const iheap *heap) {
+    return iarraylen(heap);
 }
 
 /* 建立 堆操作 */
-void iheapadd(iarray *arr, const void *value) {
+void iheapadd(iheap *heap, const void *value) {
     int parent;
-    int index = iarraylen(arr);
-    iarrayadd(arr, value);
+    int index = iarraylen(heap);
+    iarrayadd(heap, value);
 
     while(index > 0) {
         parent = (index-1) / 2;
-        if ( arr->cmp(arr, index, parent) > 0) {
-            arr->entry->swap(arr, index, parent);
+        if ( heap->cmp(heap, index, parent) > 0) {
+            heap->entry->swap(heap, index, parent);
             index = parent;
         } else {
             break;
@@ -1455,28 +1455,28 @@ void iheapadd(iarray *arr, const void *value) {
 }
 
 /* 堆操作: 获取堆顶元素 */
-const void *iheappeek(const iarray *arr) {
-    icheckret(iarraylen(arr) > 0, NULL);
-    return iarrayat(arr, 0);
+const void *iheappeek(const iheap *heap) {
+    icheckret(iarraylen(heap) > 0, NULL);
+    return iarrayat(heap, 0);
 }
 
 /* 堆操作: 移除堆顶元素*/
-void iheappop(iarray *arr) {
-    iheapdelete(arr, 0);
+void iheappop(iheap *heap) {
+    iheapdelete(heap, 0);
 }
 
 /* 堆操作: 移除指定的位置的元素, 仍然保持堆 */
-void iheapdelete(iarray *arr, int index) {
-    icheck(index>=0 && index<iarraylen(arr));
+void iheapdelete(iheap *heap, int index) {
+    icheck(index>=0 && index<iarraylen(heap));
 
     /*swap last one*/
-    arr->entry->swap(arr, index, iarraylen(arr)-1);
+    heap->entry->swap(heap, index, iarraylen(heap)-1);
     /*array remove it*/
-    iarrayremove(arr, iarraylen(arr)-1);
+    iarrayremove(heap, iarraylen(heap)-1);
 
     /*adjust the heap to be still on*/
-    if (iarraylen(arr) > 0 ) {
-        _iarray_heap_shift(arr, index, iarraylen(arr)-1);
+    if (iarraylen(heap) > 0 ) {
+        _iarray_heap_shift(heap, index, iarraylen(heap)-1);
     }
 }
 

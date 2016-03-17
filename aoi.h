@@ -842,23 +842,26 @@ void iarraysort(iarray *arr);
 /* iheap（big heap）                                          */
 /*************************************************************/
 
+/*a heap is a array*/
+typedef struct iarray iheap;
+
 /* 建立 堆操作 */
-void iheapbuild(iarray *arr);
+void iheapbuild(iheap *heap);
     
 /* 堆大小 */
-size_t iheapsize(const iarray *arr);
+size_t iheapsize(const iheap *heap);
 
 /* 堆操作: 增加一个元素 */
-void iheapadd(iarray *arr, const void *value);
+void iheapadd(iheap *heap, const void *value);
 
 /* 堆操作: 获取堆顶元素 */
-const void *iheappeek(const iarray *arr);
+const void *iheappeek(const iheap *heap);
 
 /* 堆操作: 移除堆顶元素*/
-void iheappop(iarray *arr);
+void iheappop(iheap *heap);
 
 /* 堆操作: 移除指定的位置的元素, 仍然保持堆 */
-void iheapdelete(iarray *arr, int index);
+void iheapdelete(iheap *heap, int index);
     
 /*************************************************************/
 /* iarray: int, ireal, int64, char, iref                     */
