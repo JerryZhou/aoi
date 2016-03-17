@@ -46,6 +46,9 @@ typedef struct inavicell {
 
     /* the navi node polygon */
     ipolygon2d *polygon;
+    
+    /* session id that the cell last deal */
+    int64_t sessionid;
 }inavicell;
 
 /* navigation node in path*/
@@ -60,6 +63,9 @@ typedef struct inavinode {
     
     /* cell where we got from */
     inavicell *from;
+    
+    /* Trace the the index in navi heap */
+    int heap_index;
 } inavinode;
     
 /*Make navi node with cell*/
@@ -90,21 +96,18 @@ typedef struct inavimap {
     /* All polygon cells */
     iarray *cells;
     
-    /* NaviNode Cache */
-    irefcache *nodecache;
-    
-    /* NaviCell Cache */
-    irefcache *cellcache;
+    /* Global session Id */
+    int64_t sessionid;
 }inavimap;
 
 /* Make navimap from the blocks */
 inavimap* inavimapmake(size_t width, size_t height, char * blocks);
 
 /* navi map find the cell */
-const inavicell* inavimapfind(const inavimap *map, const ipos *pos);
+inavicell* inavimapfind(const inavimap *map, const ipos *pos);
 
 /* navi map find the path */
-int inavimapfindpath(const inavimap *map, const iunit *unit, const ipos *from, const ipos *to, inavipath *path);
+int inavimapfindpath(inavimap *map, const iunit *unit, const ipos *from, const ipos *to, inavipath *path);
 
 /*************************************************************/
 /* declare the new type for iimeta system                    */
@@ -112,6 +115,9 @@ int inavimapfindpath(const inavimap *map, const iunit *unit, const ipos *from, c
 
 /* declare meta for inavicell */
 iideclareregister(inavicell);
+    
+/* declare meta for inavinode */
+iideclareregister(inavinode);
 
 /* declare meta for inavimap */
 iideclareregister(inavimap);
