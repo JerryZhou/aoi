@@ -61,8 +61,17 @@ typedef struct inavinode {
     /* cell where we got from */
     inavicell *from;
 } inavinode;
+    
+/*Make navi node with cell*/
+inavinode *inavinodemake(const inavicell *from, const inavicell *to);
 
-/* navigation path */
+/*Release navi node*/
+void inavinodefree(inavinode *node);
+
+/* Make a Navi Nodes Heap with Cost Order Desc */
+iheap* inavinodeheapmake();
+
+/* Navigation path */
 typedef struct inavipath {
     irefdeclare;
     
@@ -75,12 +84,21 @@ typedef struct inavipath {
 /*************************************************************/
 
 typedef struct inavimap {
-    /* 声明引用对象 */
+    /* Declare the iref object */
     irefdeclare;
 
-    /* 所有polygons */
+    /* All polygon cells */
     iarray *cells;
+    
+    /* NaviNode Cache */
+    irefcache *nodecache;
+    
+    /* NaviCell Cache */
+    irefcache *cellcache;
 }inavimap;
+
+/* Make navimap from the blocks */
+inavimap* inavimapmake(size_t width, size_t height, char * blocks);
 
 /* navi map find the cell */
 const inavicell* inavimapfind(const inavimap *map, const ipos *pos);

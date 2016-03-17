@@ -13,13 +13,34 @@ Please see examples for more details.
 
 #include "navi.h"
 
+/* Max Path Finder Heap Depth */
+#define MAX_HEAP_DEPTH 64
 
-/* navi map find the cell */
+/* Compare the heap node with cost*/
+static int _ientry_heap_node_cmp(iarray *arr, int i, int j) {
+    inavinode* lfs = iarrayof(arr, inavinode*, i);
+    inavinode* rfs = iarrayof(arr, inavinode*, j);
+    return lfs->cost > rfs->cost;
+}
+
+/* Make a Navi Nodes Heap with Cost Order Desc */
+iheap* inavinodeheapmake() {
+    /*make heap with capacity: MAX_HEAP_DEPTH*/
+    iheap *heap = iarraymakeiref(MAX_HEAP_DEPTH);
+    /* heap node compator */
+    heap->cmp = _ientry_heap_node_cmp;
+    /* disable the auto shirk */
+    iarrayunsetflag(heap, EnumArrayFlagAutoShirk);
+    /* return heap*/
+    return heap;
+}
+
+/* Navi map find the cell 
+ * Should be carefully deal with profile */
 const inavicell* inavimapfind(const inavimap *map, const ipos *pos) {
     return NULL;
 }
 
-#define MAX_HEAP_DEPTH 64
 /* A* */
 static void _inavimapfindpath_cell(const inavimap *map,
                                          const iunit *unit,
