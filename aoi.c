@@ -958,12 +958,23 @@ irefjoint* irefjointmake(iref *value) {
 void irefjointfree(irefjoint* joint) {
 	icheck(joint);
 	irelease(joint->value);
+    /* release the resouce */
+    if (joint->list && joint->list->entry) {
+        joint->list->entry(joint);
+    }
 	iobjfree(joint);
 }
 
 /* 创建列表 */
 ireflist *ireflistmake() {
 	return	iobjmalloc(ireflist);
+}
+
+/* 创建列表 */
+ireflist *ireflistmakeentry(irefjoint_entry_res_free entry) {
+    ireflist *list = iobjmalloc(ireflist);
+    list->entry = entry;
+    return list;
 }
 
 /* 获取列表长度 */
@@ -1004,6 +1015,14 @@ irefjoint* ireflistadd(ireflist *list, iref *value) {
 	icheckret(list, NULL);
 	joint = irefjointmake(value);
 	return ireflistaddjoint(list, joint);
+}
+
+/* 往列表增加节点: 前置节点(会增加引用计数) */
+irefjoint* ireflistaddres(ireflist *list, iref *value, void *res) {
+    irefjoint *joint = ireflistadd(list, value);
+    icheckret(joint, NULL);
+    joint->res = res;
+    return joint;
 }
 
 /* 从节点里面移除节点 , 并且释放当前节点, 并且返回下一个节点 */

@@ -634,6 +634,9 @@ iref *irefassistretain(iref *ref);
 typedef struct irefjoint {
     /* 附加的对象 */
     iref *value;
+    
+    /* 附加在上的 资源*/
+    void *res;
 
     /* 必要的校验 */
     struct ireflist *list;
@@ -648,6 +651,9 @@ irefjoint* irefjointmake(iref *value);
 
 /* 释放列表节点 */
 void irefjointfree(irefjoint* joint);
+    
+/* 释放附加在列表节点上的资源 */
+typedef void (*irefjoint_entry_res_free)(irefjoint *joint);
 
 /* 营养对象列表 */
 typedef struct ireflist {
@@ -657,10 +663,15 @@ typedef struct ireflist {
     int length;
     /* 时间 */
     int64_t tick;
+    /* free the res append in list */
+    irefjoint_entry_res_free entry;
 }ireflist;
 
 /* 创建列表 */
 ireflist *ireflistmake();
+    
+/* 创建列表 */
+ireflist *ireflistmakeentry(irefjoint_entry_res_free entry);
 
 /* 获取列表长度 */
 int ireflistlen(const ireflist *list);
@@ -677,6 +688,9 @@ irefjoint* ireflistaddjoint(ireflist *list, irefjoint * joint);
 
 /* 往列表增加节点: 前置节点(会增加引用计数) */
 irefjoint* ireflistadd(ireflist *list, iref *value);
+    
+/* 往列表增加节点: 前置节点(会增加引用计数) */
+irefjoint* ireflistaddres(ireflist *list, iref *value, void *res);
 
 /* 从节点里面移除节点, 返回下一个节点 */
 irefjoint* ireflistremovejoint(ireflist *list, irefjoint *joint);
