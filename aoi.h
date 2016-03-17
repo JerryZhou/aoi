@@ -1033,8 +1033,12 @@ typedef struct ipolygon3d {
     
     /*ivec3 slice*/
     islice *slice;
+    /* max point */
     ivec3 max;
+    /* min point */
     ivec3 min;
+    /* center point */
+    ipos3 center;
 }ipolygon3d;
     
 /* create a polygon 3d*/
