@@ -40,15 +40,45 @@ extern "C" {
 /* inavinode                                                 */
 /*************************************************************/
 
+/* cell flag */
+enum EnumNaviCellFlag {
+    EnumNaviCellFlag_Open = 1<<1,
+    EnumNaviCellFlag_Close = 1<<2,
+};
+
+/* cell */
+struct inavicell;
+
+/*neighbors connection resouce */
+typedef struct inavicellconnection {
+    /*pologon point begin index */
+    int index;
+    /*const: cell a to b*/
+    ireal cost;
+    /*cell*/
+    struct inavicell *next;
+}inavicellconnection;
+
 typedef struct inavicell {
     /* 声明引用对象 */
     irefneighborsdeclare;
 
     /* the navi node polygon */
-    ipolygon2d *polygon;
+    ipolygon3d *polygon;
     
     /* session id that the cell last deal */
     int64_t sessionid;
+    /* session flag */
+    int flag;
+    /* trace the the index in navi heap */
+    int heap_index;
+    /* the navigation link */
+    struct inavicell *link;
+    /* the navigation connection */
+    inavicellconnection *connection;
+    /* cost */
+    ireal costarrival;
+    ireal costheuristic;
 }inavicell;
 
 /* navigation node in path*/
@@ -61,11 +91,8 @@ typedef struct inavinode {
     /* cell of this node */
     inavicell *cell;
     
-    /* cell where we got from */
-    inavicell *from;
-    
-    /* Trace the the index in navi heap */
-    int heap_index;
+    /* cell of connection to next */
+    inavicellconnection *connection;
 } inavinode;
     
 /*Make navi node with cell*/
@@ -81,9 +108,25 @@ iheap* inavinodeheapmake();
 typedef struct inavipath {
     irefdeclare;
     
-    /*nodes list */
-    ireflist *nodes;
+    /* session id*/
+    int64_t sessionid;
+    
+    /* cell */
+    inavicell *start;
+    inavicell *end;
+    
+    /* pos */
+    ipos3 startpos;
+    ipos3 endpos;
+    
+    /*inavinode array */
+    iarray *waypoints;
 }inavipath;
+
+/* setup the path */
+void inavipathsetup(inavipath *path, int64_t sessionid,
+                    inavicell *start, const ipos3 *startpos,
+                    inavicell *end, const ipos3 *endpos);
 
 /*************************************************************/
 /* inavimap                                                 */
@@ -104,10 +147,10 @@ typedef struct inavimap {
 inavimap* inavimapmake(size_t width, size_t height, char * blocks);
 
 /* navi map find the cell */
-inavicell* inavimapfind(const inavimap *map, const ipos *pos);
+inavicell* inavimapfind(const inavimap *map, const ipos3 *pos);
 
 /* navi map find the path */
-int inavimapfindpath(inavimap *map, const iunit *unit, const ipos *from, const ipos *to, inavipath *path);
+int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 *to, inavipath *path);
 
 /*************************************************************/
 /* declare the new type for iimeta system                    */

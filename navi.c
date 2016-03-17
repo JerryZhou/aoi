@@ -44,7 +44,7 @@ static void _ientry_heap_node_assign(struct iarray *arr,
         }
         
         iassign(arrs[i], ref);
-        icast(inavinode, arrs[i])->heap_index = i;
+        icast(inavinode, arrs[i])->cell->heap_index = i;
         ++j;
         ++i;
     }
@@ -68,8 +68,8 @@ static void _ientry_heap_node_swap(struct iarray *arr,
         arrs[i] = arrs[j];
         arrs[j] = tmp;
         
-        icast(inavinode, arrs[i])->heap_index = i;
-        icast(inavinode, arrs[j])->heap_index = j;
+        icast(inavinode, arrs[i])->cell->heap_index = i;
+        icast(inavinode, arrs[j])->cell->heap_index = j;
     }
 }
 
@@ -142,62 +142,208 @@ inavimap* inavimapmake(size_t width, size_t height, char * blocks) {
 
 /* Navi map find the cell 
  * Should be carefully deal with profile */
-inavicell* inavimapfind(const inavimap *map, const ipos *pos) {
+inavicell* inavimapfind(const inavimap *map, const ipos3 *pos) {
     return NULL;
 }
 
-/* inavi cost */
-static ireal _inavinode_cost(const inavimap *map, const iunit *unit, inavicell *from, inavicell *to) {
-    return 1;
+/* Navigation Context*/
+typedef struct inavicontext {
+    int64_t sessionid;
+    
+    iheap *heap;
+    inavipath *path;
+    iunit *unit;
+    inavimap *map;
+}inavicontext;
+
+/* make a heuristic */
+static ireal _inavicontext_heuristic(inavicontext *context, inavicell *cell) {
+    return idistancepow3(&cell->polygon->center, &context->path->endpos);
 }
 
 /* Make a node by cell, NB!! not retain */
-static inavinode *_inavinode_make_by_cell(const inavimap *map, const iunit *unit, inavicell* from, inavicell *cell) {
-    inavinode *n = iobjmalloc(inavinode);
-    iassign(n->from, from);
-    iassign(n->cell, cell);
-    n->cost = _inavinode_cost(map, unit, from, cell);
-    return n;
+static inavinode * _inavicontext_makenode(inavicontext *context, inavicell *cell) {
+    inavinode *node = iobjmalloc(inavinode);
+    iassign(node->cell, cell);
+    node->cost = cell->costarrival + cell->costheuristic;
+    return node;
+}
+
+/* Add cell to heap or update the node by cell in heap*/
+static void _inavicontext_heap_cell(inavicontext *context, inavicell *cell) {
+    inavinode *node;
+    if (cell->heap_index != arr_invalid) {
+        /* update the cost of node */
+        node = iarrayof(context->heap, inavinode*, cell->heap_index);
+        node->cost = cell->costarrival + cell->costheuristic;
+        iheapadjust(context->heap, cell->heap_index);
+    } else {
+        node = _inavicontext_makenode(context, cell);
+        iheapadd(context->heap, &node);
+    }
+}
+
+/* setup the path */
+void inavipathsetup(inavipath *path, int64_t sessionid,
+                    inavicell *start, const ipos3 *startpos,
+                    inavicell *end, const ipos3 *endpos) {
+    path->sessionid = sessionid;
+    
+    iassign(path->start, start);
+    path->startpos = *startpos;
+    
+    iassign(path->end, end);
+    path->endpos = *endpos;
+}
+
+void _inavipath_begin(inavipath *path, inavimap *map, inavicell *end) {
+    path->sessionid = map->sessionid;
+    /*
+    inavicell* reverse;
+    while (end->link) {
+        reverse = icast(inavicell, end->link);
+        end = icast(inavicell, reverse->link->value);
+        reverse->link = end->link;
+    }
+     */
+}
+
+void _inavipath_end(inavipath *path, inavimap *map, inavicell *start) {
+    iarrayadd(path->waypoints, &path->endpos);
+}
+
+static void _inavicell_process(inavicell *cell, inavicontext *context,
+                               inavinode *caller, inavicellconnection *connection) {
+    if (cell->sessionid != context->sessionid) {
+        cell->sessionid = context->sessionid;
+        cell->flag = EnumNaviCellFlag_Open;
+        cell->link = caller->cell;
+        cell->connection = connection;
+        cell->heap_index = arr_invalid;
+        
+        if (caller && connection) {
+            cell->costarrival = caller->cell->costarrival + connection->cost;
+        } else {
+            cell->costarrival = 0;
+        }
+        cell->costheuristic = _inavicontext_heuristic(context, cell);
+    } else if(cell->flag == EnumNaviCellFlag_Open) {
+        cell->connection = connection;
+        cell->link = caller->cell;
+        cell->costarrival = caller->cell->costarrival + connection->cost;
+        cell->costheuristic = _inavicontext_heuristic(context, cell);
+    }
+}
+
+/* Process the node with neighbors */
+static void _inavinode_process(inavinode *node, inavicontext *context) {
+    
+    irefjoint *joint;
+    inavicell *cell;
+    inavicellconnection *connection;
+    
+    /* mark close */
+    node->cell->flag = EnumNaviCellFlag_Close;
+    
+    /* all of children */
+    joint = ireflistfirst(node->cell->neighbors_to);
+    while (joint) {
+        cell = icast(inavicell, joint->value);
+        connection = icast(inavicellconnection, joint->res);
+        
+        /* process cell */
+        _inavicell_process(cell, context, node, connection);
+        /* next */
+        joint = joint->next;
+    }
+}
+
+static void _inavicontext_setup(inavicontext *context,
+                                inavimap *map, iunit *unit,
+                                inavipath *path, inavicell *start) {
+    context->map = map;
+    context->sessionid = ++map->sessionid;
+    context->unit = unit;
+    context->path = path;
+    context->heap = inavinodeheapmake();
+    
+    /* add start cell to heap */
+    _inavicell_process(start, context, NULL, NULL);
+}
+
+static void _inavicontext_free(inavicontext *context) {
+    irelease(context->heap);
 }
 
 /* A* */
 static void _inavimapfindpath_cell(inavimap *map,
-                                         const iunit *unit,
+                                         iunit *unit,
                                          inavicell *start,
                                          inavicell *end,
-                                         ireflist *nodes,
+                                         inavipath *path,
                                          int maxstep) {
-    iheap * opens = NULL;
     inavinode * node = NULL;
+    inavicell * cell = NULL;
+    inavicontext context = {0};
+    
     int found = iino;
     int steps = maxstep;
     
-    icheck(start);
-    icheck(end);
+    _inavicontext_setup(&context, map, unit, path, start);
     
-    ++map->sessionid;
-    opens = iarraymakeiref(KMAX_HEAP_DEPTH);
-    iheapbuild(opens);
-    
-    node = _inavinode_make_by_cell(map, unit, NULL, start);
-    iheapadd(opens, &node);
-    
-    while (iheapsize(opens) && found == iino && steps) {
-        node = iheappeekof(opens, inavinode*);
+    /* found the path */
+    while (iheapsize(context.heap) && found == iino && steps) {
+        node = iheappeekof(context.heap, inavinode*);
+        iheappop(context.heap);
+        
+        /* Arrived */
         if (node->cell == end) {
             found = true;
+        } else {
+            /* Process current neighbor */
+            _inavinode_process(node, &context);
         }
         
         --steps;
     }
+    
+    /* found a nearest reaching path */
+    if (steps == 0 && found == iino) {
+        end = node->cell;
+        found = iiok;
+    }
+    
+    /* found path */
+    if (found == iiok) {
+        /* path session id */
+        _inavipath_begin(path, map, end);
+        /* reverse the link */
+        cell = start->link;
+        while (cell && cell != end) {
+            /* TODO: */
+            /* get the arrived point in neighbor hold */
+            /* iarrayadd(path->waypoints, &cell->waypoint); */
+            
+            /* get next point */
+            cell = cell->link;
+        }
+        
+        /* end of path */
+        _inavipath_end(path, map, start);
+    }
+    
+    /* free the navigation context */
+    _inavicontext_free(&context);
 }
 
 /* navi map find the path */
-int inavimapfindpath(inavimap *map, const iunit *unit, const ipos *from, const ipos *to, inavipath *path) {
+int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 *to, inavipath *path) {
     inavicell *start = inavimapfind(map, from);
     inavicell *end = inavimapfind(map, to);
-    _inavimapfindpath_cell(map, unit, start, end, path->nodes, INT32_MAX);
-    return ireflistlen(path->nodes);
+    inavipathsetup(path, 0, start, from, end, to);
+    
+    _inavimapfindpath_cell(map, unit, start, end, path, INT32_MAX);
+    return iarraylen(path->waypoints);
 }
 
 /*************************************************************/
