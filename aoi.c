@@ -1510,9 +1510,9 @@ void iheapadjust(iheap *heap, int index) {
         c++;
     }
     if (c <= end && heap->cmp(heap, c, i) > 0) {
-        _iheapadjustup(heap, start, index);
-    } else {
         _iheapadjustdown(heap, index, end);
+    } else {
+        _iheapadjustup(heap, start, index);
     }
 }
 

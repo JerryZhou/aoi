@@ -3961,6 +3961,78 @@ SP_CASE(iheap, iheapdelete) {
     iarrayfree(arr);
 }
 
+SP_CASE(iheap, iheapadjust) {
+    
+    {
+        iarray *arr = iarraymakeint(16);
+        int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+        iarrayinsert(arr, 0, values, 8);
+        __array_println(arr);
+        iheapbuild(arr);
+        __array_println(arr);
+        
+        /*[7, 4, 6, 3, 0, 5, 2, 1]*/
+        SP_EQUAL(iarrayof(arr, int, 0), 7);
+        SP_EQUAL(iarrayof(arr, int, 1), 4);
+        SP_EQUAL(iarrayof(arr, int, 2), 6);
+        SP_EQUAL(iarrayof(arr, int, 3), 3);
+        SP_EQUAL(iarrayof(arr, int, 4), 0);
+        SP_EQUAL(iarrayof(arr, int, 5), 5);
+        SP_EQUAL(iarrayof(arr, int, 6), 2);
+        SP_EQUAL(iarrayof(arr, int, 7), 1);
+        
+        iarrayof(arr, int, 0) = 1;
+        __array_println(arr);
+        SP_EQUAL(iarrayof(arr, int, 0), 1);
+        
+        iheapadjust(arr, 0);
+        __array_println(arr);
+        SP_EQUAL(iarrayof(arr, int, 0), 6);
+        SP_EQUAL(iarrayof(arr, int, 1), 4);
+        SP_EQUAL(iarrayof(arr, int, 2), 5);
+        SP_EQUAL(iarrayof(arr, int, 3), 3);
+        SP_EQUAL(iarrayof(arr, int, 4), 0);
+        SP_EQUAL(iarrayof(arr, int, 5), 1);
+        SP_EQUAL(iarrayof(arr, int, 6), 2);
+        SP_EQUAL(iarrayof(arr, int, 7), 1);
+        
+        iarrayfree(arr);
+    }
+    
+    {
+        iarray *arr = iarraymakeint(16);
+        int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+        iarrayinsert(arr, 0, values, 8);
+        __array_println(arr);
+        iheapbuild(arr);
+        __array_println(arr);
+        
+        /*[7, 4, 6, 3, 0, 5, 2, 1]*/
+        SP_EQUAL(iarrayof(arr, int, 0), 7);
+        SP_EQUAL(iarrayof(arr, int, 1), 4);
+        SP_EQUAL(iarrayof(arr, int, 2), 6);
+        SP_EQUAL(iarrayof(arr, int, 3), 3);
+        SP_EQUAL(iarrayof(arr, int, 4), 0);
+        SP_EQUAL(iarrayof(arr, int, 5), 5);
+        SP_EQUAL(iarrayof(arr, int, 6), 2);
+        SP_EQUAL(iarrayof(arr, int, 7), 1);
+        
+        iarrayof(arr, int, 1) = 9;
+        iheapadjust(arr, 1);
+        SP_EQUAL(iarrayof(arr, int, 0), 9);
+        SP_EQUAL(iarrayof(arr, int, 1), 7);
+        SP_EQUAL(iarrayof(arr, int, 2), 6);
+        SP_EQUAL(iarrayof(arr, int, 3), 3);
+        SP_EQUAL(iarrayof(arr, int, 4), 0);
+        SP_EQUAL(iarrayof(arr, int, 5), 5);
+        SP_EQUAL(iarrayof(arr, int, 6), 2);
+        SP_EQUAL(iarrayof(arr, int, 7), 1);
+        
+        iarrayfree(arr);
+    }
+    
+}
+
 SP_SUIT(iline2d);
 
 SP_CASE(iline2d, nothing) {
