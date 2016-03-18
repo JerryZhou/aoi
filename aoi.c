@@ -282,6 +282,9 @@ ireal idistancepow2(const ipos *p, const ipos *t) {
 	return dx*dx + dy*dy;
 }
 
+/* zero point */
+const ipos3 kipos3_zero = {0, 0, 0};
+
 /* 计算距离的平方 */
 ireal idistancepow3(const ipos3 *p, const ipos3 *t) {
     ireal dx = p->x - t->x;
@@ -1764,6 +1767,22 @@ iarray* iarraymakeipos(size_t capacity) {
     return iarraymake(capacity, &_arr_entry_ipos);
 }
 
+/* 定义ipos 数组 */
+static const iarrayentry _arr_entry_ipos3 = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ipos3),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 ipos3 数组*/
+iarray* iarraymakeipos3(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_ipos3);
+}
+
+
 /* 定义isize 数组 */
 static const iarrayentry _arr_entry_isize = {
     EnumArrayFlagAutoShirk |
@@ -2089,7 +2108,7 @@ static void _ipolygon3d_entry_free(iref *ref) {
 /* create a polygon 3d*/
 ipolygon3d *ipolygon3dmake(size_t capacity){
     ipolygon3d *poly = iobjmalloc(ipolygon3d);
-    iarray* array = iarraymakeivec3(capacity);
+    iarray* array = iarraymakeipos3(capacity);
     poly->slice = isliced(array, 0, 0);
     poly->free = _ipolygon3d_entry_free;
     
@@ -2104,22 +2123,28 @@ void ipolygon3dfree(ipolygon3d *poly) {
 }
 
 /* add ivec3 to polygon*/
-void ipolygon3dadd(ipolygon3d *poly, const ivec3 *v, int nums) {
+void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
     int i;
     int j;
+    ireal *values;
+    ireal *max_values = (ireal*)&(poly->max);
+    ireal *min_values = (ireal*)&(poly->min);
     icheck(v);
     icheck(poly);
     icheck(nums);
     
+    
     /* update the min and max*/
     for (j=0; j<nums; ++j) {
         for (i=0; i<3; ++i) {
-            if (v[j].values[i] > poly->max.values[i]) {
+            values = (ireal*)(&v[j]);
+    
+            if (values[i] > max_values[i]) {
                 /* for max */
-                poly->max.values[i] = v[j].values[i];
-            } else if (v[j].values[i] < poly->min.values[i]) {
+                max_values[i] = values[i];
+            } else if (values[i] < min_values[i]) {
                 /* for min */
-                poly->min.values[i] = v[j].values[i];
+                min_values[i] = values[i];
             }
         }
     }

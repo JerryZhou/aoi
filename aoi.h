@@ -150,6 +150,9 @@ typedef struct ipos3 {
     ireal x, y, z;
 }ipos3;
     
+/* zero of ipos3 */
+extern const ipos3 kipos3_zero;
+    
 /* 计算距离的平方 */
 ireal idistancepow3(const ipos3 *p, const ipos3 *t);
 
@@ -918,6 +921,9 @@ iarray* iarraymakeiref(size_t capacity);
 /* 内置的 ipos 数组*/
 iarray* iarraymakeipos(size_t capacity);
     
+/* 内置的 ipos3 数组*/
+iarray* iarraymakeipos3(size_t capacity);
+    
 /* 内置的 isize 数组*/
 iarray* iarraymakeisize(size_t capacity);
     
@@ -1031,12 +1037,12 @@ const void* isliceat(const islice *slice, int index);
 typedef struct ipolygon3d {
     irefdeclare;
     
-    /*ivec3 slice*/
+    /*ipos3 slice*/
     islice *slice;
     /* max point */
-    ivec3 max;
+    ipos3 max;
     /* min point */
-    ivec3 min;
+    ipos3 min;
     /* center point */
     ipos3 center;
 }ipolygon3d;
@@ -1048,7 +1054,7 @@ ipolygon3d *ipolygon3dmake(size_t capacity);
 void ipolygon3dfree(ipolygon3d *);
     
 /* add ivec3 to polygon*/
-void ipolygon3dadd(ipolygon3d *poly, const ivec3 *v, int nums);
+void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums);
    
 /*************************************************************/
 /* ipolygon2d                                                */
