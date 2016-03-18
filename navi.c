@@ -168,8 +168,7 @@ static void _ipolygon_edge(ipolygon3d *polygon, iline2d *edge, int index) {
  
 /* Fetch the height from cell to pos */
 int inavicellmapheight(inavicell *cell, ipos3 *pos) {
-    /* TODO look the height from cell */
-    pos->y = 0;
+    pos->y = iplanesolvefory(&cell->polygon->plane, pos->x, pos->z);
     return iiok;
 }
 
