@@ -1055,6 +1055,18 @@ void ipolygon3dfree(ipolygon3d *);
     
 /* add ivec3 to polygon*/
 void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums);
+    
+/* if the point in polygon, just like 2d contains*/
+/* Left Hand System
+ * y     z
+ * ^     ^
+ * |    /
+ * |   /
+ * |  /
+ * | /
+ * |---------> x
+ * */
+int ipolygon3dincollum(const ipolygon3d *poly, const ipos3 *v);
    
 /*************************************************************/
 /* ipolygon2d                                                */
@@ -1089,6 +1101,9 @@ int ipolygon2dcontains(const ipolygon2d *poly, const ivec2 *v);
 /* 构造函数 */
 typedef iref* (*icachenewentry)();
 
+/* 加入缓存的函数 */
+typedef void (*icacheaddentry)(iref *ref);
+
 /* 缓存弃守接口: 缓冲区放不下了就会调用这个 */
 typedef void (*icacheenvictedentry)(iref *ref);
 
@@ -1103,6 +1118,7 @@ typedef struct irefcache{
 
     icachenewentry newentry;
     icacheenvictedentry envicted;
+    icacheaddentry whenadd;
 }irefcache;
 
 /* 创造一个cache */

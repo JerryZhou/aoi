@@ -2153,6 +2153,51 @@ void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
     poly->slice = isliceappendvalues(poly->slice, v, nums);
 }
 
+/* if the point in polygon, just like 2d contains*/
+/* Left Hand System
+ * y     z
+ * ^     ^
+ * |    /
+ * |   /
+ * |  /
+ * | /
+ * |---------> x
+ * */
+int ipolygon3dincollum(const ipolygon3d *poly, const ipos3 *v) {
+    int inside = iino;
+    int i, j, n;
+    ipos3 *ui, *uj;
+    
+    icheckret(v, iiok);
+    icheckret(poly, iino);
+    
+    /* beyond the bounding box*/
+    if (v->x < poly->min.x ||
+        v->x > poly->max.x ||
+        v->z < poly->min.z ||
+        v->z > poly->max.z) {
+        return iino;
+    }
+    
+    /* https://en.wikipedia.org/wiki/Point_in_polygon
+     */
+    n = islicelen(poly->slice);
+    for (i = 0, j = n-1; i<n; j = i++) {
+        ui = (ipos3*)isliceat(poly->slice, i);
+        uj = (ipos3*)isliceat(poly->slice, j);
+        if ((ui->z > v->z) != (uj->z > v->z) &&
+            v->x < ((uj->x - ui->x)
+                      * (v->z - ui->z)
+                      / (uj->z - ui->z)
+                      + ui->x) ) {
+                inside = !inside;
+            }
+    }
+    
+    return inside;
+}
+
+
 
 /* free resouces of polygon3d */
 static void _ipolygon2d_entry_free(iref *ref) {
@@ -2242,8 +2287,6 @@ int ipolygon2dcontains(const ipolygon2d *poly, const ivec2 *v) {
     return inside;
 }
 
-
-
 /* cache 的 绑定在 ref 上的回调 */
 void _ientrywatch_cache(iref *ref) {
 	irefcache *cache = NULL;
@@ -2255,8 +2298,14 @@ void _ientrywatch_cache(iref *ref) {
 
 	len = ireflistlen(cache->cache);
 	if (len < cache->capacity) {
+        /* may release some resource hold by ref */
+        if (cache->whenadd) {
+            cache->whenadd(ref);
+        }
+        /* entry the cache */
 		ireflistadd(cache->cache, ref);
 	}else if (cache->envicted){
+        /* the cache is full, may expand the capacity */
 		cache->envicted(ref);
 	}
 }
