@@ -189,12 +189,75 @@ typedef struct inavimap {
     /* All polygon cells */
     iarray *cells;
     
+    /* all polygons */
+    iarray *polygons;
+    
     /* Global session Id */
     int64_t sessionid;
 }inavimap;
 
-/* Make navimap from the height-map with block-value */
-inavimap* inavimapmake(size_t width, size_t height, ireal *heightmap, ireal block);
+/* header */
+typedef struct inavimapheader {
+    size_t width;               /* map size width*/
+    size_t height;              /* map size height*/
+    size_t points;              /* number of point */
+    size_t polygons;            /* number of polygons */
+    size_t polygonsize;         /* number of int*/
+}inavimapheader;
+    
+/* inavimap desc can be read from file or write to file */
+typedef struct inavimapdesc {
+    /* navi map header */
+    inavimapheader header;
+    
+    /* all ipos3: []ipos */
+    iarray *points;
+    
+    /* all polygons: []int 
+     * poly0-len, poly1-len, poly2-len ...
+     */
+    iarray *polygons;
+    
+    /* all polygonsindex: []int
+     * poly0-idx0, poly0-idx1, poly0-idx2, poly1-idx0, poly1-idx1, poly1-idx2 ...
+     */
+    iarray *polygonsindex;
+    
+    /* all connections: []int, zero is invalid connection
+     * poly0-idx0-connection, poly0-idx1-connection, poly0-idx2-connection, 
+     * poly0-idx0-connection, poly0-idx1-connection, poly0-idx2-connection ...
+     */
+    iarray *polygonsconnection;
+}inavimapdesc;
+    
+/* release the resource hold by desc */
+void inavimapdescfreeresource(inavimapdesc *desc);
+
+/* read the navimap from textfile */
+/*
+ Map: width 512 height 512 points 8 polygons 4 polygonsize 14
+ 
+ (0,0,0)(1,0,1)(1,0,0)(3,0,0)(3,0,1)(4,0,1)
+ (3,0,5)(4,0,5)
+ 
+ 3:0-0 1-0 2-0
+ 4:2-0 1-0 4-0 3-0
+ 3:3-0 4-0 5-0
+ 4:4-0 6-0 7-0 5-0
+ */
+int inavimapdescreadfromtextfile(inavimapdesc *desc, const char* file);
+    
+/* write the navimap to textfile */
+void inavimapdescwritetotextfile(inavimapdesc *desc, const char* file);
+
+/* Make navimap  */
+inavimap* inavimapmake();
+    
+/* load the navimap from heightmap */
+void inavimapload(inavimap *map, size_t width, size_t height, ireal *heightmap, ireal block);
+    
+/* load the navimap from desc */
+void inavimaploadfromdesc(inavimap *map, const inavimapdesc *desc);
     
 /* Free the navi map */
 void inavimapfree(inavimap *map);

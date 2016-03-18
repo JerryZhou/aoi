@@ -146,6 +146,7 @@ static void _inavimap_build_cells(inavimap *map, size_t width, size_t height, ir
 static void _inavimap_entry_free(iref *ref) {
     inavimap *map = icast(inavimap, ref);
     iarrayfree(map->cells);
+    iarrayfree(map->polygons);
     iobjfree(map);
 }
 
@@ -211,16 +212,145 @@ int inavicellclassify(inavicell *cell, const iline2d *line,
     return relation;
 }
 
+/* release the resource hold by desc */
+void inavimapdescfreeresource(inavimapdesc *desc) {
+    iarrayfree(desc->points); desc->points = NULL;
+    iarrayfree(desc->polygons); desc->polygons = NULL;
+    iarrayfree(desc->polygonsindex); desc->polygonsindex = NULL;
+    iarrayfree(desc->polygonsconnection); desc->polygonsconnection = NULL;
+}
+
+char * _file_read(const char *file) {
+    FILE *fp = NULL;
+    char *fcontent = NULL;
+    long size;
+    fp = fopen(file, "r");
+    if (fp) {
+        fseek(fp, 0, SEEK_END);
+        size = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        
+        fcontent = (char*)malloc(size+1);
+        fread(fcontent, 1, size, fp);
+        fclose(fp);
+        fcontent[size] = 0;
+    }
+    return fcontent;
+}
+
+typedef enum EnumErrCode {
+    EnumErrCode_WrongHeaderFormat,
+    EnumErrCode_WrongPointFormat,
+    EnumErrCode_WrongPolygonFormat,
+}EnumErrCode;
+
+/* read the navimap from textfile */
+int inavimapdescreadfromtextfile(inavimapdesc *desc, const char* file) {
+    
+    FILE *fp = NULL;
+    int n = 0;
+    int m, k, i, j, c = 0;
+    int err = 0;
+    ipos3 p;
+    fp = fopen(file, "r");
+    
+    inavimapdescfreeresource(desc);
+    if (fp) {
+        while (true) {
+            /*read header */
+            n = fscanf(fp, "Map: width %ld height %ld points %ld polygons %ld polygonsize %ld\n",
+                       &desc->header.width,
+                       &desc->header.height,
+                       &desc->header.points,
+                       &desc->header.polygons,
+                       &desc->header.polygonsize);
+            if (n != 5) {
+                err = EnumErrCode_WrongHeaderFormat; /* header format wrong */
+                break;
+            }
+            
+            /*read the points */
+            desc->points = iarraymakeipos3(desc->header.points);
+            for (m=0; m <desc->header.points; ++m) {
+                if (m%6==0) {
+                    fscanf(fp, "\n");
+                }
+                n = fscanf(fp, "(%lf,%lf,%lf)", &p.x, &p.y, &p.z);
+                if (n !=3) {
+                    err = EnumErrCode_WrongPointFormat;
+                    break;
+                } else {
+                    iarrayadd(desc->points, &p);
+                }
+            }
+            if (err != 0) {
+                break;
+            }
+            fscanf(fp, "\n");
+            
+            /* read the polygons */
+            desc->polygons = iarraymakeint(desc->header.polygons);
+            desc->polygonsindex = iarraymakeint(desc->header.polygonsize);
+            desc->polygonsconnection = iarraymakeint(desc->header.polygonsize);
+            for (m=0; m<desc->header.polygons; ++m) {
+                n = fscanf(fp, "%d:", &k);
+                if (n != 1) {
+                    err = EnumErrCode_WrongPolygonFormat;
+                    break;
+                }
+                iarrayadd(desc->polygons, &k);
+                
+                for (i=0; i<k; ++i) {
+                    if (i == k-1) {
+                        n = fscanf(fp, "%d-%d\n", &j, &c);
+                    } else {
+                        n = fscanf(fp, "%d-%d ", &j, &c);
+                    }
+                    if (n != 2) {
+                        err = EnumErrCode_WrongPolygonFormat;
+                        break;
+                    } else {
+                        iarrayadd(desc->polygonsindex, &j);
+                        iarrayadd(desc->polygonsconnection, &c);
+                    }
+                }
+                
+                if (err != 0) {
+                    break;
+                }
+            }
+            
+            break;
+        }
+    }
+    return err;
+}
+    
+/* write the navimap to textfile */
+void inavimapdescwritetotextfile(inavimapdesc *desc, const char* file) {
+    
+}
+
 /* Make navimap from the blocks */
-inavimap* inavimapmake(size_t width, size_t height, ireal *heightmap, ireal block){
+inavimap* inavimapmake(){
     inavimap *map = iobjmalloc(inavimap);
     map->free = _inavimap_entry_free;
-    
-    /*Build the Cells */
-    _inavimap_build_cells(map, width, height, heightmap, block);
-    
+    map->cells = iarraymakeiref(20000);
+    map->polygons = iarraymakeiref(20000);
+   
     iretain(map);
     return map;
+}
+
+/* load the navimap from heightmap */
+void inavimapload(inavimap *map, size_t width, size_t height, ireal *heightmap, ireal block) {
+    /*Build the Cells */
+    _inavimap_build_cells(map, width, height, heightmap, block);
+}
+
+/* load the navimap from desc */
+void inavimaploadfromdesc(inavimap *map, const inavimapdesc *desc) {
+    
 }
 
 /* Free the navi map */
