@@ -53,8 +53,10 @@ struct inavicell;
 typedef struct inavicellconnection {
     /*pologon point begin index */
     int index;
-    /*const: cell a to b*/
+    /* const: cell a to b*/
     ireal cost;
+    /* the middle point in connecting edge*/
+    ipos3 middle;
     /*cell*/
     struct inavicell *next;
 }inavicellconnection;
@@ -103,6 +105,48 @@ void inavinodefree(inavinode *node);
 
 /* Make a Navi Nodes Heap with Cost Order Desc */
 iheap* inavinodeheapmake();
+    
+    
+    /* Waypoint Type */
+    typedef enum EnumNaviWayPointType {
+        /*the connection is a cell */
+        EnumNaviWayPointType_Cell = 1,
+        /*the connection is a connection */
+        EnumNaviWayPointType_Connection = 2,
+        /*the connection is a unit*/
+        EnumNaviWayPointType_Unit = 3,
+        /*the connection is a cell goal */
+        EnumNaviWayPointType_Cell_Goal = 4,
+    }EnumNaviWayPointType;
+    
+    /* Waypoint Flag */
+    typedef enum EnumNaviWayPointFlag {
+        /*the way point*/
+        EnumNaviWayPointFlag_Nothing = 0,
+        
+        /* mark the way point is the path start */
+        EnumNaviWayPointFlag_Start = 1<<1,
+        /* mark the way point is the path end */
+        EnumNaviWayPointFlag_End = 1<<2,
+        /* mark the way point is the dynamic point*/
+        EnumNaviWayPointFlag_Dynamic = 1<<3,
+    }EnumNaviWayPointFlag;
+    
+    /**/
+    typedef struct inaviwaypoint {
+        irefdeclare;
+        /* way point type */
+        EnumNaviWayPointType type;
+        /* way point flag */
+        EnumNaviWayPointFlag flag;
+        /* cell of this node */
+        inavicell *cell;
+        /* cell of connection to next */
+        inavicellconnection *connection;
+        
+        /*real goal of waypoint */
+        ipos3 waypoint;
+    }inaviwaypoint;
 
 /* Navigation path */
 typedef struct inavipath {
@@ -119,8 +163,10 @@ typedef struct inavipath {
     ipos3 startpos;
     ipos3 endpos;
     
-    /*inavinode array */
-    iarray *waypoints;
+    /* inaviwaypoint */
+    ireflist *waypoints;
+    /* current node */
+    irefjoint *current;
 }inavipath;
 
 /* setup the path */
@@ -158,6 +204,9 @@ int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 
 
 /* declare meta for inavicell */
 iideclareregister(inavicell);
+    
+/* declare meta for inaviwaypoint */
+iideclareregister(inaviwaypoint);
     
 /* declare meta for inavinode */
 iideclareregister(inavinode);

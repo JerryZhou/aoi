@@ -19,6 +19,8 @@ Please see examples for more details.
 #define KMAX_NAVIMAP_CELL_CACHE_COUNT 50000
 /* Max Count Of Navimap Node Cache */
 #define KMAX_NAVIMAP_NODE_CACHE_COUNT 2000
+/* Max Count Of NaviPath Waypoint Cache */
+#define KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT 5000
 
 
 /*************************************************************/
@@ -196,20 +198,72 @@ void inavipathsetup(inavipath *path, int64_t sessionid,
     path->endpos = *endpos;
 }
 
-void _inavipath_begin(inavipath *path, inavimap *map, inavicell *end) {
-    path->sessionid = map->sessionid;
-    /*
-    inavicell* reverse;
-    while (end->link) {
-        reverse = icast(inavicell, end->link);
-        end = icast(inavicell, reverse->link->value);
-        reverse->link = end->link;
-    }
-     */
+
+ipos3 _ipolygon_point(ipolygon3d *polygon, int index) {
+    size_t len = islicelen(polygon->slice);
+    icheckret(len>0, kipos3_zero);
+    return isliceof(polygon->slice, ipos3, index%len);
 }
 
-void _inavipath_end(inavipath *path, inavimap *map, inavicell *start) {
-    iarrayadd(path->waypoints, &path->endpos);
+/* NB!! no retain */
+static inaviwaypoint *_inaviwaypoint_make_by_cell(inavicell *cell) {
+    inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
+    waypoint->type = EnumNaviWayPointType_Cell;
+    iassign(waypoint->cell, cell);
+    waypoint->waypoint = cell->polygon->center;
+    return waypoint;
+}
+
+/* NB!! no retain */
+static inaviwaypoint *_inaviwaypoint_make_by_connection(inavicell *cell, inavicellconnection *connection) {
+    inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
+    waypoint->type = EnumNaviWayPointType_Connection;
+    iassign(waypoint->cell, cell);
+    iassign(waypoint->connection, connection);
+    waypoint->waypoint = connection->middle;
+    return waypoint;
+}
+
+/* NB!! no retain */
+static inaviwaypoint *_inaviwaypoint_make_by_goal(inavicell *cell, ipos3 *goal) {
+    inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
+    waypoint->type = EnumNaviWayPointType_Cell_Goal;
+    iassign(waypoint->cell, cell);
+    waypoint->waypoint = *goal;
+    return waypoint;
+}
+
+void _inavipath_begin(inavipath *path, inavicell *end) {
+    inaviwaypoint *waypoint;
+    /* we found it */
+    if (end == path->end) {
+        waypoint = _inaviwaypoint_make_by_goal(end, &path->endpos);
+        waypoint->flag |= EnumNaviWayPointFlag_End;
+        ireflistadd(path->waypoints, irefcast(waypoint));
+    } else {
+        /*should insert a dynamic waypoint */
+        waypoint = _inaviwaypoint_make_by_goal(path->end, &path->endpos);
+        waypoint->flag |= EnumNaviWayPointFlag_Dynamic;
+        ireflistadd(path->waypoints, irefcast(waypoint));
+        
+        /*the nearest end way point */
+        waypoint = _inaviwaypoint_make_by_cell(end);
+        ireflistadd(path->waypoints, irefcast(waypoint));
+    }
+}
+
+void _inavipath_end(inavipath *path, inavicell* cell, inavicellconnection *connection) {
+    inaviwaypoint *waypoint;
+    /* should have connection */
+    icheck(connection);
+    
+    if (cell == path->start) {
+        /* connection */
+        waypoint = _inaviwaypoint_make_by_connection(cell, connection);
+        ireflistadd(path->waypoints, irefcast(waypoint));
+    } else {
+        /*may happend some ugly*/
+    }
 }
 
 static void _inavicell_process(inavicell *cell, inavicontext *context,
@@ -260,7 +314,7 @@ static void _inavinode_process(inavinode *node, inavicontext *context) {
 
 static void _inavicontext_setup(inavicontext *context,
                                 inavimap *map, iunit *unit,
-                                inavipath *path, inavicell *start) {
+                                inavipath *path) {
     context->map = map;
     context->sessionid = ++map->sessionid;
     context->unit = unit;
@@ -268,7 +322,7 @@ static void _inavicontext_setup(inavicontext *context,
     context->heap = inavinodeheapmake();
     
     /* add start cell to heap */
-    _inavicell_process(start, context, NULL, NULL);
+    _inavicell_process(path->start, context, NULL, NULL);
 }
 
 static void _inavicontext_free(inavicontext *context) {
@@ -278,18 +332,19 @@ static void _inavicontext_free(inavicontext *context) {
 /* A* */
 static void _inavimapfindpath_cell(inavimap *map,
                                          iunit *unit,
-                                         inavicell *start,
-                                         inavicell *end,
                                          inavipath *path,
                                          int maxstep) {
     inavinode * node = NULL;
     inavicell * cell = NULL;
+    inavicellconnection * connection = NULL;
+    inaviwaypoint * waypoint = NULL;
+    inavicell * end = path->end;
     inavicontext context = {0};
     
     int found = iino;
     int steps = maxstep;
     
-    _inavicontext_setup(&context, map, unit, path, start);
+    _inavicontext_setup(&context, map, unit, path);
     
     /* found the path */
     while (iheapsize(context.heap) && found == iino && steps) {
@@ -315,21 +370,25 @@ static void _inavimapfindpath_cell(inavimap *map,
     
     /* found path */
     if (found == iiok) {
-        /* path session id */
-        _inavipath_begin(path, map, end);
-        /* reverse the link */
-        cell = start->link;
-        while (cell && cell != end) {
-            /* TODO: */
-            /* get the arrived point in neighbor hold */
-            /* iarrayadd(path->waypoints, &cell->waypoint); */
-            
+        /* path begin */
+        _inavipath_begin(path, end);
+        /* reverse insert the waypoint to list */
+        cell = end->link;
+        connection = end->connection;
+        while (cell && cell != path->start) {
+            /* connection */
+            waypoint = _inaviwaypoint_make_by_connection(cell, connection);
+            ireflistadd(path->waypoints, irefcast(waypoint));
+            /* cell */
+            waypoint = _inaviwaypoint_make_by_cell(cell);
+            ireflistadd(path->waypoints, irefcast(waypoint));
             /* get next point */
             cell = cell->link;
+            connection = cell->connection;
         }
         
         /* end of path */
-        _inavipath_end(path, map, start);
+        _inavipath_end(path, cell, connection);
     }
     
     /* free the navigation context */
@@ -340,10 +399,10 @@ static void _inavimapfindpath_cell(inavimap *map,
 int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 *to, inavipath *path) {
     inavicell *start = inavimapfind(map, from);
     inavicell *end = inavimapfind(map, to);
-    inavipathsetup(path, 0, start, from, end, to);
+    inavipathsetup(path, ++map->sessionid, start, from, end, to);
     
-    _inavimapfindpath_cell(map, unit, start, end, path, INT32_MAX);
-    return iarraylen(path->waypoints);
+    _inavimapfindpath_cell(map, unit, path, INT32_MAX);
+    return ireflistlen(path->waypoints);
 }
 
 /*************************************************************/
@@ -352,6 +411,8 @@ int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 
 
 /* implement meta for inavicell */
 irealdeclareregister(inavicell);
+
+irealdeclareregister(inaviwaypoint);
 
 /* implement meta for inavinode */
 irealdeclareregister(inavinode);
@@ -367,6 +428,7 @@ int inavi_mm_init() {
 
     irealimplementregister(inavicell, KMAX_NAVIMAP_CELL_CACHE_COUNT);
     irealimplementregister(inavinode, KMAX_NAVIMAP_NODE_CACHE_COUNT);
+    irealimplementregister(inaviwaypoint, KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT);
     irealimplementregister(inavimap, 0);
 
     return iiok;
