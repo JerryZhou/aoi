@@ -4265,4 +4265,20 @@ SP_CASE(inavi, nothing) {
     SP_TRUE(1);
 }
 
+SP_CASE(inavi, inavimapdescreadfromtextfile) {
+    inavimapdesc desc = {{0}, 0, 0, 0};
+    
+    int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
+    SP_EQUAL(err, 0);
+    
+    printf("%s", "\n");
+    
+    __array_println(desc.polygons);
+    __array_println(desc.polygonsindex);
+    __array_println(desc.polygonsconnection);
+    
+    inavimapdescfreeresource(&desc);
+    
+}
+
 #endif
