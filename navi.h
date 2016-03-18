@@ -35,6 +35,16 @@ extern "C" {
  * http://www.kbs.twi.tudelft.nl/docs/MSc/2001/Waveren_Jean-Paul_van/thesis.pdf 
  *      [Quake III Bot System]
  * */
+    
+/* Left Hand System
+ * y     z
+ * ^     ^
+ * |    /
+ * |   /
+ * |  /
+ * | /
+ * |---------> x
+ * */
 
 /*************************************************************/
 /* inavinode                                                 */
@@ -68,6 +78,9 @@ typedef struct inavicell {
     /* the navi node polygon */
     ipolygon3d *polygon;
     
+    /* all connections with others, according to edge count */
+    iarray* connections;
+    
     /* session id that the cell last deal */
     int64_t sessionid;
     /* session flag */
@@ -82,71 +95,61 @@ typedef struct inavicell {
     ireal costarrival;
     ireal costheuristic;
 }inavicell;
+    
+/* Fetch the height from cell to pos */
+int inavicellmapheight(inavicell *cell, ipos3 *pos);
+    
+/* Cell relation with line end */
+typedef enum EnumNaviCellRelation {
+    EnumNaviCellRelation_OutCell,
+    EnumNaviCellRelation_InCell,
+    EnumNaviCellRelation_IntersetCell,
+}EnumNaviCellRelation;
+    
+/* classify the line relationship with cell */
+int inavicellclassify(inavicell *cell, const iline2d *line,
+                      ipos *intersection, inavicellconnection **connection);
 
-/* navigation node in path*/
-typedef struct inavinode {
+/* Waypoint Type */
+typedef enum EnumNaviWayPointType {
+    /*the connection is a cell */
+    EnumNaviWayPointType_Cell = 1,
+    /*the connection is a connection */
+    EnumNaviWayPointType_Connection = 2,
+    /*the connection is a unit*/
+    EnumNaviWayPointType_Unit = 3,
+    /*the connection is a cell goal */
+    EnumNaviWayPointType_Cell_Goal = 4,
+}EnumNaviWayPointType;
+
+/* Waypoint Flag */
+typedef enum EnumNaviWayPointFlag {
+    /*the way point*/
+    EnumNaviWayPointFlag_Nothing = 0,
+    
+    /* mark the way point is the path start */
+    EnumNaviWayPointFlag_Start = 1<<1,
+    /* mark the way point is the path end */
+    EnumNaviWayPointFlag_End = 1<<2,
+    /* mark the way point is the dynamic point*/
+    EnumNaviWayPointFlag_Dynamic = 1<<3,
+}EnumNaviWayPointFlag;
+
+/**/
+typedef struct inaviwaypoint {
     irefdeclare;
-    
-    /* cost */
-    ireal cost;
-    
+    /* way point type */
+    EnumNaviWayPointType type;
+    /* way point flag */
+    EnumNaviWayPointFlag flag;
     /* cell of this node */
     inavicell *cell;
-    
     /* cell of connection to next */
     inavicellconnection *connection;
-} inavinode;
     
-/*Make navi node with cell*/
-inavinode *inavinodemake(const inavicell *from, const inavicell *to);
-
-/*Release navi node*/
-void inavinodefree(inavinode *node);
-
-/* Make a Navi Nodes Heap with Cost Order Desc */
-iheap* inavinodeheapmake();
-    
-    
-    /* Waypoint Type */
-    typedef enum EnumNaviWayPointType {
-        /*the connection is a cell */
-        EnumNaviWayPointType_Cell = 1,
-        /*the connection is a connection */
-        EnumNaviWayPointType_Connection = 2,
-        /*the connection is a unit*/
-        EnumNaviWayPointType_Unit = 3,
-        /*the connection is a cell goal */
-        EnumNaviWayPointType_Cell_Goal = 4,
-    }EnumNaviWayPointType;
-    
-    /* Waypoint Flag */
-    typedef enum EnumNaviWayPointFlag {
-        /*the way point*/
-        EnumNaviWayPointFlag_Nothing = 0,
-        
-        /* mark the way point is the path start */
-        EnumNaviWayPointFlag_Start = 1<<1,
-        /* mark the way point is the path end */
-        EnumNaviWayPointFlag_End = 1<<2,
-        /* mark the way point is the dynamic point*/
-        EnumNaviWayPointFlag_Dynamic = 1<<3,
-    }EnumNaviWayPointFlag;
-    
-    /**/
-    typedef struct inaviwaypoint {
-        irefdeclare;
-        /* way point type */
-        EnumNaviWayPointType type;
-        /* way point flag */
-        EnumNaviWayPointFlag flag;
-        /* cell of this node */
-        inavicell *cell;
-        /* cell of connection to next */
-        inavicellconnection *connection;
-        
-        /*real goal of waypoint */
-        ipos3 waypoint;
-    }inaviwaypoint;
+    /*real goal of waypoint */
+    ipos3 waypoint;
+}inaviwaypoint;
 
 /* Navigation path */
 typedef struct inavipath {
@@ -168,11 +171,12 @@ typedef struct inavipath {
     /* current node */
     irefjoint *current;
 }inavipath;
-
-/* setup the path */
-void inavipathsetup(inavipath *path, int64_t sessionid,
-                    inavicell *start, const ipos3 *startpos,
-                    inavicell *end, const ipos3 *endpos);
+    
+/* make a navi path */
+inavipath *inavipathmake();
+    
+/* navigation path free */
+void inavipathfree(inavipath *path);
 
 /*************************************************************/
 /* inavimap                                                 */
@@ -189,11 +193,17 @@ typedef struct inavimap {
     int64_t sessionid;
 }inavimap;
 
-/* Make navimap from the blocks */
-inavimap* inavimapmake(size_t width, size_t height, char * blocks);
+/* Make navimap from the height-map with block-value */
+inavimap* inavimapmake(size_t width, size_t height, ireal *heightmap, ireal block);
+    
+/* Free the navi map */
+void inavimapfree(inavimap *map);
 
 /* navi map find the cell */
 inavicell* inavimapfind(const inavimap *map, const ipos3 *pos);
+    
+/* navi map find the cell */
+inavicell* inavimapfindclosestcell(const inavimap *map, const islice* cells, const ipos3 *pos);
 
 /* navi map find the path */
 int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 *to, inavipath *path);
@@ -208,8 +218,9 @@ iideclareregister(inavicell);
 /* declare meta for inaviwaypoint */
 iideclareregister(inaviwaypoint);
     
-/* declare meta for inavinode */
-iideclareregister(inavinode);
+/* declare meta for inavipath */
+iideclareregister(inavipath);
+   
 
 /* declare meta for inavimap */
 iideclareregister(inavimap);

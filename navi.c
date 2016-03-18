@@ -26,6 +26,25 @@ Please see examples for more details.
 /*************************************************************/
 /* iheap - inavinode                                         */
 /*************************************************************/
+/* declare meta for inavinode */
+iideclareregister(inavinode);
+
+/* navigation node in path*/
+typedef struct inavinode {
+    irefdeclare;
+    
+    /* cost */
+    ireal cost;
+    
+    /* cell of this node */
+    inavicell *cell;
+    
+    /* cell of connection to next */
+    inavicellconnection *connection;
+} inavinode;
+    
+/* Make a Navi Nodes Heap with Cost Order Desc */
+iheap* inavinodeheapmake();
 
 /* Assign value to place */
 static void _ientry_heap_node_assign(struct iarray *arr,
@@ -119,7 +138,7 @@ static iref* _icachenewentry_cell() {
 }
 
 /* Build all navi cells from blocks */
-static void _inavimap_build_cells(inavimap *map, size_t width, size_t height, char * blocks) {
+static void _inavimap_build_cells(inavimap *map, size_t width, size_t height, ireal * heightmap, ireal block) {
     
 }
 
@@ -130,23 +149,147 @@ static void _inavimap_entry_free(iref *ref) {
     iobjfree(map);
 }
 
+static ipos3 _ipolygon_pos3(ipolygon3d *polygon, int index) {
+    size_t len = islicelen(polygon->slice);
+    icheckret(len>0, kipos3_zero);
+    return isliceof(polygon->slice, ipos3, index%len);
+}
+
+static ipos _ipolygon_pos(ipolygon3d *polygon, int index) {
+    ipos3 p3 = _ipolygon_pos3(polygon, index);
+    ipos p = {p3.x, p3.z};
+    return p;
+}
+
+static void _ipolygon_edge(ipolygon3d *polygon, iline2d *edge, int index) {
+    edge->start = _ipolygon_pos(polygon, index);
+    edge->end = _ipolygon_pos(polygon, index+1);
+}
+ 
+/* Fetch the height from cell to pos */
+int inavicellmapheight(inavicell *cell, ipos3 *pos) {
+    /* TODO look the height from cell */
+    pos->y = 0;
+    return iiok;
+}
+
+/* classify the line relationship with cell */
+int inavicellclassify(inavicell *cell, const iline2d *line,
+                      ipos *intersection, inavicellconnection **connection) {
+    int interiorcount = 0;
+    int relation = EnumNaviCellRelation_OutCell;
+    iline2d edge;
+    int edgecount = islicelen(cell->polygon->slice);
+    int n = 0;
+    int linerelation;
+    
+    while (n < edgecount) {
+        _ipolygon_edge(cell->polygon, n, &edge);
+        
+        if (iline2dclassifypoint(&edge, &line->end, iepsilon) != EnumPointClass_Right) {
+            if (iline2dclassifypoint(&edge, &line->start, iepsilon) != EnumPointClass_Left) {
+                linerelation = iline2dintersection(&edge, line, intersection);
+                if ( linerelation== EnumLineClass_Segments_Intersect ||
+                    linerelation == EnumLineClass_A_Bisects_B ){
+                    relation = EnumNaviCellRelation_IntersetCell;
+                    
+                    /* Find Connections */
+                    if (connection) {
+                        *connection = iarrayof(cell->connections, inavicellconnection*, n);
+                    }
+                    break;
+                }
+            }
+        } else  {
+            interiorcount++;
+        }
+        ++n;
+    }
+    /* all right */
+    if (interiorcount == edgecount) {
+        relation = EnumNaviCellRelation_InCell;
+    }
+    return relation;
+}
+
 /* Make navimap from the blocks */
-inavimap* inavimapmake(size_t width, size_t height, char * blocks) {
+inavimap* inavimapmake(size_t width, size_t height, ireal *heightmap, ireal block){
     inavimap *map = iobjmalloc(inavimap);
     map->free = _inavimap_entry_free;
     
     /*Build the Cells */
-    _inavimap_build_cells(map, width, height, blocks);
+    _inavimap_build_cells(map, width, height, heightmap, block);
     
     iretain(map);
     return map;
 }
 
+/* Free the navi map */
+void inavimapfree(inavimap *map) {
+    irelease(map);
+}
+
 /* Navi map find the cell 
  * Should be carefully deal with profile */
 inavicell* inavimapfind(const inavimap *map, const ipos3 *pos) {
+    islice *cells = islicemakearg(map->cells, ":");
+    inavicell * cell = inavimapfindclosestcell(map, cells, pos);
+    
+    islicefree(cells);
+    return cell;
+}
+
+ireal _inavicell_pos_dist(inavicell *cell, const ipos3 *pos ) {
+    ipos intersection;
+    ipos start = {cell->polygon->center.x, cell->polygon->center.z};
+    ipos end = {pos->x, pos->z};
+    iline2d line = {start, end};
+    ipos3 closest;
+    ireal dist = INT32_MAX;
+    
+    if (inavicellclassify(cell, &line, &intersection, NULL) == EnumNaviCellRelation_IntersetCell) {
+        closest.x = intersection.x;
+        closest.z = intersection.y;
+        inavicellmapheight(cell, &closest);
+        dist = sqrtf(idistancepow3(pos, &closest));
+    }
+    return dist;
+}
+
+/* navi map find the cell */
+inavicell* inavimapfindclosestcell(const inavimap *map, const islice* cells, const ipos3 *pos) {
+    inavicell *cell = NULL;
+    ireal maxdistance = INT32_MAX;
+    inavicell *closestcell = NULL;
+    size_t len = islicelen(cells);
+    int found = iino;
+    ipos3 newpos;
+    ireal dist;
+    
+    while (len) {
+        cell = isliceof(cells, inavicell*, len-1);
+        if (ipolygon3dincollum(cell->polygon, pos) == iiok) {
+            newpos = *pos;
+            inavicellmapheight(cell, &newpos);
+            dist = fabs(newpos.y - pos->y);
+            
+            found = iiok;
+            if (dist < maxdistance) {
+                closestcell = cell;
+                maxdistance = dist;
+            }
+        } else if(found == iino) {
+            dist = _inavicell_pos_dist(cell, pos);
+            if (dist < maxdistance) {
+                closestcell = cell;
+                maxdistance = dist;
+            }
+        }
+        --len;
+    }
     return NULL;
 }
+
 
 /* Navigation Context*/
 typedef struct inavicontext {
@@ -163,9 +306,17 @@ static ireal _inavicontext_heuristic(inavicontext *context, inavicell *cell) {
     return idistancepow3(&cell->polygon->center, &context->path->endpos);
 }
 
+static void _inavinode_entry_free(iref *ref) {
+    inavinode *node = icast(inavinode, ref);
+    irelease(node->cell);
+    iobjfree(node);
+}
+
 /* Make a node by cell, NB!! not retain */
 static inavinode * _inavicontext_makenode(inavicontext *context, inavicell *cell) {
     inavinode *node = iobjmalloc(inavinode);
+    node->free = _inavinode_entry_free;
+    
     iassign(node->cell, cell);
     node->cost = cell->costarrival + cell->costheuristic;
     return node;
@@ -198,6 +349,27 @@ void inavipathsetup(inavipath *path, int64_t sessionid,
     path->endpos = *endpos;
 }
 
+static void _inavipath_entry_free(iref *ref) {
+    inavipath *path = icast(inavipath, ref);
+    irelease(path->start);
+    irelease(path->end);
+    irelease(path->waypoints);
+    iobjfree(path);
+}
+
+inavipath *inavipathmake() {
+    inavipath *path = iobjmalloc(inavipath);
+    path->free = _inavipath_entry_free;
+    path->waypoints = ireflistmake();
+    
+    iretain(path);
+    return path;
+}
+
+/* navigation path free */
+void inavipathfree(inavipath *path) {
+    irelease(path);
+}
 
 ipos3 _ipolygon_point(ipolygon3d *polygon, int index) {
     size_t len = islicelen(polygon->slice);
@@ -281,11 +453,17 @@ static void _inavicell_process(inavicell *cell, inavicontext *context,
             cell->costarrival = 0;
         }
         cell->costheuristic = _inavicontext_heuristic(context, cell);
+        
+        /* add cell to heap */
+        _inavicontext_heap_cell(context, cell);
     } else if(cell->flag == EnumNaviCellFlag_Open) {
         cell->connection = connection;
         cell->link = caller->cell;
         cell->costarrival = caller->cell->costarrival + connection->cost;
         cell->costheuristic = _inavicontext_heuristic(context, cell);
+        
+        /* adjust cell in heap */
+        _inavicontext_heap_cell(context, cell);
     }
 }
 
@@ -412,14 +590,17 @@ int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 
 /* implement meta for inavicell */
 irealdeclareregister(inavicell);
 
+/* implement meta for inaviwaypoint */
 irealdeclareregister(inaviwaypoint);
+
+/* implement meta for inavipath */
+irealdeclareregister(inavipath);
 
 /* implement meta for inavinode */
 irealdeclareregister(inavinode);
 
 /* implement meta for inavimap */
 irealdeclareregister(inavimap);
-
 
 /* NB!! should call first before call any navi funcs 
  * will registing all the navi types to meta system
@@ -429,6 +610,7 @@ int inavi_mm_init() {
     irealimplementregister(inavicell, KMAX_NAVIMAP_CELL_CACHE_COUNT);
     irealimplementregister(inavinode, KMAX_NAVIMAP_NODE_CACHE_COUNT);
     irealimplementregister(inaviwaypoint, KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT);
+    irealimplementregister(inavipath, 0);
     irealimplementregister(inavimap, 0);
 
     return iiok;
