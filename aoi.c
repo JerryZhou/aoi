@@ -2129,10 +2129,10 @@ void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
     ireal *values;
     ireal *max_values = (ireal*)&(poly->max);
     ireal *min_values = (ireal*)&(poly->min);
+    int slicelen = islicelen(poly->slice);
     icheck(v);
     icheck(poly);
     icheck(nums);
-    
     
     /* update the min and max*/
     for (j=0; j<nums; ++j) {
@@ -2151,6 +2151,15 @@ void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
     
     /* add vec3 */
     poly->slice = isliceappendvalues(poly->slice, v, nums);
+    
+    /* set polygon plane */
+    if (slicelen<3 && islicelen(poly->slice) >= 3) {
+        /* set plane point */
+        iplaneset(&poly->plane,
+                  &isliceof(poly->slice, ipos3, 0),
+                  &isliceof(poly->slice, ipos3, 1),
+                  &isliceof(poly->slice, ipos3, 2));
+    }
 }
 
 /* if the point in polygon, just like 2d contains*/

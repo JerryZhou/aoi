@@ -1045,6 +1045,9 @@ typedef struct ipolygon3d {
     ipos3 min;
     /* center point */
     ipos3 center;
+    
+    /* the polygon plane */
+    iplane plane;
 }ipolygon3d;
     
 /* create a polygon 3d*/
