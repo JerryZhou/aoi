@@ -819,6 +819,9 @@ typedef struct iarray {
 
     /* 每一种数组类型都需要定义这个 */
     const iarrayentry* entry;
+    
+    /* user data appending to array*/
+    void *userdata;
 }iarray;
 
 /* 建立数组*/
@@ -922,8 +925,19 @@ iarray* iarraymakeint64(size_t capacity);
 /* char 数组*/
 iarray* iarraymakechar(size_t capacity);
     
+/* 用来告知 对象的坐标发生变化 */
+typedef void (*irefarray_index_change) (iarray *arr, iref *ref, int index);
+    
+/* append to iarray with iref entry */
+typedef struct irefarrayentry {
+    irefarray_index_change indexchange;
+} irefarrayentry;
+    
 /* 内置的引用数组 */
 iarray* iarraymakeiref(size_t capacity);
+    
+/* 内置的引用数组 */
+iarray* iarraymakeirefwithentry(size_t capacity, const irefarrayentry *refentry);
     
 /* 内置的 ipos 数组*/
 iarray* iarraymakeipos(size_t capacity);

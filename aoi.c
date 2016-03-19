@@ -1702,6 +1702,7 @@ static void _iarray_entry_assign_iref(struct iarray *arr,
     iref* *refvalue = (iref* *)value;
     iref* ref = NULL;
     int j = 0;
+    irefarrayentry *entry = (irefarrayentry*)arr->userdata;
     
     /* 附加很多个 */
     while (j < nums) {
@@ -1713,7 +1714,17 @@ static void _iarray_entry_assign_iref(struct iarray *arr,
             ref = refvalue[j];
         }
         
+        /* watch the index change */
+        if (arrs[i] && entry && entry->indexchange) {
+            entry->indexchange(arr, arrs[i], kindex_invalid);
+        }
+        
         iassign(arrs[i], ref);
+        
+        /* watch the index change */
+        if (ref && entry && entry->indexchange) {
+            entry->indexchange(arr, ref, i);
+        }
         ++j;
         ++i;
     }
@@ -1724,6 +1735,8 @@ static void _iarray_entry_swap_iref(struct iarray *arr,
                           int i, int j) {
     iref* tmp;
     iref* *arrs = (iref* *)arr->buffer;
+    irefarrayentry *entry = (irefarrayentry*)arr->userdata;
+    
     if (j == kindex_invalid) {
         /* arr_int[i] = 0;
          * may call assign */
@@ -1735,7 +1748,13 @@ static void _iarray_entry_swap_iref(struct iarray *arr,
     } else {
         tmp = arrs[i];
         arrs[i] = arrs[j];
-        arrs[j] = tmp;    
+        arrs[j] = tmp;
+        
+        /* watch the index change */
+        if (entry && entry->indexchange) {
+            entry->indexchange(arr, arrs[i], i);
+            entry->indexchange(arr, arrs[j], j);
+        }
     }
 }
 
@@ -1759,7 +1778,14 @@ static const iarrayentry _arr_entry_iref = {
 
 /* 内置的引用数组 */
 iarray* iarraymakeiref(size_t capacity) {
-    return iarraymake(capacity, &_arr_entry_iref);
+    return iarraymakeirefwithentry(capacity, NULL);
+}
+
+/* 内置的引用数组 */
+iarray* iarraymakeirefwithentry(size_t capacity, const irefarrayentry *refentry) {
+    iarray*  arr = iarraymake(capacity, &_arr_entry_iref);
+    arr->userdata = (void*)refentry;
+    return arr;
 }
 
 /* 定义ipos 数组 */
