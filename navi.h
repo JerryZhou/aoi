@@ -51,10 +51,10 @@ extern "C" {
 /*************************************************************/
 
 /* cell flag */
-enum EnumNaviCellFlag {
+typedef enum EnumNaviCellFlag {
     EnumNaviCellFlag_Open = 1<<1,
     EnumNaviCellFlag_Close = 1<<2,
-};
+}EnumNaviCellFlag;
 
 /* cell */
 struct inavicell;
@@ -71,6 +71,11 @@ typedef struct inavicellconnection {
     ireal cost;
     /* the middle point in connecting edge*/
     ipos3 middle;
+    
+    /* the edge start */
+    ipos3 start;
+    /* the edge end */
+    ipos3 end;
     
     /* where we came from (cell index in map )*/
     int from;
@@ -223,7 +228,7 @@ typedef struct inavimap {
     irefdeclare;
  
     /* all polygons */
-    /* [] *polygons */
+    /* [] *ipolygon3d */
     iarray *polygons;
     
     /* All polygon cells */
