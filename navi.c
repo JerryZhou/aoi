@@ -32,6 +32,8 @@ Please see examples for more details.
 /* Max Count Of NaviPath Waypoint Cache */
 #define KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT 5000
 
+/*invalid index */
+const int kindex_invalid = -1;
 
 /*************************************************************/
 /* iheap - inavinode                                         */
@@ -195,13 +197,17 @@ static void _inavicell_entry_free(iref *ref) {
 /* Make a cell with poly and connections */
 inavicell *inavicellmake(struct inavimap* map, ipolygon3d *poly, islice* connections, islice *costs) {
     inavicell * cell = iobjmalloc(inavicell);
-    inavicellconnection *connection;
     size_t len = imin(islicelen(connections), islicelen(costs));
     size_t n = 0;
     int next;
     
     /* descructor */
     cell->free = _inavicell_entry_free;
+    
+    /*add poly and cell to map*/
+    cell->cell_index = iarraylen(map->cells);
+    iarrayadd(map->polygons, &poly);
+    iarrayadd(map->cells, &cell);
     
     /* poly */
     iassign(cell->polygon, poly);
@@ -211,50 +217,71 @@ inavicell *inavicellmake(struct inavimap* map, ipolygon3d *poly, islice* connect
         next = isliceof(connections, int, n);
         
         /*if invalid connection */
-        if (next == icon_invalid) {
+        if (next == kindex_invalid) {
             continue;
         }
         
-        /*make connection*/
-        connection = inavicellconnectionmake();
-        connection->index = n;
-        connection->cost = isliceof(costs, ireal, n);
-        connection->middle = ipolygon3dedgecenter(poly, n);
-        connection->next = next;
-        connection->from = iarraylen(map->cells);
-        connection->location = iarraylen(map->connections);
-        
-        /* add to map */
-        iarrayadd(map->connections, &connection);
-        /* add to cell */
-        iarrayadd(cell->connections, &connection->location);
-        
-        inavicellconnectionfree(connection);
+        /* add connection */
+        inavicelladdconnection(cell, map, n, next, isliceof(costs, ireal, n));
     }
-    
-    /*add cell to map*/
-    iarrayadd(map->cells, &cell);
     
     iretain(cell);
     return cell;
 }
 
+/* add connection to cell */
+void inavicelladdconnection(inavicell *cell, struct inavimap *map, int edge, int next, ireal cost) {
+    inavicellconnection * connection;
+    int append;
+    icheck(edge>0);
+    
+    /*make connection*/
+    connection = inavicellconnectionmake();
+    connection->index = edge;
+    connection->cost = cost;
+    connection->middle = ipolygon3dedgecenter(cell->polygon, edge);
+    connection->next = next;
+    connection->from = cell->cell_index;
+    connection->location = iarraylen(map->connections);
+    
+    /* add to map */
+    iarrayadd(map->connections, &connection);
+    
+    if (edge<iarraylen(cell->connections)) {
+        /* set connection */
+        iarrayset(cell->connections, edge, &connection->location);
+    } else if (edge >= iarraylen(cell->connections)) {
+        /*fill the invalid*/
+        for (append = iarraylen(cell->connections); append<edge; ++append) {
+            iarrayadd(cell->connections, &kindex_invalid);
+        }
+        /* add to cell */
+        iarrayadd(cell->connections, &connection->location);
+    } else {
+        
+    }
+    
+    
+    inavicellconnectionfree(connection);
+}
+
 /* Connect the cell to map */
-void inavicellconnect(inavicell *cell, struct inavimap* map) {
+void inavicellconnecttomap(inavicell *cell, struct inavimap* map) {
     size_t len = iarraylen(cell->connections);
     int conindex=0;
     inavicellconnection *con=NULL;
     inavicell *neighbor=NULL;
+    const void* convalue;
     
     /*disconnect first */
-    inavicelldisconnect(cell);
+    inavicelldisconnectfrommap(cell);
     while (len) {
         /* get the cell connection */
         conindex = iarrayof(cell->connections, int, len-1);
-        con = iarrayof(map->connections, inavicellconnection*, conindex);
+        convalue = iarrayat(map->connections, conindex);
         
         /* connected as neighbor */
-        if (con) {
+        if (convalue && (con = ((inavicellconnection**)(convalue))[0], con)) {
             neighbor = iarrayof(map->cells, inavicell*, con->next);
             /* add neighbor and append con as link resouce */
             ineighborsaddvalue(icast(irefneighbors,cell),
@@ -265,7 +292,7 @@ void inavicellconnect(inavicell *cell, struct inavimap* map) {
 }
 
 /* Disconnect the cell to map */
-void inavicelldisconnect(inavicell *cell) {
+void inavicelldisconnectfrommap(inavicell *cell) {
     ineighborsclean(icast(irefneighbors, cell));
 }
     
@@ -491,7 +518,6 @@ void inavimaploadfromdesc(inavimap *map, const inavimapdesc *desc) {
                                               isliceof(sliceindex, int, j)),
                           1);
         }
-        iarrayadd(map->polygons, &polygon);
         
         /* make cell */
         cell = inavicellmake(map, polygon, sliceconnection, slicecosts);
@@ -500,6 +526,7 @@ void inavimaploadfromdesc(inavimap *map, const inavimapdesc *desc) {
         islicefree(sliceindex);
         islicefree(sliceconnection);
         islicefree(slicecosts);
+        ipolygon3dfree(polygon);
         inavicellfree(cell);
         
         /* next cell */
@@ -508,7 +535,7 @@ void inavimaploadfromdesc(inavimap *map, const inavimapdesc *desc) {
     
     /* connected all the cells: then make all connections in map */
     for (i=0; i<iarraylen(map->cells); ++i) {
-        inavicellconnect(iarrayof(map->cells, inavicell*, i), map);
+        inavicellconnecttomap(iarrayof(map->cells, inavicell*, i), map);
     }
 }
 
@@ -557,6 +584,7 @@ inavicell* inavimapfindclosestcell(const inavimap *map, const islice* cells, con
     while (len) {
         cell = isliceof(cells, inavicell*, len-1);
         if (ipolygon3dincollum(cell->polygon, pos) == iiok) {
+            /*found it, try closest, may be cell overlap in y value for 3d space*/
             newpos = *pos;
             inavicellmapheight(cell, &newpos);
             dist = fabs(newpos.y - pos->y);
@@ -567,6 +595,7 @@ inavicell* inavimapfindclosestcell(const inavimap *map, const islice* cells, con
                 maxdistance = dist;
             }
         } else if(found == iino) {
+            /*no found , find a closest cell in dist*/
             dist = _inavicell_pos_dist(cell, pos);
             if (dist < maxdistance) {
                 closestcell = cell;
