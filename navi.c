@@ -32,8 +32,6 @@ Please see examples for more details.
 /* Max Count Of NaviPath Waypoint Cache */
 #define KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT 5000
 
-/*invalid index */
-const int kindex_invalid = -1;
 
 /*************************************************************/
 /* iheap - inavinode                                         */
@@ -88,11 +86,11 @@ static void _ientry_heap_node_swap(struct iarray *arr,
                                     int i, int j) {
     iref* tmp;
     iref* *arrs = (iref* *)arr->buffer;
-    if (j == arr_invalid) {
+    if (j == kindex_invalid) {
         /* arr_int[i] = 0;
          * may call assign */
         _ientry_heap_node_assign(arr, i, 0, 1);
-    } else if (i == arr_invalid) {
+    } else if (i == kindex_invalid) {
         /* arr_int[j] = 0;
          * may call assign */
         _ientry_heap_node_assign(arr, j, 0, 1);
@@ -642,7 +640,7 @@ static inavinode * _inavicontext_makenode(inavicontext *context, inavicell *cell
 /* Add cell to heap or update the node by cell in heap*/
 static void _inavicontext_heap_cell(inavicontext *context, inavicell *cell) {
     inavinode *node;
-    if (cell->heap_index != arr_invalid) {
+    if (cell->heap_index != kindex_invalid) {
         /* update the cost of node */
         node = iarrayof(context->heap, inavinode*, cell->heap_index);
         node->cost = cell->costarrival + cell->costheuristic;
@@ -762,7 +760,7 @@ static void _inavicell_process(inavicell *cell, inavicontext *context,
         cell->flag = EnumNaviCellFlag_Open;
         cell->link = caller->cell;
         cell->connection = connection;
-        cell->heap_index = arr_invalid;
+        cell->heap_index = kindex_invalid;
         
         if (caller && connection) {
             cell->costarrival = caller->cell->costarrival + connection->cost;

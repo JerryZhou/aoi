@@ -1163,6 +1163,9 @@ void ineighborsdel(irefneighbors *from, irefneighbors *to) {
     ireflistremove(to->neighbors_from, irefcast(from));
 }
 
+/*invalid index */
+const int kindex_invalid = -1;
+
 /* 释放数组相关的资源 */
 static void _iarray_entry_free(struct iref* ref) {
     iarray *array = (iarray *)ref;
@@ -1263,7 +1266,7 @@ int iarrayremove(iarray *arr, int index) {
     icheckret(!iarrayisflag(arr, EnumArrayFlagSliced), iino);
     
     if (!(arr->entry->flag & EnumArrayFlagSimple)) {
-        arr->entry->swap(arr, index, arr_invalid);
+        arr->entry->swap(arr, index, kindex_invalid);
     }
 
     if (arr->flag & EnumArrayFlagKeepOrder) {
@@ -1577,11 +1580,11 @@ static void _iarray_entry_swap_copy(struct iarray *arr,
         tmp = buffer;
     }
     
-    if (j == arr_invalid) {
+    if (j == kindex_invalid) {
         /* arr_int[i] = 0;
         may call assign */
         _iarray_entry_assign_copy(arr, i, tmp, 1);
-    } else if (i == arr_invalid) {
+    } else if (i == kindex_invalid) {
         /* arr_int[j] = 0;
         may call assign */
         _iarray_entry_assign_copy(arr, j, tmp, 1);
@@ -1721,11 +1724,11 @@ static void _iarray_entry_swap_iref(struct iarray *arr,
                           int i, int j) {
     iref* tmp;
     iref* *arrs = (iref* *)arr->buffer;
-    if (j == arr_invalid) {
+    if (j == kindex_invalid) {
         /* arr_int[i] = 0;
          * may call assign */
         _iarray_entry_assign_iref(arr, i, 0, 1);
-    } else if (i == arr_invalid) {
+    } else if (i == kindex_invalid) {
         /* arr_int[j] = 0;
          * may call assign */
         _iarray_entry_assign_iref(arr, j, 0, 1);

@@ -60,9 +60,6 @@ enum EnumNaviCellFlag {
 struct inavicell;
 /* map */
 struct inavimap;
-
-/* invalid connection index */
-extern const int kindex_invalid;
     
 /*neighbors connection resouce */
 typedef struct inavicellconnection {

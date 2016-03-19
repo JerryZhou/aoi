@@ -756,9 +756,10 @@ void ineighborsdel(irefneighbors *from, irefneighbors *to);
 /*************************************************************/
 struct iarray;
 struct islice;
-
-/*如果是需要跟 arr_invalid 进行交换就是置0 */
-#define arr_invalid -1
+    
+/* 如果是需要跟 kindex_invalid 进行交换就是置0 */
+/* invalid index */
+extern const int kindex_invalid;
 
 /* 交换两个对象 */
 typedef void (*iarray_entry_swap)(struct iarray *arr,
