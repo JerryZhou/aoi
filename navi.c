@@ -702,6 +702,32 @@ void _inavipath_end(inavipath *path, inavicell* cell, inavicellconnection *conne
     }
 }
 
+/* caculate the right cost */
+static ireal _inavicell_arrivalcost(inavicell *cell, inavicontext *context,
+                               inavinode *caller, inavicellconnection *connection) {
+    ireal distmiddle = 0; ireal disttake = 0; ireal distnow = 0;
+    ireal factor = 1.0;
+    icheckret(caller && connection, 0);
+    
+    /* caculate the dist */
+    if (caller->cell == context->path->start) {
+        distmiddle = idistancepow3(&cell->polygon->center, &connection->middle);
+        disttake = distmiddle + idistancepow3(&connection->middle, &caller->cell->polygon->center);
+        distnow = distmiddle + idistancepow3(&connection->middle, &context->path->startpos);
+    } else if (cell == context->path->end) {
+        distmiddle = idistancepow3(&caller->cell->polygon->center, &connection->middle);
+        disttake = distmiddle + idistancepow3(&connection->middle, &cell->polygon->center);
+        distnow = distmiddle + idistancepow3(&connection->middle, &context->path->endpos);
+    }
+    
+    /*there are some offset need to caculate the*/
+    if (!ireal_equal(disttake, distnow) && !ireal_equal_zero(disttake)) {
+        factor = distnow / disttake;
+    }
+    
+    return caller->cell->costarrival + connection->cost * factor;
+}
+
 static void _inavicell_process(inavicell *cell, inavicontext *context,
                                inavinode *caller, inavicellconnection *connection) {
     if (cell->sessionid != context->sessionid) {
@@ -710,12 +736,8 @@ static void _inavicell_process(inavicell *cell, inavicontext *context,
         cell->link = caller->cell;
         cell->connection = connection;
         cell->heap_index = kindex_invalid;
-        
-        if (caller && connection) {
-            cell->costarrival = caller->cell->costarrival + connection->cost;
-        } else {
-            cell->costarrival = 0;
-        }
+       
+        cell->costarrival = _inavicell_arrivalcost(cell, context, caller, connection);
         cell->costheuristic = _inavicontext_heuristic(context, cell);
         
         /* add cell to heap */
@@ -723,7 +745,7 @@ static void _inavicell_process(inavicell *cell, inavicontext *context,
     } else if(cell->flag == EnumNaviCellFlag_Open) {
         cell->connection = connection;
         cell->link = caller->cell;
-        cell->costarrival = caller->cell->costarrival + connection->cost;
+        cell->costarrival = _inavicell_arrivalcost(cell, context, caller, connection);
         cell->costheuristic = _inavicontext_heuristic(context, cell);
         
         /* adjust cell in heap */
