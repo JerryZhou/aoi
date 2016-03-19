@@ -305,7 +305,7 @@ int iline2dclassifypoint(const iline2d *line, const ipos *point, ireal epsilon);
 /* 
  * line classify
  * */
-enum EnumLineClass {
+typedef enum EnumLineClass {
     EnumLineClass_Collinear,			/* both lines are parallel and overlap each other */
     EnumLineClass_Lines_Intersect,      /* lines intersect, but their segments do not */
     EnumLineClass_Segments_Intersect,	/* both line segments bisect each other */
