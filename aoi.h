@@ -80,6 +80,9 @@ extern "C" {
 #define icheck(con) do { if(!(con)) return ; } while(0)
 #define icheckret(con, ret) do { if(!(con)) return ret; } while(0)
 
+/* flat array count */
+#define icountof(arr) (sizeof(arr)/sizeof(arr[0]))
+
 /* 节点查找行为 */
 typedef enum EnumFindBehavior {
     /* 精确查找 */
