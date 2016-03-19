@@ -62,7 +62,7 @@ struct inavicell;
 struct inavimap;
 
 /* invalid connection index */
-#define icon_invalid 0
+extern const int kindex_invalid;
     
 /*neighbors connection resouce */
 typedef struct inavicellconnection {
@@ -101,6 +101,10 @@ typedef struct inavicell {
     /* con = map->connections[cell->connetions[i]] */
     iarray* connections;
     
+    /* trace the cell index in map */
+    /* map->cells[cell->cell_index] == cell*/
+    int cell_index;
+    
     /* session id that the cell last deal */
     int64_t sessionid;
     /* session flag */
@@ -118,12 +122,15 @@ typedef struct inavicell {
     
 /* Make a cell with poly and connections */
 inavicell *inavicellmake(struct inavimap* map, ipolygon3d *poly, islice* connections, islice *costs);
+    
+/* add connection to cell */
+void inavicelladdconnection(inavicell *cell, struct inavimap *map, int edge, int next, ireal cost);
 
 /* Connect the cell to map */
-void inavicellconnect(inavicell *cell, struct inavimap* map);
+void inavicellconnecttomap(inavicell *cell, struct inavimap* map);
 
 /* Disconnect the cell to map */
-void inavicelldisconnect(inavicell *cell);
+void inavicelldisconnectfrommap(inavicell *cell);
     
 /* Release the cell */
 void inavicellfree(inavicell *cell);
@@ -261,7 +268,7 @@ typedef struct inavimapdesc {
      */
     iarray *polygonsindex;
     
-    /* all connections: []int, zero is invalid connection
+    /* all connections: []int, kindex_invalid is invalid connection
      * poly0-idx0-connection, poly0-idx1-connection, poly0-idx2-connection, 
      * poly0-idx0-connection, poly0-idx1-connection, poly0-idx2-connection ...
      */
@@ -324,13 +331,11 @@ iideclareregister(inavicell);
 /* declare meta for inavicellconnection */
 iideclareregister(inavicellconnection);
     
-    
 /* declare meta for inaviwaypoint */
 iideclareregister(inaviwaypoint);
     
 /* declare meta for inavipath */
 iideclareregister(inavipath);
-   
 
 /* declare meta for inavimap */
 iideclareregister(inavimap);
