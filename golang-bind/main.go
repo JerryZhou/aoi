@@ -24,7 +24,22 @@ var (
 	scalex, scaley float64
 	redraw         = true
 	font           draw2d.FontData
+	chooseplugin   = 1
 )
+
+type Plugin interface {
+	Init(width, height float64)
+	Draw(gc *draw2dgl.GraphicContext)
+	MousePress(x, y float64)
+	MouseMove(x, y float64)
+}
+
+func G_mouse_translate(x, y float64) (float64, float64) {
+	return scalex * x, float64(height) - scaley*y
+}
+
+//var plugin = &AOI{}
+var plugin = &Navi{}
 
 func reshape(window *glfw.Window, w, h int) {
 	gl.ClearColor(1, 1, 1, 1)
@@ -62,7 +77,7 @@ func display() {
 		Family: draw2d.FontFamilyMono,
 		Style:  draw2d.FontStyleBold | draw2d.FontStyleItalic})
 
-	aoi_draw(gc)
+	plugin.Draw(gc)
 
 	gl.Flush() /* Single buffered, so needs a flush. */
 }
@@ -86,14 +101,14 @@ func onMouseBtn(
 	mod glfw.ModifierKey) {
 	x, y := w.GetCursorPos()
 	if action == glfw.Release {
-		aoi_mouse_press(x, y)
+		plugin.MousePress(G_mouse_translate(x, y))
 	}
 }
 
 func onMouseMove(w *glfw.Window, xpos float64, ypos float64) {
 	action := w.GetMouseButton(glfw.MouseButtonLeft)
 	if action == glfw.Press {
-		aoi_mouse_move(xpos, ypos)
+		plugin.MouseMove(G_mouse_translate(xpos, ypos))
 	}
 }
 
@@ -128,7 +143,7 @@ func main() {
 		panic(err)
 	}
 
-	aoi_init(float64(width), float64(height))
+	plugin.Init(float64(width), float64(height))
 
 	reshape(window, width, height)
 	for !window.ShouldClose() {
