@@ -864,6 +864,9 @@ void iarraytruncate(iarray *arr, size_t len);
 
 /* 缩减容量 */
 size_t iarrayshrinkcapacity(iarray *arr, size_t capacity);
+    
+/* 扩大容量 */
+size_t iarrayexpandcapacity(iarray *arr, size_t capacity);
 
 /* 排序 */
 void iarraysort(iarray *arr);
@@ -1038,7 +1041,7 @@ typedef struct ipolygon3d {
     irefdeclare;
     
     /*ipos3 slice*/
-    islice *slice;
+    islice *pos;
     /* max point */
     ipos3 max;
     /* min point */
@@ -1059,6 +1062,15 @@ void ipolygon3dfree(ipolygon3d *);
 /* add ivec3 to polygon*/
 void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums);
     
+/* take the polygon3d as a wrap buffer of pos */
+const ipos3 * ipolygon3dpos3(ipolygon3d *polygon, int index);
+    
+/* take the polygon3d pos (x, z) as a wrap buffer of pos */
+ipos ipolygon3dposxz(ipolygon3d *polygon, int index);
+    
+/* the the edge (center-middle) point*/
+ipos3 ipolygon3dedgecenter(ipolygon3d *polygon, int index);
+
 /* if the point in polygon, just like 2d contains*/
 /* Left Hand System
  * y     z

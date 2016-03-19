@@ -1410,6 +1410,13 @@ size_t iarrayshrinkcapacity(iarray *arr, size_t capacity) {
     return _iarray_just_capacity(arr, capacity);
 }
 
+/* 扩大容量 */
+size_t iarrayexpandcapacity(iarray *arr, size_t capacity) {
+    icheckret(arr->capacity < capacity, arr->capacity);
+    
+    return _iarray_just_capacity(arr, capacity);
+}
+
 /* 堆排序 - 堆调整 */
 static void _iarray_heap_shift(iarray *arr,
                       int ind, int end) {
@@ -2099,8 +2106,8 @@ const void* isliceat(const islice *slice, int index) {
 /* free resouces of polygon3d */
 static void _ipolygon3d_entry_free(iref *ref) {
     ipolygon3d *poly = (ipolygon3d*)ref;
-    irelease(poly->slice);
-    poly->slice = NULL;
+    irelease(poly->pos);
+    poly->pos = NULL;
     
     iobjfree(poly);
 }
@@ -2109,7 +2116,7 @@ static void _ipolygon3d_entry_free(iref *ref) {
 ipolygon3d *ipolygon3dmake(size_t capacity){
     ipolygon3d *poly = iobjmalloc(ipolygon3d);
     iarray* array = iarraymakeipos3(capacity);
-    poly->slice = isliced(array, 0, 0);
+    poly->pos = isliced(array, 0, 0);
     poly->free = _ipolygon3d_entry_free;
     
     irelease(array);
@@ -2129,7 +2136,7 @@ void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
     ireal *values;
     ireal *max_values = (ireal*)&(poly->max);
     ireal *min_values = (ireal*)&(poly->min);
-    int slicelen = islicelen(poly->slice);
+    int slicelen = islicelen(poly->pos);
     icheck(v);
     icheck(poly);
     icheck(nums);
@@ -2150,16 +2157,42 @@ void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
     }
     
     /* add vec3 */
-    poly->slice = isliceappendvalues(poly->slice, v, nums);
+    poly->pos = isliceappendvalues(poly->pos, v, nums);
     
     /* set polygon plane */
-    if (slicelen<3 && islicelen(poly->slice) >= 3) {
+    if (slicelen<3 && islicelen(poly->pos) >= 3) {
         /* set plane point */
         iplaneset(&poly->plane,
-                  &isliceof(poly->slice, ipos3, 0),
-                  &isliceof(poly->slice, ipos3, 1),
-                  &isliceof(poly->slice, ipos3, 2));
+                  &isliceof(poly->pos, ipos3, 0),
+                  &isliceof(poly->pos, ipos3, 1),
+                  &isliceof(poly->pos, ipos3, 2));
     }
+}
+
+/* take the polygon3d as a wrap buffer of pos */
+const ipos3 *ipolygon3dpos3(ipolygon3d *polygon, int index) {
+    size_t len = islicelen(polygon->pos);
+    icheckret(len>0, &kipos3_zero);
+    return (const ipos3 *) isliceat(polygon->pos, index%len);
+}
+
+/* take the polygon3d pos (x, z) as a wrap buffer of pos */
+ipos ipolygon3dposxz(ipolygon3d *polygon, int index) {
+    const ipos3* p3 = ipolygon3dpos3(polygon, index);
+    ipos p = {p3->x, p3->z};
+    return p;
+}
+
+/* the the edge (center-middle) point*/
+ipos3 ipolygon3dedgecenter(ipolygon3d *polygon, int index) {
+    const ipos3* p3_start = ipolygon3dpos3(polygon, index);
+    const ipos3* p3_end = ipolygon3dpos3(polygon, index+1);
+    ipos3 center = {
+        (p3_start->x + p3_end->x)/2,
+        (p3_start->y + p3_end->y)/2,
+        (p3_start->z + p3_end->z)/2,
+    };
+    return center;
 }
 
 /* if the point in polygon, just like 2d contains*/
@@ -2190,10 +2223,10 @@ int ipolygon3dincollum(const ipolygon3d *poly, const ipos3 *v) {
     
     /* https://en.wikipedia.org/wiki/Point_in_polygon
      */
-    n = islicelen(poly->slice);
+    n = islicelen(poly->pos);
     for (i = 0, j = n-1; i<n; j = i++) {
-        ui = (ipos3*)isliceat(poly->slice, i);
-        uj = (ipos3*)isliceat(poly->slice, j);
+        ui = (ipos3*)isliceat(poly->pos, i);
+        uj = (ipos3*)isliceat(poly->pos, j);
         if ((ui->z > v->z) != (uj->z > v->z) &&
             v->x < ((uj->x - ui->x)
                       * (v->z - ui->z)
