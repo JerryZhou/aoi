@@ -30,5 +30,6 @@ set_target_properties(laoi PROPERTIES PREFIX "" SUFFIX ".so")
 
 # copy the test.lua to build
 configure_file(${CMAKE_SOURCE_DIR}/lua-bind/test.lua test.lua)
+configure_file(${CMAKE_SOURCE_DIR}/test/navi.map navi.map)
 
 
