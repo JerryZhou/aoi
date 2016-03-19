@@ -4284,4 +4284,142 @@ SP_CASE(inavi, inavimapdescreadfromtextfile) {
     inavimapfree(map);
 }
 
+/*map: 8*8 */
+static void __navidesc_prepare(inavimapdesc *desc) {
+    desc->header.width = 8;
+    desc->header.height = 8;
+    
+    ipos3 points[] = {
+        {0, 0, 0},
+        {1, 0, 0},
+        {0, 0, 3},
+        {1, 0, 3},
+        {0, 0, 4},
+        {1, 0, 4},
+        {4, 0, 4},
+        {4, 0, 3},
+        {5, 0, 3},
+        {5, 0, 4},
+        {5, 0, 7},
+        {4, 0, 7},
+    };
+    desc->header.points = icountof(points);
+    desc->points = iarraymakeipos3(desc->header.points);
+    iarrayinsert(desc->points, 0, points, desc->header.points);
+    
+    int polygons[] = {
+        4,4,4,4,4
+    };
+    desc->header.polygons = icountof(polygons);
+    desc->polygons = iarraymakeint(desc->header.polygons);
+    iarrayinsert(desc->polygons, 0, polygons, desc->header.polygons);
+    
+    int polygonsindex[] = {
+        0,2,3,1,
+        2,4,5,3,
+        5,6,7,3,
+        7,6,9,8,
+        6,11,10,9
+    };
+    desc->header.polygonsize = icountof(polygonsindex);
+    desc->polygonsindex = iarraymakeint(desc->header.polygonsize);
+    iarrayinsert(desc->polygonsindex, 0, polygonsindex, desc->header.polygonsize);
+    
+    int polygonsconnection[] = {
+        -1,1,-1,-1,
+        -1,-1,2,0,
+        -1,3,-1,1,
+        2,4,-1,-1,
+        -1,-1,-1,3,
+    };
+    desc->polygonsconnection = iarraymakeint(desc->header.polygonsize);
+    iarrayinsert(desc->polygonsconnection, 0, polygonsconnection, desc->header.polygonsize);
+    
+    ireal polygonscost[] = {
+        -1,1,-1,-1,
+        -1,-1,2,0,
+        -1,3,-1,1,
+        2,4,-1,-1,
+        -1,-1,-1,3,
+    };
+    desc->polygonscosts = iarraymakeireal(desc->header.polygonsize);
+    iarrayinsert(desc->polygonscosts, 0, polygonscost, desc->header.polygonsize);
+}
+
+SP_SUIT(inavimapdesc);
+
+SP_CASE(inavimapdesc, inavimapdescreadfromtextfile) {
+    inavimapdesc desc = {{0}, 0, 0, 0};
+    
+    int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
+    SP_EQUAL(err, 0);
+    
+    printf("%s", "\n");
+    
+    __array_println(desc.polygons);
+    __array_println(desc.polygonsindex);
+    __array_println(desc.polygonsconnection);
+    __array_println(desc.polygonscosts);
+    
+    inavimapdescfreeresource(&desc);
+}
+
+SP_CASE(inavimapdesc, preparedesc) {
+    inavimapdesc desc = {{0}, 0, 0, 0};
+    
+    __navidesc_prepare(&desc);
+    
+    printf("%s", "\n");
+    
+    __array_println(desc.polygons);
+    __array_println(desc.polygonsindex);
+    __array_println(desc.polygonsconnection);
+    __array_println(desc.polygonscosts);
+    
+    inavimapdescfreeresource(&desc);
+    
+    SP_TRUE(1);
+}
+
+SP_SUIT(inavicellconnection);
+
+SP_CASE(inavicellconnection, nothing) {
+    SP_TRUE(1);
+    
+    inavicellconnection *con = inavicellconnectionmake();
+    
+    inavicellconnectionfree(con);
+}
+
+SP_SUIT(inavicell);
+
+SP_CASE(inavicell, inavicellmake) {
+    inavimap *map = inavimapmake(8);
+    
+    inavicell *cell = inavicellmake(map, NULL, NULL, NULL);
+    
+    inavicellfree(cell);
+    inavimapfree(map);
+}
+
+SP_SUIT(inaviwaypoint);
+
+SP_CASE(inaviwaypoint, nothing) {
+    SP_TRUE(1);
+}
+
+SP_SUIT(inavipath);
+
+SP_CASE(inavipath, nothing) {
+    SP_TRUE(1);
+}
+
+SP_SUIT(inavimap);
+
+SP_CASE(inavimap, nothing) {
+    SP_TRUE(1);
+}
+
+
+
 #endif
