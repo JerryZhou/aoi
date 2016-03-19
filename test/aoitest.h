@@ -4277,8 +4277,11 @@ SP_CASE(inavi, inavimapdescreadfromtextfile) {
     __array_println(desc.polygonsindex);
     __array_println(desc.polygonsconnection);
     
-    inavimapdescfreeresource(&desc);
+    inavimap * map = inavimapmake(8);
+    inavimaploadfromdesc(map, &desc);
     
+    inavimapdescfreeresource(&desc);
+    inavimapfree(map);
 }
 
 #endif
