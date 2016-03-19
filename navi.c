@@ -52,57 +52,6 @@ typedef struct inavinode {
     /* cell of connection to next */
     inavicellconnection *connection;
 } inavinode;
-    
-/* Make a Navi Nodes Heap with Cost Order Desc */
-iheap* inavinodeheapmake();
-
-/* Assign value to place */
-static void _ientry_heap_node_assign(struct iarray *arr,
-                                      int i, const void *value, int nums) {
-    iref* *arrs = (iref* *)arr->buffer;
-    iref* *refvalue = (iref* *)value;
-    iref* ref = NULL;
-    int j = 0;
-    
-    /* 附加很多个 */
-    while (j < nums) {
-        /* realloc not set zero to pending memory */
-        if (i >= arr->len) {
-            arrs[i] = NULL;
-        }
-        if (refvalue) {
-            ref = refvalue[j];
-        }
-        
-        iassign(arrs[i], ref);
-        icast(inavinode, arrs[i])->cell->heap_index = i;
-        ++j;
-        ++i;
-    }
-}
-
-/* Swap two node */
-static void _ientry_heap_node_swap(struct iarray *arr,
-                                    int i, int j) {
-    iref* tmp;
-    iref* *arrs = (iref* *)arr->buffer;
-    if (j == kindex_invalid) {
-        /* arr_int[i] = 0;
-         * may call assign */
-        _ientry_heap_node_assign(arr, i, 0, 1);
-    } else if (i == kindex_invalid) {
-        /* arr_int[j] = 0;
-         * may call assign */
-        _ientry_heap_node_assign(arr, j, 0, 1);
-    } else {
-        tmp = arrs[i];
-        arrs[i] = arrs[j];
-        arrs[j] = tmp;
-        
-        icast(inavinode, arrs[i])->cell->heap_index = i;
-        icast(inavinode, arrs[j])->cell->heap_index = j;
-    }
-}
 
 /* Compare the heap node with cost*/
 static int _ientry_heap_node_cmp(iarray *arr, int i, int j) {
@@ -111,20 +60,25 @@ static int _ientry_heap_node_cmp(iarray *arr, int i, int j) {
     return lfs->cost > rfs->cost;
 }
 
-/* Definition of inavinode array */
-static const iarrayentry _arr_entry_inavinode = {
-    EnumArrayFlagKeepOrder |
-    EnumArrayFlagMemsetZero,
-    sizeof(inavinode*),
-    _ientry_heap_node_swap,
-    _ientry_heap_node_assign,
-    _ientry_heap_node_cmp,
+/* trace the cell index in heap */
+static void _inode_trace_cell_heap_index(iarray *arr, iref *ref, int index) {
+    inavinode *node;
+    icheck(ref);
+    node = icast(inavinode, ref);
+    node->cell->heap_index = index;
+}
+
+/* def the entry for ref */
+static const irefarrayentry _refarray_entry_inavinode = {
+    _inode_trace_cell_heap_index,
 };
 
 /* Make a Navi Nodes Heap with Cost Order Desc */
 iheap* inavinodeheapmake() {
     /*make heap with capacity: MAX_HEAP_DEPTH*/
-    iheap *heap = iarraymake(KMAX_HEAP_DEPTH, &_arr_entry_inavinode);
+    iheap *heap = iarraymakeirefwithentry(KMAX_HEAP_DEPTH, &_refarray_entry_inavinode);
+    /*node cmp entry */
+    heap->cmp = _ientry_heap_node_cmp;
     /* return heap*/
     return heap;
 }
@@ -132,20 +86,6 @@ iheap* inavinodeheapmake() {
 /*************************************************************/
 /* inavimap                                                 */
 /*************************************************************/
-
-/* Navimap node cache object-make entry*/
-static iref* _icachenewentry_node() {
-    inavinode *n = (inavinode*)iobjmalloc(inavinode);
-    iretain(n);
-    return irefcast(n);
-}
-
-/* Navimap node cache object-make entry*/
-static iref* _icachenewentry_cell() {
-    inavicell *n = (inavicell*)iobjmalloc(inavicell);
-    iretain(n);
-    return irefcast(n);
-}
 
 /* Build all navi cells from blocks */
 static void _inavimap_build_cells(inavimap *map, size_t width, size_t height, ireal * heightmap, ireal block) {
@@ -203,7 +143,6 @@ inavicell *inavicellmake(struct inavimap* map, ipolygon3d *poly, islice* connect
     cell->free = _inavicell_entry_free;
     
     /*add poly and cell to map*/
-    cell->cell_index = iarraylen(map->cells);
     iarrayadd(map->polygons, &poly);
     iarrayadd(map->cells, &cell);
     
@@ -256,9 +195,7 @@ void inavicelladdconnection(inavicell *cell, struct inavimap *map, int edge, int
         /* add to cell */
         iarrayadd(cell->connections, &connection->location);
     } else {
-        
     }
-    
     
     inavicellconnectionfree(connection);
 }
@@ -466,11 +403,23 @@ void inavimapdescwritetotextfile(inavimapdesc *desc, const char* file) {
     
 }
 
+/* trace the cell index */
+static void _irefarray_cell_index_change(iarray *arr, iref *ref, int index) {
+    inavicell *cell = icast(inavicell, ref);
+    icheck(cell);
+    cell->cell_index = index;
+}
+
+/* cell array entry */
+static const irefarrayentry _irefarray_entry_inavicell = {
+    _irefarray_cell_index_change,
+};
+
 /* Make navimap from the blocks */
 inavimap* inavimapmake(size_t capacity){
     inavimap *map = iobjmalloc(inavimap);
     map->free = _inavimap_entry_free;
-    map->cells = iarraymakeiref(capacity);
+    map->cells = iarraymakeirefwithentry(capacity, &_irefarray_entry_inavicell);
     map->polygons = iarraymakeiref(capacity);
     map->connections = iarraymakeiref(capacity*4);
    
