@@ -177,6 +177,8 @@ void inavicelladdconnection(inavicell *cell, struct inavimap *map, int edge, int
     connection->index = edge;
     connection->cost = cost;
     connection->middle = ipolygon3dedgecenter(cell->polygon, edge);
+    connection->start = *ipolygon3dpos3(cell->polygon, edge);
+    connection->end = *ipolygon3dpos3(cell->polygon, edge+1);
     connection->next = next;
     connection->from = cell->cell_index;
     connection->location = iarraylen(map->connections);
@@ -373,9 +375,9 @@ int inavimapdescreadfromtextfile(inavimapdesc *desc, const char* file) {
                 
                 for (i=0; i<k; ++i) {
                     if (i == k-1) {
-                        n = fscanf(fp, "%d-%d-%lf\n", &j, &c, &cost);
+                        n = fscanf(fp, "(%d,%d,%lf)\n", &j, &c, &cost);
                     } else {
-                        n = fscanf(fp, "%d-%d-%lf ", &j, &c, &cost);
+                        n = fscanf(fp, "(%d,%d,%lf) ", &j, &c, &cost);
                     }
                     if (n != 3) {
                         err = EnumErrCode_WrongPolygonFormat;
