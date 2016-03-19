@@ -58,18 +58,36 @@ enum EnumNaviCellFlag {
 
 /* cell */
 struct inavicell;
+/* map */
+struct inavimap;
 
+/* invalid connection index */
+#define icon_invalid 0
+    
 /*neighbors connection resouce */
 typedef struct inavicellconnection {
+    irefdeclare;
+    
     /*pologon point begin index */
     int index;
     /* const: cell a to b*/
     ireal cost;
     /* the middle point in connecting edge*/
     ipos3 middle;
-    /*cell*/
-    struct inavicell *next;
+    
+    /* where we came from (cell index in map )*/
+    int from;
+    /* where we going for (cell index in map) */
+    int next;
+    
+    /* the localtion of connection (connection index in map )*/
+    int location;
 }inavicellconnection;
+
+/* Make connection */
+inavicellconnection * inavicellconnectionmake();
+/* Release connection */
+void inavicellconnectionfree(inavicellconnection* con);
 
 typedef struct inavicell {
     /* 声明引用对象 */
@@ -79,6 +97,8 @@ typedef struct inavicell {
     ipolygon3d *polygon;
     
     /* all connections with others, according to edge count */
+    /* [] int */
+    /* con = map->connections[cell->connetions[i]] */
     iarray* connections;
     
     /* session id that the cell last deal */
@@ -95,6 +115,18 @@ typedef struct inavicell {
     ireal costarrival;
     ireal costheuristic;
 }inavicell;
+    
+/* Make a cell with poly and connections */
+inavicell *inavicellmake(struct inavimap* map, ipolygon3d *poly, islice* connections, islice *costs);
+
+/* Connect the cell to map */
+void inavicellconnect(inavicell *cell, struct inavimap* map);
+
+/* Disconnect the cell to map */
+void inavicelldisconnect(inavicell *cell);
+    
+/* Release the cell */
+void inavicellfree(inavicell *cell);
     
 /* Fetch the height from cell to pos */
 int inavicellmapheight(inavicell *cell, ipos3 *pos);
@@ -185,12 +217,18 @@ void inavipathfree(inavipath *path);
 typedef struct inavimap {
     /* Declare the iref object */
     irefdeclare;
-
+ 
+    /* all polygons */
+    /* [] *polygons */
+    iarray *polygons;
+    
     /* All polygon cells */
+    /* [] *inavicell */
     iarray *cells;
     
-    /* all polygons */
-    iarray *polygons;
+    /* all connections */
+    /* [] inavicellconnections */
+    iarray *connections;
     
     /* Global session Id */
     int64_t sessionid;
@@ -228,6 +266,11 @@ typedef struct inavimapdesc {
      * poly0-idx0-connection, poly0-idx1-connection, poly0-idx2-connection ...
      */
     iarray *polygonsconnection;
+    
+    /* all costs: []ireal
+     * poly0-idx-cost, poly0-idx1-cost ...
+     */
+    iarray *polygonscosts;
 }inavimapdesc;
     
 /* release the resource hold by desc */
@@ -240,10 +283,10 @@ void inavimapdescfreeresource(inavimapdesc *desc);
  (0,0,0)(1,0,1)(1,0,0)(3,0,0)(3,0,1)(4,0,1)
  (3,0,5)(4,0,5)
  
- 3:0-0 1-0 2-0
- 4:2-0 1-0 4-0 3-0
- 3:3-0 4-0 5-0
- 4:4-0 6-0 7-0 5-0
+ 3:0-0-1 1-0-1 2-0-1
+ 4:2-0-1 1-0-1 4-0-1 3-0-1
+ 3:3-0-1 4-0-1 5-0-1
+ 4:4-0-1 6-0-1 7-0-1 5-0-1
  */
 int inavimapdescreadfromtextfile(inavimapdesc *desc, const char* file);
     
@@ -251,7 +294,7 @@ int inavimapdescreadfromtextfile(inavimapdesc *desc, const char* file);
 void inavimapdescwritetotextfile(inavimapdesc *desc, const char* file);
 
 /* Make navimap  */
-inavimap* inavimapmake();
+inavimap* inavimapmake(size_t capacity);
     
 /* load the navimap from heightmap */
 void inavimapload(inavimap *map, size_t width, size_t height, ireal *heightmap, ireal block);
@@ -277,6 +320,10 @@ int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 
 
 /* declare meta for inavicell */
 iideclareregister(inavicell);
+    
+/* declare meta for inavicellconnection */
+iideclareregister(inavicellconnection);
+    
     
 /* declare meta for inaviwaypoint */
 iideclareregister(inaviwaypoint);

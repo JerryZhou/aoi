@@ -13,10 +13,20 @@ Please see examples for more details.
 
 #include "navi.h"
 
+#ifndef imax
+#define imax(a, b) ((a) > (b) ? (a) : (b))
+#endif  /* end: ifndef imax */
+
+#ifndef imin
+#define imin(a, b) ((a) < (b) ? (a) : (b))
+#endif /* end: ifndef imin */
+
 /* Max Path Finder Heap Depth */
 #define KMAX_HEAP_DEPTH 64
 /* Max Count Of Navimap Cell Cache */
 #define KMAX_NAVIMAP_CELL_CACHE_COUNT 50000
+/* Max Count Of Navimap Cell Connection Cache */
+#define KMAX_NAVIMAP_CONNECTION_CACHE_COUNT 50000
 /* Max Count Of Navimap Node Cache */
 #define KMAX_NAVIMAP_NODE_CACHE_COUNT 2000
 /* Max Count Of NaviPath Waypoint Cache */
@@ -147,26 +157,123 @@ static void _inavimap_entry_free(iref *ref) {
     inavimap *map = icast(inavimap, ref);
     iarrayfree(map->cells);
     iarrayfree(map->polygons);
+    iarrayfree(map->connections);
+    
     iobjfree(map);
 }
 
-static ipos3 _ipolygon_pos3(ipolygon3d *polygon, int index) {
-    size_t len = islicelen(polygon->slice);
-    icheckret(len>0, kipos3_zero);
-    return isliceof(polygon->slice, ipos3, index%len);
-}
-
-static ipos _ipolygon_pos(ipolygon3d *polygon, int index) {
-    ipos3 p3 = _ipolygon_pos3(polygon, index);
-    ipos p = {p3.x, p3.z};
-    return p;
-}
-
 static void _ipolygon_edge(ipolygon3d *polygon, iline2d *edge, int index) {
-    edge->start = _ipolygon_pos(polygon, index);
-    edge->end = _ipolygon_pos(polygon, index+1);
+    edge->start = ipolygon3dposxz(polygon, index);
+    edge->end = ipolygon3dposxz(polygon, index+1);
 }
- 
+
+/* Make connection */
+inavicellconnection * inavicellconnectionmake() {
+    inavicellconnection *con = iobjmalloc(inavicellconnection);
+    /* no need descrtuor*/
+    iretain(con);
+    return con;
+}
+/* Release connection */
+void inavicellconnectionfree(inavicellconnection* con) {
+    irelease(con);
+}
+
+/* release all the resource hold by cell */
+static void _inavicell_entry_free(iref *ref) {
+    inavicell *cell = icast(inavicell, ref);
+    /* clear the neighbors */
+    ineighborsclean(icast(irefneighbors, cell));
+    /* release the polygons */
+    ipolygon3dfree(cell->polygon);
+    /* releaset the connections */
+    iarrayfree(cell->connections);
+    
+    iobjfree(cell);
+}
+
+/* Make a cell with poly and connections */
+inavicell *inavicellmake(struct inavimap* map, ipolygon3d *poly, islice* connections, islice *costs) {
+    inavicell * cell = iobjmalloc(inavicell);
+    inavicellconnection *connection;
+    size_t len = imin(islicelen(connections), islicelen(costs));
+    size_t n = 0;
+    int next;
+    
+    /* descructor */
+    cell->free = _inavicell_entry_free;
+    
+    /* poly */
+    iassign(cell->polygon, poly);
+    /* connections */
+    cell->connections = iarraymakeint(islicelen(connections));
+    for (n=0; n < len; ++n) {
+        next = isliceof(connections, int, n);
+        
+        /*if invalid connection */
+        if (next == icon_invalid) {
+            continue;
+        }
+        
+        /*make connection*/
+        connection = inavicellconnectionmake();
+        connection->index = n;
+        connection->cost = isliceof(costs, ireal, n);
+        connection->middle = ipolygon3dedgecenter(poly, n);
+        connection->next = next;
+        connection->from = iarraylen(map->cells);
+        connection->location = iarraylen(map->connections);
+        
+        /* add to map */
+        iarrayadd(map->connections, &connection);
+        /* add to cell */
+        iarrayadd(cell->connections, &connection->location);
+        
+        inavicellconnectionfree(connection);
+    }
+    
+    /*add cell to map*/
+    iarrayadd(map->cells, &cell);
+    
+    iretain(cell);
+    return cell;
+}
+
+/* Connect the cell to map */
+void inavicellconnect(inavicell *cell, struct inavimap* map) {
+    size_t len = iarraylen(cell->connections);
+    int conindex=0;
+    inavicellconnection *con=NULL;
+    inavicell *neighbor=NULL;
+    
+    /*disconnect first */
+    inavicelldisconnect(cell);
+    while (len) {
+        /* get the cell connection */
+        conindex = iarrayof(cell->connections, int, len-1);
+        con = iarrayof(map->connections, inavicellconnection*, conindex);
+        
+        /* connected as neighbor */
+        if (con) {
+            neighbor = iarrayof(map->cells, inavicell*, con->next);
+            /* add neighbor and append con as link resouce */
+            ineighborsaddvalue(icast(irefneighbors,cell),
+                          icast(irefneighbors,neighbor), con, con);
+        }
+        --len;
+    }
+}
+
+/* Disconnect the cell to map */
+void inavicelldisconnect(inavicell *cell) {
+    ineighborsclean(icast(irefneighbors, cell));
+}
+    
+/* Release the cell */
+void inavicellfree(inavicell *cell) {
+    irelease(cell);
+}
+
 /* Fetch the height from cell to pos */
 int inavicellmapheight(inavicell *cell, ipos3 *pos) {
     pos->y = iplanesolvefory(&cell->polygon->plane, pos->x, pos->z);
@@ -179,12 +286,12 @@ int inavicellclassify(inavicell *cell, const iline2d *line,
     int interiorcount = 0;
     int relation = EnumNaviCellRelation_OutCell;
     iline2d edge;
-    int edgecount = islicelen(cell->polygon->slice);
+    int edgecount = islicelen(cell->polygon->pos);
     int n = 0;
     int linerelation;
     
     while (n < edgecount) {
-        _ipolygon_edge(cell->polygon, n, &edge);
+        _ipolygon_edge(cell->polygon, &edge, n);
         
         if (iline2dclassifypoint(&edge, &line->end, iepsilon) != EnumPointClass_Right) {
             if (iline2dclassifypoint(&edge, &line->start, iepsilon) != EnumPointClass_Left) {
@@ -250,6 +357,7 @@ int inavimapdescreadfromtextfile(inavimapdesc *desc, const char* file) {
     FILE *fp = NULL;
     int n = 0;
     int m, k, i, j, c = 0;
+    ireal cost;
     int err = 0;
     ipos3 p;
     fp = fopen(file, "r");
@@ -292,6 +400,7 @@ int inavimapdescreadfromtextfile(inavimapdesc *desc, const char* file) {
             desc->polygons = iarraymakeint(desc->header.polygons);
             desc->polygonsindex = iarraymakeint(desc->header.polygonsize);
             desc->polygonsconnection = iarraymakeint(desc->header.polygonsize);
+            desc->polygonscosts = iarraymakeireal(desc->header.polygonsize);
             for (m=0; m<desc->header.polygons; ++m) {
                 n = fscanf(fp, "%d:", &k);
                 if (n != 1) {
@@ -302,16 +411,17 @@ int inavimapdescreadfromtextfile(inavimapdesc *desc, const char* file) {
                 
                 for (i=0; i<k; ++i) {
                     if (i == k-1) {
-                        n = fscanf(fp, "%d-%d\n", &j, &c);
+                        n = fscanf(fp, "%d-%d-%lf\n", &j, &c, &cost);
                     } else {
-                        n = fscanf(fp, "%d-%d ", &j, &c);
+                        n = fscanf(fp, "%d-%d-%lf ", &j, &c, &cost);
                     }
-                    if (n != 2) {
+                    if (n != 3) {
                         err = EnumErrCode_WrongPolygonFormat;
                         break;
                     } else {
                         iarrayadd(desc->polygonsindex, &j);
                         iarrayadd(desc->polygonsconnection, &c);
+                        iarrayadd(desc->polygonscosts, &cost);
                     }
                 }
                 
@@ -332,11 +442,12 @@ void inavimapdescwritetotextfile(inavimapdesc *desc, const char* file) {
 }
 
 /* Make navimap from the blocks */
-inavimap* inavimapmake(){
+inavimap* inavimapmake(size_t capacity){
     inavimap *map = iobjmalloc(inavimap);
     map->free = _inavimap_entry_free;
-    map->cells = iarraymakeiref(20000);
-    map->polygons = iarraymakeiref(20000);
+    map->cells = iarraymakeiref(capacity);
+    map->polygons = iarraymakeiref(capacity);
+    map->connections = iarraymakeiref(capacity*4);
    
     iretain(map);
     return map;
@@ -350,7 +461,55 @@ void inavimapload(inavimap *map, size_t width, size_t height, ireal *heightmap, 
 
 /* load the navimap from desc */
 void inavimaploadfromdesc(inavimap *map, const inavimapdesc *desc) {
+    int i = 0;
+    int j = 0;
+    size_t len = 0;
+    size_t lentotal = 0;
+    islice *sliceindex = NULL;
+    islice *sliceconnection = NULL;
+    islice *slicecosts = NULL;
+    inavicell *cell;
+    ipolygon3d *polygon;
     
+    /* remove all old cells */
+    iarrayremoveall(map->polygons);
+    iarrayremoveall(map->cells);
+    /* make sure the capacity of polygons */
+    iarrayexpandcapacity(map->polygons, desc->header.polygons);
+    iarrayexpandcapacity(map->cells, desc->header.polygons);
+    /* make all the cells */
+    for (i=0, lentotal=0; i<desc->header.polygons; ++i) {
+        len = iarrayof(desc->polygons, int, i);
+        sliceindex = isliced(desc->polygonsindex, lentotal, lentotal+len);
+        sliceconnection = isliced(desc->polygonsconnection, lentotal, lentotal+len);
+        slicecosts = isliced(desc->polygonscosts, lentotal, lentotal+len);
+        
+        /* make polygon */
+        polygon = ipolygon3dmake(len);
+        for (j=0; j<len; ++j) {
+            ipolygon3dadd(polygon , &iarrayof(desc->points, ipos3,
+                                              isliceof(sliceindex, int, j)),
+                          1);
+        }
+        iarrayadd(map->polygons, &polygon);
+        
+        /* make cell */
+        cell = inavicellmake(map, polygon, sliceconnection, slicecosts);
+        
+        /* release the middle values */
+        islicefree(sliceindex);
+        islicefree(sliceconnection);
+        islicefree(slicecosts);
+        inavicellfree(cell);
+        
+        /* next cell */
+        lentotal += len;
+    }
+    
+    /* connected all the cells: then make all connections in map */
+    for (i=0; i<iarraylen(map->cells); ++i) {
+        inavicellconnect(iarrayof(map->cells, inavicell*, i), map);
+    }
 }
 
 /* Free the navi map */
@@ -501,9 +660,9 @@ void inavipathfree(inavipath *path) {
 }
 
 ipos3 _ipolygon_point(ipolygon3d *polygon, int index) {
-    size_t len = islicelen(polygon->slice);
+    size_t len = islicelen(polygon->pos);
     icheckret(len>0, kipos3_zero);
-    return isliceof(polygon->slice, ipos3, index%len);
+    return isliceof(polygon->pos, ipos3, index%len);
 }
 
 /* NB!! no retain */
@@ -719,6 +878,9 @@ int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 
 /* implement meta for inavicell */
 irealdeclareregister(inavicell);
 
+/* implement meta for inavicellconnection */
+irealdeclareregister(inavicellconnection);
+
 /* implement meta for inaviwaypoint */
 irealdeclareregister(inaviwaypoint);
 
@@ -737,6 +899,7 @@ irealdeclareregister(inavimap);
 int inavi_mm_init() {
 
     irealimplementregister(inavicell, KMAX_NAVIMAP_CELL_CACHE_COUNT);
+    irealimplementregister(inavicellconnection, KMAX_NAVIMAP_CONNECTION_CACHE_COUNT);
     irealimplementregister(inavinode, KMAX_NAVIMAP_NODE_CACHE_COUNT);
     irealimplementregister(inaviwaypoint, KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT);
     irealimplementregister(inavipath, 0);
