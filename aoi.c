@@ -1193,7 +1193,7 @@ iarray *iarraymake(size_t capacity, const iarrayentry *entry) {
 	iarray *array = (iarray *)iobjmalloc(iarray);
     array->capacity = capacity;
     array->len = 0;
-    array->buffer = (char*)icalloc(capacity, entry->size);
+    array->buffer = capacity > 0 ? (char*)icalloc(capacity, entry->size) : NULL;
     array->free = _iarray_entry_free;
     array->entry = entry;
     array->flag = entry->flag;
