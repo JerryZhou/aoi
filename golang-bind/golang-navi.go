@@ -26,6 +26,7 @@ type Navi struct {
 	size    C.struct_isize
 
 	divids C.struct_isize
+	cindex int
 }
 
 func (a *Navi) Free() {
@@ -84,28 +85,30 @@ func (a *Navi) DrawPolygon3dC(gc *draw2dgl.GraphicContext, poly *C.struct_ipolyg
 	}
 	fivecolors := []color.RGBA{
 		color.RGBA{215, 0, 0, 255},
-		color.RGBA{0, 215, 0, 255},
 		color.RGBA{0, 0, 215, 255},
 		color.RGBA{215, 215, 0, 255},
 		color.RGBA{0, 215, 215, 255},
 	}
 	//gc.Save()
-	gc.SetLineWidth(4)
-	gc.SetStrokeColor(fivecolors[0])
+	//gc.SetLineWidth(4)
+	gc.BeginPath()
 	p0 := a.TranslatePos((*C.struct_ipos3)(C.isliceat(poly.pos, 0)))
 	DrawMoveToC(gc, &p0)
 	fmt.Println("DrawPolygon3d", " [", 0, "]", p0)
 	i := 1
 	for ; i < int(n); i++ {
-		gc.SetStrokeColor(fivecolors[i%5])
 		p := a.TranslatePos((*C.struct_ipos3)(C.isliceat(poly.pos, C.int(i))))
 		DrawLineToC(gc, &p)
 		fmt.Println("DrawPolygon3d", " [", i, "]", p)
 	}
-	gc.SetStrokeColor(fivecolors[i%5])
-	DrawLineToC(gc, &p0)
-	DrawLineEndC(gc)
-	//gc.Restore()
+	//gc.SetStrokeColor(fivecolors[i%5])
+	//DrawLineToC(gc, &p0)
+	//DrawLineEndC(gc)
+	gc.Close()
+	gc.SetFillColor(fivecolors[a.cindex%4])
+	gc.Fill()
+
+	a.cindex++
 }
 
 func (a *Navi) DrawLineC(gc *draw2dgl.GraphicContext, start, end *C.struct_ipos3) {
