@@ -4402,6 +4402,58 @@ SP_CASE(inavicell, inavicellmake) {
     inavimapfree(map);
 }
 
+SP_CASE(inavicell, inavimapfind) {
+    inavimap *map = inavimapmake(8);
+    
+    inavimapdesc desc = {{0}, 0, 0, 0};
+    
+    int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
+    SP_EQUAL(err, 0);
+    
+    printf("%s", "\n");
+    
+    __array_println(desc.polygons);
+    __array_println(desc.polygonsindex);
+    __array_println(desc.polygonsconnection);
+    __array_println(desc.polygonscosts);
+    
+    inavimaploadfromdesc(map, &desc);
+    
+    ipos3 p = {1.2019791666666666, 0, 0.7873958333333333};
+    inavicell *cell = inavimapfind(map, &p);
+    
+    SP_EQUAL(cell, iarrayof(map->cells, inavicell*, 0));
+    
+    ipos3 end = {4.775729166666666, 0,1.5808333333333333};
+    
+    inavipath * path = inavipathmake();
+    
+    inavimapfindpath(map, NULL, &p, &end, path);
+    
+    
+    {
+        /*cell 1 to cell 0*/
+        ipos3 p0 = {2.7309375, 0, 1.0340625};
+        ipos3 p1 = {1.3151041666666667, 0, 0.608125};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+    }
+    
+    {
+        /*cell 3 to cell 0*/
+        ipos3 p0 = {7.166458333333333, 0,3.536770833333333};
+        ipos3 p1 = {1.6123958333333333, 0, 0.51625};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+    }
+    
+    inavipathfree(path);
+    
+    inavimapdescfreeresource(&desc);
+    
+    inavimapfree(map);
+}
+
 SP_SUIT(inaviwaypoint);
 
 SP_CASE(inaviwaypoint, nothing) {
