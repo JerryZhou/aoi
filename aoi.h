@@ -1067,6 +1067,9 @@ typedef struct ipolygon3d {
     /* center point */
     ipos3 center;
     
+    /* accumulating the pos */
+    ipos3 accumulating;
+    
     /* the polygon plane */
     iplane plane;
 }ipolygon3d;
@@ -1079,6 +1082,9 @@ void ipolygon3dfree(ipolygon3d *);
     
 /* add ivec3 to polygon*/
 void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums);
+    
+    /* caculating the center of polygon3d  */
+    void ipolygon3dfinish(ipolygon3d *poly);
     
 /* take the polygon3d as a wrap buffer of pos */
 const ipos3 * ipolygon3dpos3(ipolygon3d *polygon, int index);

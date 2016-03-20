@@ -2165,6 +2165,7 @@ void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
     ireal *values;
     ireal *max_values = (ireal*)&(poly->max);
     ireal *min_values = (ireal*)&(poly->min);
+    ireal *accu_values = (ireal*)&(poly->accumulating);
     int slicelen = islicelen(poly->pos);
     icheck(v);
     icheck(poly);
@@ -2172,9 +2173,11 @@ void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
     
     /* update the min and max*/
     for (j=0; j<nums; ++j) {
+        values = (ireal*)(&v[j]);
         for (i=0; i<3; ++i) {
-            values = (ireal*)(&v[j]);
-    
+            /* accumulating all pos */
+            accu_values[i] += values[i];
+            /* caculating the max and min */
             if (values[i] > max_values[i]) {
                 /* for max */
                 max_values[i] = values[i];
@@ -2196,6 +2199,18 @@ void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
                   &isliceof(poly->pos, ipos3, 1),
                   &isliceof(poly->pos, ipos3, 2));
     }
+    
+    /* auto polygon3d finish after add pos */
+    ipolygon3dfinish(poly);
+}
+
+/* caculating the center of polygon3d  */
+void ipolygon3dfinish(ipolygon3d *poly) {
+    size_t n = islicelen(poly->pos);
+    icheck(n > 1);
+    poly->center.x = poly->accumulating.x / n;
+    poly->center.y = poly->accumulating.y / n;
+    poly->center.z = poly->accumulating.z / n;
 }
 
 /* take the polygon3d as a wrap buffer of pos */
