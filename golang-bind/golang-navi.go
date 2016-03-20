@@ -20,17 +20,24 @@ import (
 import "C"
 
 type Navi struct {
-	xmap    *C.struct_inavimap
+	xmap  *C.struct_inavimap
+	xpath *C.struct_inavipath
+
 	mapdesc C.struct_inavimapdesc
 	pos     C.struct_ipos
 	size    C.struct_isize
 
 	divids C.struct_isize
 	cindex int
+	cpress int
+
+	cstartpos C.struct_ipos3
+	cendpos   C.struct_ipos3
 }
 
 func (a *Navi) Free() {
 	C.inavimapdescfreeresource(&a.mapdesc)
+	C.inavipathfree(a.xpath)
 	C.inavimapfree(a.xmap)
 }
 
@@ -41,6 +48,7 @@ func (a *Navi) Init(width, height float64) {
 	offsetx := (width - sizew) / 2
 	offsety := (height - sizeh) / 2
 
+	runtime.SetFinalizer(a, (*Navi).Free)
 	// init navi memory system
 	C.inavi_mm_init()
 
@@ -63,7 +71,7 @@ func (a *Navi) Init(width, height float64) {
 	// 加载导航图
 	C.inavimaploadfromdesc(a.xmap, &a.mapdesc)
 
-	runtime.SetFinalizer(a, (*Navi).Free)
+	a.xpath = C.inavipathmake()
 }
 
 func (a *Navi) DrawMap(gc *draw2dgl.GraphicContext) {
@@ -79,7 +87,7 @@ func (a *Navi) DrawMapDesc(gc *draw2dgl.GraphicContext) {
 
 func (a *Navi) DrawPolygon3dC(gc *draw2dgl.GraphicContext, poly *C.struct_ipolygon3d) {
 	n := C.islicelen(poly.pos)
-	fmt.Println("DrawPolygon3d", "num", n)
+	//fmt.Println("DrawPolygon3d", "num", n)
 	if n <= 0 {
 		return
 	}
@@ -94,12 +102,12 @@ func (a *Navi) DrawPolygon3dC(gc *draw2dgl.GraphicContext, poly *C.struct_ipolyg
 	gc.BeginPath()
 	p0 := a.TranslatePos((*C.struct_ipos3)(C.isliceat(poly.pos, 0)))
 	DrawMoveToC(gc, &p0)
-	fmt.Println("DrawPolygon3d", " [", 0, "]", p0)
+	//fmt.Println("DrawPolygon3d", " [", 0, "]", p0)
 	i := 1
 	for ; i < int(n); i++ {
 		p := a.TranslatePos((*C.struct_ipos3)(C.isliceat(poly.pos, C.int(i))))
 		DrawLineToC(gc, &p)
-		fmt.Println("DrawPolygon3d", " [", i, "]", p)
+		//fmt.Println("DrawPolygon3d", " [", i, "]", p)
 	}
 	//gc.SetStrokeColor(fivecolors[i%5])
 	//DrawLineToC(gc, &p0)
@@ -127,9 +135,17 @@ func (a *Navi) TranslatePos(p *C.struct_ipos3) (newp C.struct_ipos) {
 	return
 }
 
+/* translate the x, y to ipos2 in world coordinate */
+func (a *Navi) TranslatePos2(x, y float64) (newp C.struct_ipos3) {
+	newp.x = (C.ireal(x) - a.pos.x) / a.divids.w
+	newp.y = C.ireal(0)
+	newp.z = (C.ireal(y) - a.pos.y) / a.divids.h
+	return
+}
+
 func (a *Navi) DrawMapCells(gc *draw2dgl.GraphicContext) {
 	n := C.iarraylen(a.xmap.polygons)
-	fmt.Println("DrawMapCells", n)
+	//fmt.Println("DrawMapCells", n)
 	for ; n > 0; n-- {
 		poly := *((**C.struct_ipolygon3d)(C.iarrayat(a.xmap.polygons, C.int(n-1))))
 		a.DrawPolygon3dC(gc, poly)
@@ -138,14 +154,39 @@ func (a *Navi) DrawMapCells(gc *draw2dgl.GraphicContext) {
 
 func (a *Navi) DrawMapConnections(gc *draw2dgl.GraphicContext) {
 	n := C.iarraylen(a.xmap.connections)
-	fmt.Println("DrawMapConnections", n)
+	//fmt.Println("DrawMapConnections", n)
 
 	gc.SetLineWidth(8)
 	gc.SetStrokeColor(ColorGreen)
 	for ; n > 0; n-- {
 		con := *((**C.struct_inavicellconnection)(C.iarrayat(a.xmap.connections, C.int(n-1))))
 		a.DrawLineC(gc, &con.start, &con.end)
-		fmt.Println("line:", a.TranslatePos(&con.start), a.TranslatePos(&con.end))
+		//fmt.Println("line:", a.TranslatePos(&con.start), a.TranslatePos(&con.end))
+	}
+}
+
+func (a *Navi) DrawMapPath(gc *draw2dgl.GraphicContext) {
+	p0 := a.TranslatePos(&a.cstartpos)
+	p1 := a.TranslatePos(&a.cendpos)
+
+	DrawCircleC(gc, ColorUnit, &p0, C.ireal(10))
+	DrawCircleC(gc, ColorUnit, &p1, C.ireal(10))
+
+	iway := a.cpress % 3
+	n := C.ireflistlen(a.xpath.waypoints)
+	fmt.Println("DrawMapPath:", p0, p1, "Path:", n, "Way:", iway)
+
+	if iway == 0 && n > 0 {
+		DrawMoveToC(gc, &p0)
+		for joint := C.ireflistfirst(a.xpath.waypoints); joint != nil; joint = joint.next {
+			waypoint := (*C.struct_inaviwaypoint)(unsafe.Pointer(joint.value))
+			pos := a.TranslatePos(&waypoint.waypoint)
+			DrawLineToC(gc, &pos)
+		}
+		DrawLineToC(gc, &p1)
+		gc.SetStrokeColor(ColorUnitAim)
+		gc.SetLineWidth(6)
+		DrawLineEndC(gc)
 	}
 }
 
@@ -154,8 +195,30 @@ func (a *Navi) Draw(gc *draw2dgl.GraphicContext) {
 	a.DrawMapDesc(gc)
 	a.DrawMapCells(gc)
 	a.DrawMapConnections(gc)
+	a.DrawMapPath(gc)
 }
+
 func (a *Navi) MousePress(x, y float64) {
+	p := a.TranslatePos2(x, y)
+	fmt.Println("Mouse Press:", x, y, p)
+
+	cell := C.inavimapfind(a.xmap, &p)
+	fmt.Println("Find Cell:", cell.cell_index)
+
+	iway := a.cpress % 3
+	if iway == 0 {
+		a.cstartpos = p
+	} else if iway == 1 {
+		a.cendpos = p
+	} else if iway == 2 {
+		// find path
+		n := C.inavimapfindpath(a.xmap, (*C.struct_iunit)(nil), &a.cstartpos, &a.cendpos, a.xpath)
+		fmt.Println("find path:", n, *a.xpath)
+	}
+
+	a.cpress++
+
+	redraw = true
 }
 func (a *Navi) MouseMove(x, y float64) {
 }
