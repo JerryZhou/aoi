@@ -170,7 +170,7 @@ inavicell *inavicellmake(struct inavimap* map, ipolygon3d *poly, islice* connect
 void inavicelladdconnection(inavicell *cell, struct inavimap *map, int edge, int next, ireal cost) {
     inavicellconnection * connection;
     int append;
-    icheck(edge>0);
+    icheck(edge>=0);
     
     /*make connection*/
     connection = inavicellconnectionmake();
@@ -181,7 +181,6 @@ void inavicelladdconnection(inavicell *cell, struct inavimap *map, int edge, int
     connection->end = *ipolygon3dpos3(cell->polygon, edge+1);
     connection->next = next;
     connection->from = cell->cell_index;
-    connection->location = iarraylen(map->connections);
     
     /* add to map */
     iarrayadd(map->connections, &connection);
@@ -210,8 +209,7 @@ void inavicellconnecttomap(inavicell *cell, struct inavimap* map) {
     inavicell *neighbor=NULL;
     const void* convalue;
     
-    /*disconnect first */
-    inavicelldisconnectfrommap(cell);
+    /*if not a new cell should disconnect first caller self */
     while (len) {
         /* get the cell connection */
         conindex = iarrayof(cell->connections, int, len-1);
@@ -417,13 +415,25 @@ static const irefarrayentry _irefarray_entry_inavicell = {
     _irefarray_cell_index_change,
 };
 
+/* trace the connection location in array */
+static void _irefarray_connection_index_change(iarray *arr, iref *ref, int index) {
+    inavicellconnection *con = icast(inavicellconnection, ref);
+    icheck(con);
+    con->location = index;
+}
+
+/* cell connection entry */
+static const irefarrayentry _irefarray_entry_inavicellconnection = {
+    _irefarray_connection_index_change,
+};
+
 /* Make navimap from the blocks */
 inavimap* inavimapmake(size_t capacity){
     inavimap *map = iobjmalloc(inavimap);
     map->free = _inavimap_entry_free;
     map->cells = iarraymakeirefwithentry(capacity, &_irefarray_entry_inavicell);
     map->polygons = iarraymakeiref(capacity);
-    map->connections = iarraymakeiref(capacity*4);
+    map->connections = iarraymakeirefwithentry(capacity*4, &_irefarray_entry_inavicellconnection);
    
     iretain(map);
     return map;
@@ -450,6 +460,8 @@ void inavimaploadfromdesc(inavimap *map, const inavimapdesc *desc) {
     /* remove all old cells */
     iarrayremoveall(map->polygons);
     iarrayremoveall(map->cells);
+    iarrayremoveall(map->connections);
+    
     /* make sure the capacity of polygons */
     iarrayexpandcapacity(map->polygons, desc->header.polygons);
     iarrayexpandcapacity(map->cells, desc->header.polygons);
@@ -504,11 +516,11 @@ inavicell* inavimapfind(const inavimap *map, const ipos3 *pos) {
 }
 
 ireal _inavicell_pos_dist(inavicell *cell, const ipos3 *pos ) {
-    ipos intersection;
+    ipos intersection = {0, 0};
     ipos start = {cell->polygon->center.x, cell->polygon->center.z};
     ipos end = {pos->x, pos->z};
     iline2d line = {start, end};
-    ipos3 closest;
+    ipos3 closest = {0, 0, 0};
     ireal dist = INT32_MAX;
     
     if (inavicellclassify(cell, &line, &intersection, NULL) == EnumNaviCellRelation_IntersetCell) {
@@ -546,14 +558,14 @@ inavicell* inavimapfindclosestcell(const inavimap *map, const islice* cells, con
         } else if(found == iino) {
             /*no found , find a closest cell in dist*/
             dist = _inavicell_pos_dist(cell, pos);
-            if (dist < maxdistance) {
+            if (cell == NULL || dist < maxdistance) {
                 closestcell = cell;
                 maxdistance = dist;
             }
         }
         --len;
     }
-    return NULL;
+    return closestcell;
 }
 
 
@@ -613,6 +625,9 @@ void inavipathsetup(inavipath *path, int64_t sessionid,
     
     iassign(path->end, end);
     path->endpos = *endpos;
+    
+    ireflistremoveall(path->waypoints);
+    path->current = NULL;
 }
 
 static void _inavipath_entry_free(iref *ref) {
@@ -735,7 +750,7 @@ static void _inavicell_process(inavicell *cell, inavicontext *context,
     if (cell->sessionid != context->sessionid) {
         cell->sessionid = context->sessionid;
         cell->flag = EnumNaviCellFlag_Open;
-        cell->link = caller->cell;
+        cell->link = caller ? caller->cell:NULL;
         cell->connection = connection;
         cell->heap_index = kindex_invalid;
        
@@ -782,7 +797,7 @@ static void _inavicontext_setup(inavicontext *context,
                                 inavimap *map, iunit *unit,
                                 inavipath *path) {
     context->map = map;
-    context->sessionid = ++map->sessionid;
+    context->sessionid = path->sessionid;
     context->unit = unit;
     context->path = path;
     context->heap = inavinodeheapmake();
@@ -849,8 +864,8 @@ static void _inavimapfindpath_cell(inavimap *map,
             waypoint = _inaviwaypoint_make_by_cell(cell);
             ireflistadd(path->waypoints, irefcast(waypoint));
             /* get next point */
-            cell = cell->link;
             connection = cell->connection;
+            cell = cell->link;
         }
         
         /* end of path */

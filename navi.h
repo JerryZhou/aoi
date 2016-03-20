@@ -83,6 +83,7 @@ typedef struct inavicellconnection {
     int next;
     
     /* the localtion of connection (connection index in map )*/
+    /* auto trace by ref array */
     int location;
 }inavicellconnection;
 
@@ -105,6 +106,7 @@ typedef struct inavicell {
     
     /* trace the cell index in map */
     /* map->cells[cell->cell_index] == cell*/
+    /* auto trace by ref array */
     int cell_index;
     
     /* session id that the cell last deal */
@@ -112,6 +114,7 @@ typedef struct inavicell {
     /* session flag */
     int flag;
     /* trace the the index in navi heap */
+    /* auto trace by ref array */
     int heap_index;
     /* the navigation link */
     struct inavicell *link;
@@ -207,7 +210,7 @@ typedef struct inavipath {
     ipos3 startpos;
     ipos3 endpos;
     
-    /* inaviwaypoint */
+    /* [] *inaviwaypoint */
     ireflist *waypoints;
     /* current node */
     irefjoint *current;
@@ -236,7 +239,7 @@ typedef struct inavimap {
     iarray *cells;
     
     /* all connections */
-    /* [] inavicellconnections */
+    /* [] *inavicellconnection */
     iarray *connections;
     
     /* Global session Id */
