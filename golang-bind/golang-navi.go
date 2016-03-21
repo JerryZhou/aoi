@@ -169,8 +169,8 @@ func (a *Navi) DrawMapPath(gc *draw2dgl.GraphicContext) {
 	p0 := a.TranslatePos(&a.cstartpos)
 	p1 := a.TranslatePos(&a.cendpos)
 
-	DrawCircleC(gc, ColorUnit, &p0, C.ireal(10))
-	DrawCircleC(gc, ColorUnit, &p1, C.ireal(10))
+	DrawCircleC(gc, ColorUnitAim, &p0, C.ireal(10))
+	DrawCircleC(gc, ColorGreen, &p1, C.ireal(10))
 
 	iway := a.cpress % 3
 	n := C.ireflistlen(a.xpath.waypoints)
