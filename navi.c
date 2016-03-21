@@ -57,7 +57,7 @@ typedef struct inavinode {
 static int _ientry_heap_node_cmp(iarray *arr, int i, int j) {
     inavinode* lfs = iarrayof(arr, inavinode*, i);
     inavinode* rfs = iarrayof(arr, inavinode*, j);
-    return lfs->cost > rfs->cost;
+    return lfs->cost < rfs->cost;
 }
 
 /* trace the cell index in heap */
@@ -244,7 +244,7 @@ int inavicellmapheight(inavicell *cell, ipos3 *pos) {
 
 /* classify the line relationship with cell */
 int inavicellclassify(inavicell *cell, const iline2d *line,
-                      ipos *intersection, inavicellconnection **connection) {
+                      ipos *intersection, int *connection) {
     int interiorcount = 0;
     int relation = EnumNaviCellRelation_OutCell;
     iline2d edge;
@@ -264,12 +264,16 @@ int inavicellclassify(inavicell *cell, const iline2d *line,
                     
                     /* Find Connections */
                     if (connection) {
-                        *connection = iarrayof(cell->connections, inavicellconnection*, n);
+                        if (n >=0 && n <iarraylen(cell->connections)) {
+                            *connection = iarrayof(cell->connections, int, n);
+                        } else {
+                            *connection = kindex_invalid;
+                        }
                     }
                     break;
                 }
             }
-        } else  {
+        }else {
             interiorcount++;
         }
         ++n;
@@ -742,6 +746,9 @@ static ireal _inavicell_arrivalcost(inavicell *cell, inavicontext *context,
         factor = distnow / disttake;
     }
     
+    /* if we carefuly deal with cost , can be do some extermely moving stuffs*/
+    /* if we do not want it just open the next line code */
+    /* return caller->cell->costarrival + distnow; */
     return caller->cell->costarrival + connection->cost * factor;
 }
 
@@ -829,7 +836,10 @@ static void _inavimapfindpath_cell(inavimap *map,
     
     /* found the path */
     while (iheapsize(context.heap) && found == iino && steps) {
+        /*get the top node */
         node = iheappeekof(context.heap, inavinode*);
+        iretain(node);
+        /*pop heap*/
         iheappop(context.heap);
         
         /* Arrived */
@@ -839,6 +849,9 @@ static void _inavimapfindpath_cell(inavimap *map,
             /* Process current neighbor */
             _inavinode_process(node, &context);
         }
+        
+        /* release node */
+        irelease(node);
         
         --steps;
     }
@@ -883,6 +896,144 @@ int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 
     inavipathsetup(path, ++map->sessionid, start, from, end, to);
     
     _inavimapfindpath_cell(map, unit, path, INT32_MAX);
+    /*inavimapsmoothpath(map, unit, path, INT32_MAX); */
+    return ireflistlen(path->waypoints);
+}
+
+/* The next cell in connection */
+inavicell * inavimapnextcell(inavimap *map, int conn) {
+    inavicellconnection *connection = NULL;
+    icheckret(conn>=0 && conn<iarraylen(map->connections), NULL);
+    
+    connection = iarrayof(map->connections, inavicellconnection*, conn);
+    icheckret(connection, NULL);
+    icheckret(connection->next>=0 && connection->next<iarraylen(map->cells), NULL);
+    
+    return iarrayof(map->cells, inavicell*, connection->next);
+}
+
+
+/* used to smooth the waypoint */
+typedef struct _inavi_smooth_point {
+    inavicell *cell;
+    ipos3 pos;
+}_inavi_smooth_point;
+
+/* change the pos3d to pos2d */
+ipos _inavi_flat_pos(ipos3 *p) {
+    ipos pos;
+    pos.x = p->x;
+    pos.y = p->z;
+    return pos;
+}
+
+/*check if we can see each other*/
+int _inavi_cell_lineofsight_test(inavimap *map, _inavi_smooth_point *start, _inavi_smooth_point *end) {
+    ipos pos;
+    int conn;
+    int result;
+    inavicell *last = NULL;
+    inavicell *next = start->cell;
+    iline2d line = {_inavi_flat_pos(&start->pos), _inavi_flat_pos(&end->pos)};
+    
+    if (end->cell == NULL) {
+        return iiok;
+    }
+    
+    if (start->cell == end->cell) {
+        return iiok;
+    }
+    
+    while ((result=inavicellclassify(next, &line, &pos, &conn))==EnumNaviCellRelation_IntersetCell) {
+        /* end the end cell */
+        if (next == end->cell && ireal_equal(pos.x,end->pos.x) && ireal_equal(pos.y, end->pos.z)) {
+            return iiok;
+        }
+        /* next util not the end ceil*/
+        last = next;
+        next = inavimapnextcell(map, conn);
+        if (next == NULL) {
+            return iino;
+        }
+        conn = kindex_invalid;
+    }
+    
+    return result == EnumNaviCellRelation_InCell;
+}
+
+/* remove joint between (last, unitl )until the joint equal to until, and return the next */
+irefjoint * _inavi_cell_remove_until(ireflist *list, irefjoint *last, irefjoint *until) {
+    irefjoint *first = last ? last->next : ireflistfirst(list);
+    icheckret(until, NULL);
+    icheckret(first, NULL);
+    
+    while (first) {
+        if (first != until) {
+            first = ireflistremovejointandfree(list, first);
+        }else {
+            break;
+        }
+    }
+    return until;
+}
+
+/* Make the path be smoothed */
+int inavimapsmoothpath(inavimap *map, iunit *unit, inavipath *path, int steps) {
+    irefjoint *joint;
+    irefjoint *startjoint;
+    irefjoint *lastvisiblejoint = NULL;
+    
+    inaviwaypoint * waypoint;
+    _inavi_smooth_point start;
+    _inavi_smooth_point end;
+    /* will stop the loop in ugly forever */
+    steps = imax(steps, 0);
+    steps = imin(steps, ireflistlen(path->waypoints));
+    
+    icheckret(ireflistlen(path->waypoints) > 1, 0);
+    
+    /*start pos*/
+    start.cell = path->start;
+    start.pos = path->startpos;
+    end.cell = NULL;
+    
+    /* the first way point */
+    joint = ireflistfirst(path->waypoints);
+    startjoint = NULL;
+    lastvisiblejoint = joint;
+    
+    while (joint && steps) {
+        /* way point */
+        waypoint = icast(inaviwaypoint, joint->value);
+        /* find next cell not equal to start */
+        if (waypoint->cell && waypoint->cell != start.cell) {
+            /* end cell */
+            end.cell = waypoint->cell;
+            end.pos = waypoint->waypoint;
+        }
+        /* judge if we can skip all waypoints in cell*/
+        if (_inavi_cell_lineofsight_test(map, &start, &end) == iino) {
+            /* remove all of visible (start, lastvisiblejoint)*/
+            _inavi_cell_remove_until(path->waypoints, startjoint, lastvisiblejoint);
+            /* line of sight invisible, should be try next */
+            /* the waypoint in path can not see each other */
+            waypoint = icast(inaviwaypoint, lastvisiblejoint->value);
+            start.cell = waypoint->cell;
+            start.pos = waypoint->waypoint;
+            end.cell = NULL;
+            
+            startjoint = lastvisiblejoint;
+            /* found max invisible step */
+            --steps;
+        } else if (joint->next == NULL) {
+            /* remove all of visible (start, lastvisiblejoint)*/
+            _inavi_cell_remove_until(path->waypoints, startjoint, joint);
+        }
+        
+        lastvisiblejoint = joint;
+        joint = joint->next;
+    }
+    
     return ireflistlen(path->waypoints);
 }
 

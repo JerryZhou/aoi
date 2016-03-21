@@ -152,7 +152,7 @@ typedef enum EnumNaviCellRelation {
     
 /* classify the line relationship with cell */
 int inavicellclassify(inavicell *cell, const iline2d *line,
-                      ipos *intersection, inavicellconnection **connection);
+                      ipos *intersection, int *connection);
 
 /* Waypoint Type */
 typedef enum EnumNaviWayPointType {
@@ -325,6 +325,12 @@ inavicell* inavimapfindclosestcell(const inavimap *map, const islice* cells, con
 
 /* navi map find the path */
 int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 *to, inavipath *path);
+    
+/* Make the path be smoothed */
+int inavimapsmoothpath(inavimap *map, iunit *unit, inavipath *path, int steps);
+    
+/* The next cell in connection */
+inavicell * inavimapnextcell(inavimap *map, int conn);
 
 /*************************************************************/
 /* declare the new type for iimeta system                    */
