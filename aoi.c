@@ -617,6 +617,45 @@ ipos iline2dclosestpoint(const iline2d *line, const ipos *center, ireal epsilon)
 }
 
 /*************************************************************/
+/* iline3d                                                   */
+/*************************************************************/
+
+/* start ==> end */
+ivec3 iline3ddirection(const iline3d *line) {
+    ivec3 v = ivec3subtractpoint(&line->end, &line->start);
+    return ivec3normalize(&v);
+}
+
+/**/
+ireal iline3dlength(const iline3d *line) {
+    ivec3 v = ivec3subtractpoint(&line->end, &line->start);
+    return ivec3length(&v);
+}
+
+/* find the closest point in line */
+ipos3 iline3dclosestpoint(const iline3d *line, const ipos3 *center, ireal epsilon) {
+    /*@see http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html */
+    ipos3 closest;
+    
+    ivec3 start_to_center = ivec3subtractpoint(center, &line->start);
+    ivec3 line_direction = iline3ddirection(line);
+    ireal line_len = iline3dlength(line);
+    
+    ireal projlen = ivec3dot(&start_to_center, &line_direction);
+    if (projlen <= 0) {
+        closest = line->start;
+    } else if ( ireal_greater_than(projlen, line_len, epsilon)){
+        closest = line->end;
+    } else {
+        closest.x = line->start.x + line_direction.v.x * projlen;
+        closest.y = line->start.y + line_direction.v.y * projlen;
+        closest.z = line->start.z + line_direction.v.z * projlen;
+    }
+    
+    return closest;
+}
+
+/*************************************************************/
 /* iplane                                                    */
 /*************************************************************/
 

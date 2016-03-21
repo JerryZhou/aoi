@@ -328,6 +328,23 @@ int iline2dintersection(const iline2d *line, const iline2d *other,  ipos *inters
     
 /* Caculating the closest point in the segment to center pos */
 ipos iline2dclosestpoint(const iline2d *line, const ipos *center, ireal epsilon);
+    
+/*************************************************************/
+/* iline3d                                                   */
+/*************************************************************/
+typedef struct iline3d {
+    ipos3 start;
+    ipos3 end;
+}iline3d;
+
+/* start ==> end */
+ivec3 iline3ddirection(const iline3d *line);
+
+/**/
+ireal iline3dlength(const iline3d *line);
+    
+/* Caculating the closest point in the segment to center pos */
+ipos3 iline3dclosestpoint(const iline3d *line, const ipos3 *center, ireal epsilon);
 
    
 /*************************************************************/
