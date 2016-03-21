@@ -62,8 +62,8 @@ func (a *Navi) Init(width, height float64) {
 	a.pos = C.struct_ipos{x: C.ireal(offsetx), y: C.ireal(offsety)}
 	a.size = C.struct_isize{w: C.ireal(sizew), h: C.ireal(sizeh)}
 	a.divids = C.struct_isize{
-		w: a.size.w / (C.ireal)(a.mapdesc.header.width),
-		h: a.size.h / (C.ireal)(a.mapdesc.header.height)}
+		w: a.size.w / (C.ireal)(a.mapdesc.header.size.w),
+		h: a.size.h / (C.ireal)(a.mapdesc.header.size.h)}
 	fmt.Println("values:", width, height, a.pos, a.size, a.divids)
 
 	a.xmap = C.inavimapmake(8)

@@ -4266,7 +4266,7 @@ SP_CASE(inavi, nothing) {
 }
 
 SP_CASE(inavi, inavimapdescreadfromtextfile) {
-    inavimapdesc desc = {{0}, 0, 0, 0};
+    inavimapdesc desc = {{{0}}, 0, 0, 0};
     
     int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
     SP_EQUAL(err, 0);
@@ -4286,8 +4286,8 @@ SP_CASE(inavi, inavimapdescreadfromtextfile) {
 
 /*map: 8*8 */
 static void __navidesc_prepare(inavimapdesc *desc) {
-    desc->header.width = 8;
-    desc->header.height = 8;
+    desc->header.size.w = 8;
+    desc->header.size.h = 8;
     
     ipos3 points[] = {
         {0, 0, 0},
@@ -4349,7 +4349,7 @@ static void __navidesc_prepare(inavimapdesc *desc) {
 SP_SUIT(inavimapdesc);
 
 SP_CASE(inavimapdesc, inavimapdescreadfromtextfile) {
-    inavimapdesc desc = {{0}, 0, 0, 0};
+    inavimapdesc desc = {{{0}}, 0, 0, 0};
     
     int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
     SP_EQUAL(err, 0);
@@ -4365,7 +4365,7 @@ SP_CASE(inavimapdesc, inavimapdescreadfromtextfile) {
 }
 
 SP_CASE(inavimapdesc, preparedesc) {
-    inavimapdesc desc = {{0}, 0, 0, 0};
+    inavimapdesc desc = {{{0}}, 0, 0, 0};
     
     __navidesc_prepare(&desc);
     
@@ -4425,7 +4425,7 @@ SP_CASE(inavicell, test) {
 SP_CASE(inavicell, inavimapfind) {
     inavimap *map = inavimapmake(8);
     
-    inavimapdesc desc = {{0}, 0, 0, 0};
+    inavimapdesc desc = {{{0}}, 0, 0, 0};
     
     int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
     SP_EQUAL(err, 0);
@@ -4449,6 +4449,14 @@ SP_CASE(inavicell, inavimapfind) {
     inavipath * path = inavipathmake();
     
     inavimapfindpath(map, NULL, &p, &end, path);
+    
+    {
+        /* cell 1 to cell 3 */
+        ipos3 p0 = {5.718645833333333 ,0 ,0.3851041666666667};
+        ipos3 p1 = {7.53375 ,0 ,3.23625};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+    }
     
     {
         /*cell 0 to cell 2*/
