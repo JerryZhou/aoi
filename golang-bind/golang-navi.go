@@ -214,6 +214,8 @@ func (a *Navi) MousePress(x, y float64) {
 		// find path
 		n := C.inavimapfindpath(a.xmap, (*C.struct_iunit)(nil), &a.cstartpos, &a.cendpos, a.xpath)
 		fmt.Println("find path:", n, *a.xpath)
+		n = C.inavimapsmoothpath(a.xmap, (*C.struct_iunit)(nil), a.xpath, 32)
+		fmt.Println("smooth path:", n, *a.xpath)
 	}
 
 	a.cpress++
