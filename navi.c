@@ -32,6 +32,17 @@ Please see examples for more details.
 /* Max Count Of NaviPath Waypoint Cache */
 #define KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT 5000
 
+/*************************************************************/
+/* helper - coordinate system                                */
+/*************************************************************/
+
+/* change the pos3d to pos2d */
+ipos _inavi_flat_pos(const ipos3 *p) {
+    ipos pos;
+    pos.x = p->x;
+    pos.y = p->z;
+    return pos;
+}
 
 /*************************************************************/
 /* iheap - inavinode                                         */
@@ -662,8 +673,14 @@ ipos3 _ipolygon_point(ipolygon3d *polygon, int index) {
     return isliceof(polygon->pos, ipos3, index%len);
 }
 
+/*find out the closest point in edge in 3d */
+ipos3 _inavicellconnection_closest(const inavicellconnection *connection, const ipos3 *pos) {
+    iline3d edge = {connection->start, connection->end};
+    return iline3dclosestpoint(&edge, pos, iepsilon);
+}
+
 /* NB!! no retain */
-static inaviwaypoint *_inaviwaypoint_make_by_cell(inavicell *cell) {
+static inaviwaypoint *_inaviwaypoint_make_by_cell(inavipath *path, inavicell *cell) {
     inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
     waypoint->type = EnumNaviWayPointType_Cell;
     iassign(waypoint->cell, cell);
@@ -672,17 +689,24 @@ static inaviwaypoint *_inaviwaypoint_make_by_cell(inavicell *cell) {
 }
 
 /* NB!! no retain */
-static inaviwaypoint *_inaviwaypoint_make_by_connection(inavicell *cell, inavicellconnection *connection) {
+static inaviwaypoint *_inaviwaypoint_make_by_connection(inavipath *path, inavicell *cell, inavicellconnection *connection) {
     inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
+    inaviwaypoint *last;
+    
     waypoint->type = EnumNaviWayPointType_Connection;
     iassign(waypoint->cell, cell);
     iassign(waypoint->connection, connection);
-    waypoint->waypoint = connection->middle;
+    if ( iiwaypoint_connection_cloest && ireflistlen(path->waypoints)) {
+        last = icast(inaviwaypoint, ireflistfirst(path->waypoints)->value);
+        waypoint->waypoint = _inavicellconnection_closest(connection, &last->waypoint);
+    } else {
+        waypoint->waypoint = connection->middle;
+    }
     return waypoint;
 }
 
 /* NB!! no retain */
-static inaviwaypoint *_inaviwaypoint_make_by_goal(inavicell *cell, ipos3 *goal) {
+static inaviwaypoint *_inaviwaypoint_make_by_goal(inavipath *path, inavicell *cell, ipos3 *goal) {
     inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
     waypoint->type = EnumNaviWayPointType_Cell_Goal;
     iassign(waypoint->cell, cell);
@@ -694,17 +718,17 @@ void _inavipath_begin(inavipath *path, inavicell *end) {
     inaviwaypoint *waypoint;
     /* we found it */
     if (end == path->end) {
-        waypoint = _inaviwaypoint_make_by_goal(end, &path->endpos);
+        waypoint = _inaviwaypoint_make_by_goal(path, end, &path->endpos);
         waypoint->flag |= EnumNaviWayPointFlag_End;
         ireflistadd(path->waypoints, irefcast(waypoint));
     } else {
         /*should insert a dynamic waypoint */
-        waypoint = _inaviwaypoint_make_by_goal(path->end, &path->endpos);
+        waypoint = _inaviwaypoint_make_by_goal(path, path->end, &path->endpos);
         waypoint->flag |= EnumNaviWayPointFlag_Dynamic;
         ireflistadd(path->waypoints, irefcast(waypoint));
         
         /*the nearest end way point */
-        waypoint = _inaviwaypoint_make_by_cell(end);
+        waypoint = _inaviwaypoint_make_by_cell(path, end);
         ireflistadd(path->waypoints, irefcast(waypoint));
     }
 }
@@ -716,7 +740,7 @@ void _inavipath_end(inavipath *path, inavicell* cell, inavicellconnection *conne
     
     if (cell == path->start) {
         /* connection */
-        waypoint = _inaviwaypoint_make_by_connection(cell, connection);
+        waypoint = _inaviwaypoint_make_by_connection(path, cell, connection);
         ireflistadd(path->waypoints, irefcast(waypoint));
     } else {
         /*may happend some ugly*/
@@ -871,11 +895,13 @@ static void _inavimapfindpath_cell(inavimap *map,
         connection = end->connection;
         while (cell && cell != path->start) {
             /* connection */
-            waypoint = _inaviwaypoint_make_by_connection(cell, connection);
+            waypoint = _inaviwaypoint_make_by_connection(path, cell, connection);
             ireflistadd(path->waypoints, irefcast(waypoint));
+#if iiwaypoint_cell
             /* cell */
-            waypoint = _inaviwaypoint_make_by_cell(cell);
+            waypoint = _inaviwaypoint_make_by_cell(path, cell);
             ireflistadd(path->waypoints, irefcast(waypoint));
+#endif
             /* get next point */
             connection = cell->connection;
             cell = cell->link;
@@ -919,13 +945,6 @@ typedef struct _inavi_smooth_point {
     ipos3 pos;
 }_inavi_smooth_point;
 
-/* change the pos3d to pos2d */
-ipos _inavi_flat_pos(ipos3 *p) {
-    ipos pos;
-    pos.x = p->x;
-    pos.y = p->z;
-    return pos;
-}
 
 /*check if we can see each other*/
 int _inavi_cell_lineofsight_test(inavimap *map, _inavi_smooth_point *start, _inavi_smooth_point *end) {
@@ -1028,6 +1047,7 @@ int inavimapsmoothpath(inavimap *map, iunit *unit, inavipath *path, int steps) {
         } else if (joint->next == NULL) {
             /* remove all of visible (start, lastvisiblejoint)*/
             _inavi_cell_remove_until(path->waypoints, startjoint, joint);
+            --steps;
         }
         
         lastvisiblejoint = joint;

@@ -45,7 +45,13 @@ extern "C" {
  * | /
  * |---------> x
  * */
-
+    
+/* the path will go through the cell center */
+#define  iiwaypoint_cell (1)
+    
+/* the path will go from the cloest point in connection */
+#define  iiwaypoint_connection_cloest (0)
+    
 /*************************************************************/
 /* inavinode                                                 */
 /*************************************************************/
