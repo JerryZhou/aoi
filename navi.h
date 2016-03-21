@@ -47,10 +47,13 @@ extern "C" {
  * */
     
 /* the path will go through the cell center */
-#define  iiwaypoint_cell (1)
+#define  iiwaypoint_cell (0)
     
 /* the path will go from the cloest point in connection */
-#define  iiwaypoint_connection_cloest (0)
+#define  iiwaypoint_connection_cloest (1)
+    
+/* the path will auto be smoothed */
+#define iiwaypoint_autosmooth (1)
     
 /*************************************************************/
 /* inavinode                                                 */
@@ -235,6 +238,11 @@ void inavipathfree(inavipath *path);
 typedef struct inavimap {
     /* Declare the iref object */
     irefdeclare;
+    
+    /* add pos and size in 3d */
+    /* map all cells to aoi map: helper find the cell at pos */
+    ipos pos; /* ipos3: (x, 0, y) */
+    isize size; /* x and y */
  
     /* all polygons */
     /* [] *ipolygon3d */
@@ -254,8 +262,8 @@ typedef struct inavimap {
 
 /* header */
 typedef struct inavimapheader {
-    size_t width;               /* map size width*/
-    size_t height;              /* map size height*/
+    ipos pos;                   /* (x,z)*/
+    isize size;                 /* (x-width, z-height)*/
     size_t points;              /* number of point */
     size_t polygons;            /* number of polygons */
     size_t polygonsize;         /* number of int*/

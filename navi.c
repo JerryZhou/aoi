@@ -269,13 +269,15 @@ int inavicellclassify(inavicell *cell, const iline2d *line,
         if (iline2dclassifypoint(&edge, &line->end, iepsilon) != EnumPointClass_Right) {
             if (iline2dclassifypoint(&edge, &line->start, iepsilon) != EnumPointClass_Left) {
                 linerelation = iline2dintersection(&edge, line, intersection);
-                if ( linerelation== EnumLineClass_Segments_Intersect ||
-                    linerelation == EnumLineClass_A_Bisects_B ){
+                if ( linerelation== EnumLineClass_Segments_Intersect) {
+                    /* if segement is cross by line edge, 
+                     should be some edge cross the edge interset with edge too */
+                    /*|| linerelation == EnumLineClass_A_Bisects_B ){ */
                     relation = EnumNaviCellRelation_IntersetCell;
                     
                     /* Find Connections */
-                    if (connection) {
-                        if (n >=0 && n <iarraylen(cell->connections)) {
+                    if (connection ) {
+                        if (n < iarraylen(cell->connections)) {
                             *connection = iarrayof(cell->connections, int, n);
                         } else {
                             *connection = kindex_invalid;
@@ -343,9 +345,9 @@ int inavimapdescreadfromtextfile(inavimapdesc *desc, const char* file) {
     if (fp) {
         while (true) {
             /*read header */
-            n = fscanf(fp, "Map: width %ld height %ld points %ld polygons %ld polygonsize %ld\n",
-                       &desc->header.width,
-                       &desc->header.height,
+            n = fscanf(fp, "Map: width %lf height %lf points %ld polygons %ld polygonsize %ld\n",
+                       &desc->header.size.w,
+                       &desc->header.size.h,
                        &desc->header.points,
                        &desc->header.polygons,
                        &desc->header.polygonsize);
@@ -922,7 +924,9 @@ int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 
     inavipathsetup(path, ++map->sessionid, start, from, end, to);
     
     _inavimapfindpath_cell(map, unit, path, INT32_MAX);
-    /*inavimapsmoothpath(map, unit, path, INT32_MAX); */
+#if iiwaypoint_autosmooth
+    inavimapsmoothpath(map, unit, path, INT32_MAX);
+#endif
     return ireflistlen(path->waypoints);
 }
 
