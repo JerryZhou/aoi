@@ -4402,6 +4402,26 @@ SP_CASE(inavicell, inavicellmake) {
     inavimapfree(map);
 }
 
+SP_CASE(inavicell, test) {
+    /*
+     (ipos) start = (x = 6, y = 0)
+     Printing description of edge.end:
+     (ipos) end = (x = 6, y = 2)
+     Printing description of line->start:
+     (ipos) start = (x = 1.5316666666666667, y = 0.17010416666666667)
+     Printing description of line->end:
+     (ipos) end = (x = 6, y = 1)
+     */
+    iline2d edge = {{6,0}, {6,2}};
+    iline2d line = {{1.5316666666666667, 0.17010416666666667}, {6, 1}};
+    
+    int relation_start = iline2dclassifypoint(&edge, &line.start, iepsilon);
+    int relation_end = iline2dclassifypoint(&edge, &line.end, iepsilon);
+    
+    SP_EQUAL(relation_start, EnumPointClass_Left);
+    SP_EQUAL(relation_end, EnumPointClass_On);
+}
+
 SP_CASE(inavicell, inavimapfind) {
     inavimap *map = inavimapmake(8);
     
@@ -4430,6 +4450,15 @@ SP_CASE(inavicell, inavimapfind) {
     
     inavimapfindpath(map, NULL, &p, &end, path);
     
+    {
+        /*cell 0 to cell 2*/
+        ipos3 p0 = {1.5316666666666667, 0, 0.17010416666666667};
+        ipos3 p1 = {6.384375, 0, 0.6238541666666667};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+        
+        inavimapsmoothpath(map, NULL, path, INT32_MAX);
+    }
     
     {
         /*cell 1 to cell 0*/
@@ -4437,6 +4466,8 @@ SP_CASE(inavicell, inavimapfind) {
         ipos3 p1 = {1.3151041666666667, 0, 0.608125};
         
         inavimapfindpath(map, NULL, &p0, &p1, path);
+        
+        inavimapsmoothpath(map, NULL, path, INT32_MAX);
     }
     
     {
@@ -4445,6 +4476,23 @@ SP_CASE(inavicell, inavimapfind) {
         ipos3 p1 = {1.6123958333333333, 0, 0.51625};
         
         inavimapfindpath(map, NULL, &p0, &p1, path);
+    }
+    
+    {
+        /*cell 1 to cell 3*/
+        ipos3 p0 = {4.6275, 0, 1.1232291666666667};
+        ipos3 p1 = {7.0459375, 0, 8.425520833333334};
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+    }
+    
+    {
+        /*cell 0 to cell 3*/
+        ipos3 p0 = {0.9146875, 0, 0.5341666666666667};
+        ipos3 p1 = {6.977083333333334, 0, 9.5159375};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+        
+        inavimapsmoothpath(map, NULL, path, INT32_MAX);
     }
     
     inavipathfree(path);
