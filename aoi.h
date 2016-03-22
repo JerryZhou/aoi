@@ -129,7 +129,10 @@ typedef double ireal;
 
 /* 编号 */
 typedef int64_t iid;
-
+    
+/* type define */
+typedef unsigned char ibyte;
+typedef unsigned char ibool;
 
 /*************************************************************/
 /* ipos                                                      */
