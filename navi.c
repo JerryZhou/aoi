@@ -140,6 +140,11 @@ static void _inavicell_entry_free(iref *ref) {
     /* releaset the connections */
     iarrayfree(cell->connections);
     
+    /* release the cell link from */
+    irelease(cell->link);
+    /* release the cell connection from */
+    irelease(cell->connection);
+    
     iobjfree(cell);
 }
 
@@ -783,8 +788,8 @@ static void _inavicell_process(inavicell *cell, inavicontext *context,
     if (cell->sessionid != context->sessionid) {
         cell->sessionid = context->sessionid;
         cell->flag = EnumNaviCellFlag_Open;
-        cell->link = caller ? caller->cell:NULL;
-        cell->connection = connection;
+        iwassign(cell->link, caller ? caller->cell:NULL);
+        iwassign(cell->connection, connection);
         cell->heap_index = kindex_invalid;
        
         cell->costarrival = _inavicell_arrivalcost(cell, context, caller, connection);
@@ -793,8 +798,8 @@ static void _inavicell_process(inavicell *cell, inavicontext *context,
         /* add cell to heap */
         _inavicontext_heap_cell(context, cell);
     } else if(cell->flag == EnumNaviCellFlag_Open) {
-        cell->connection = connection;
-        cell->link = caller->cell;
+        iwassign(cell->link, caller->cell);
+        iwassign(cell->connection, connection);
         cell->costarrival = _inavicell_arrivalcost(cell, context, caller, connection);
         cell->costheuristic = _inavicontext_heuristic(context, cell);
         
@@ -893,8 +898,8 @@ static void _inavimapfindpath_cell(inavimap *map,
         /* path begin */
         _inavipath_begin(path, end);
         /* reverse insert the waypoint to list */
-        cell = end->link;
-        connection = end->connection;
+        connection = icast(inavicellconnection, iwrefunsafestrong(end->connection));
+        cell = icast(inavicell, iwrefunsafestrong(end->link));
         while (cell && cell != path->start) {
             /* connection */
             waypoint = _inaviwaypoint_make_by_connection(path, cell, connection);
@@ -905,8 +910,8 @@ static void _inavimapfindpath_cell(inavimap *map,
             ireflistadd(path->waypoints, irefcast(waypoint));
 #endif
             /* get next point */
-            connection = cell->connection;
-            cell = cell->link;
+            connection = icast(inavicellconnection, iwrefunsafestrong(cell->connection));
+            cell = icast(inavicell, iwrefunsafestrong(cell->link));
         }
         
         /* end of path */

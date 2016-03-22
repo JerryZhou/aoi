@@ -126,9 +126,11 @@ typedef struct inavicell {
     /* auto trace by ref array */
     int heap_index;
     /* the navigation link */
-    struct inavicell *link;
+    /* weak<*struct inavicell> */
+    iwref* link;
     /* the navigation connection */
-    inavicellconnection *connection;
+    /* weak<*inavicellconnection> */
+    iwref *connection;
     /* cost */
     ireal costarrival;
     ireal costheuristic;
