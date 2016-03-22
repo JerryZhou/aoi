@@ -914,12 +914,59 @@ void irefrelease(iref *ref) {
 	}
 	/* 没有引用了，析构对象 */
 	if (ref->ref == 0) {
+        /* release the hold by wref and ref */
+        if (ref->wref) {
+            ref->wref->wref = NULL;
+            ref->wref = NULL;
+        }
+        /* release resources */
 		if (ref->free) {
 			ref->free(ref);
 		}else {
+            /* just release memory */
 			iobjfree(ref);
 		}
 	}
+}
+
+/*************************************************************/
+/* iwref                                                     */
+/*************************************************************/
+
+/* zero wref */
+static iwref kzero_wref = {1, NULL};
+
+/* make a weak iref by ref */
+iwref *iwrefmake(iref *ref) {
+    volatile iwref *wref;
+    if (ref == NULL) {
+        wref = (iwref*)(&kzero_wref);
+    } else if (ref->wref == NULL) {
+        /* total new wref */
+        ref->wref = iobjmalloc(iwref);
+        ref->wref->wref = icast(iwref, ref);
+        wref = ref->wref;
+    } else {
+        /* extis */
+        wref = ref->wref;
+    }
+    
+    iretain(wref);
+    return (iwref*)wref;
+}
+
+/* make a weak iref by wref */
+iwref *iwrefmakeby(iwref *wref) {
+    icheckret(wref, NULL);
+    return iwrefmake(irefcast(wref->wref));
+}
+
+/* make strong ref: need call irelease */
+iref *iwrefstrong(iwref *wref) {
+    icheckret(wref, NULL);
+    icheckret(wref != &kzero_wref, NULL);
+    
+    return irefassistretain(icast(iref, wref->wref));
 }
 
 /* 申请自动释放池子 */

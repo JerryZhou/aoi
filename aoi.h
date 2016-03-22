@@ -522,6 +522,7 @@ int imetaregister(const char* name, int size, int capacity);
 #define __iallmeta                            \
     __ideclaremeta(iobj, 0),                  \
     __ideclaremeta(iref, 0),                  \
+    __ideclaremeta(iwref, 0),                 \
     __ideclaremeta(ireflist, 1000),           \
     __ideclaremeta(irefjoint, 200000),        \
     __ideclaremeta(inode, 4000),              \
@@ -583,7 +584,7 @@ void iaoimemorystate() ;
 /*************************************************************/
 
 /* 定义引用计数，基础对象 */
-#define irefdeclare volatile int ref; struct irefcache* cache; ientryfree free; ientrywatch watch
+#define irefdeclare volatile int ref; volatile struct iwref * wref; struct irefcache* cache; ientryfree free; ientrywatch watch
 /* iref 转换成 target */
 #define icast(type, v) ((type*)(v))
 /* 转换成iref */
@@ -592,6 +593,7 @@ void iaoimemorystate() ;
 /* 前置声明 */
 struct iref;
 struct irefcache;
+struct iwref;
 
 /* iref 的析构函数 */
 typedef void (*ientryfree)(struct iref* ref);
@@ -618,6 +620,27 @@ void irefrelease(iref *ref);
 
 /* 应用计数的赋值操作 */
 #define iassign(dst, src) do { if(src != dst) { irelease(dst); iretain(src); dst = src; } } while(0)
+    
+/*************************************************************/
+/* iwref                                                     */
+/*************************************************************/
+
+/* 弱引用: we can do operators as iref: iretain; irelease; iassign */
+typedef struct iwref {
+    irefdeclare;
+}iwref;
+    
+/* make a weak iref by ref */
+iwref *iwrefmake(iref *ref);
+    
+/* make a weak iref by wref */
+iwref *iwrefmakeby(iwref *wref);
+
+/* make strong ref: need call irelease */
+iref *iwrefstrong(iwref *wref);
+   
+/* ref assign to weak ref */
+#define iwassign(dst, src) do { if (dst && (iref*)dst->wref != (src)) { irelease(dst); dst = iwrefmake(src); }} while(0)
 
 /*************************************************************/
 /* irefautoreleasepool                                       */
