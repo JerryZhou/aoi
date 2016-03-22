@@ -1,3 +1,12 @@
+## TODO:
+* foundation
+    - iwref: weak reference pointer
+    - idict: a hash dict
+    - istring: a c style string, ending with zero
+    - imath: ivec2 imatrix basic mathmatics
+* ai: fsm, learing-deep, game - tree algorithms
+* actor: moving-collide-system
+
 # 视野服务 area of interest(AOI)
 游戏服务器的AOI（area of interest)部分，位置有关的游戏实体一般都有一个视野或关心的范围
  
@@ -94,3 +103,4 @@ build first and then:
 ![1.2M内存消耗，750 个对象同时移动，100个对象同时计算周围的AOI，总共消耗2毫秒的样子](http://dwgaga-image.qiniudn.com/Banners_and_Alerts_App_0_8_2.png)
 
 
+# 增加了Navigation-Mesh 的方案
