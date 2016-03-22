@@ -963,10 +963,15 @@ iwref *iwrefmakeby(iwref *wref) {
 
 /* make strong ref: need call irelease */
 iref *iwrefstrong(iwref *wref) {
+    return irefassistretain(iwrefunsafestrong(wref));
+}
+
+/* make strong ref: unneed call irelease */
+iref *iwrefunsafestrong(iwref *wref) {
     icheckret(wref, NULL);
     icheckret(wref != &kzero_wref, NULL);
     
-    return irefassistretain(icast(iref, wref->wref));
+    return icast(iref, wref->wref);
 }
 
 /* 申请自动释放池子 */

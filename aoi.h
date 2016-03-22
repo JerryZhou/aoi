@@ -638,9 +638,13 @@ iwref *iwrefmakeby(iwref *wref);
 
 /* make strong ref: need call irelease */
 iref *iwrefstrong(iwref *wref);
+    
+/* make strong ref: unneed call irelease */
+iref *iwrefunsafestrong(iwref *wref);
    
 /* ref assign to weak ref */
-#define iwassign(dst, src) do { if (dst && (iref*)dst->wref != (src)) { irelease(dst); dst = iwrefmake(src); }} while(0)
+#define iwassign(dst, src) do { if (dst && (iref*)(dst->wref) == (iref*)(src)) { \
+    break; } irelease(dst); dst = iwrefmake((iref*)(src)); } while(0)
 
 /*************************************************************/
 /* irefautoreleasepool                                       */
