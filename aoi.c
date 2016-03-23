@@ -2223,6 +2223,205 @@ const void* isliceat(const islice *slice, int index) {
     return iarrayat(slice->array, slice->begin+index);
 }
 
+/*************************************************************/
+/* istring                                                   */
+/*************************************************************/
+
+
+ideclarestring(kstring_zero, "");
+
+/*Make a string by c-style string */
+istring istringmake(const char* s) {
+    islice *str;
+    size_t len = strlen(s);
+    iarray *arr = iarraymakechar(len+1);
+    iarrayinsert(arr, 0, s, len);
+    iarrayof(arr, char, len) = 0;
+    
+    str = islicemake(arr, 0, len, 0);
+    iarrayfree(arr);
+    return str;
+}
+
+/*Return the string length */
+size_t istringlen(const istring s) {
+    return islicelen(s);
+}
+
+/*visit the real string buffer*/
+const char* istringbuf(const istring s) {
+    return (const char*)isliceat(s, 0);
+}
+
+/*format the string and return the value*/
+istring istringformat(const char* format, ...) {
+    iretain(kstring_zero);
+    return kstring_zero;
+}
+
+/*compare the two istring*/
+int istringcompare(const istring lfs, const istring rfs) {
+    size_t lfslen = istringlen(lfs);
+    size_t rfslen = istringlen(rfs);
+    int n = strncmp(istringbuf(lfs), istringbuf(rfs), imin(lfslen, rfslen));
+    if (n) {
+        return n;
+    }
+    return lfslen - rfslen;
+}
+
+/*find the index in istring */
+/*https://en.wikipedia.org/wiki/String_searching_algorithm*/
+/*[Rabin-Karp]http://mingxinglai.com/cn/2013/08/pattern-match/*/
+/*[Sunday](http://blog.163.com/yangfan876@126/blog/static/80612456201342205056344)*/
+/*[Boyer-Moore](http://blog.jobbole.com/52830/) */
+/*[Knuth-Morris-Pratt](http://www.ruanyifeng.com/blog/2013/05/Knuth%E2%80%93Morris%E2%80%93Pratt_algorithm.html)*/
+
+/*Boyer-Moore Algorithm*/
+static void _istringfind_prebmbc(unsigned char *pattern, int m, int bmBc[]) {
+    int i;
+    
+    for(i = 0; i < 256; i++) {
+        bmBc[i] = m;
+    }
+    
+    for(i = 0; i < m - 1; i++) {
+        bmBc[(int)pattern[i]] = m - 1 - i;
+    }
+}
+static void _istringfind_suffix_old(unsigned char *pattern, int m, int suff[]) {
+    int i, j;
+    suff[m - 1] = m;
+    
+    for(i = m - 2; i >= 0; i--){
+        j = i;
+        while(j >= 0 && pattern[j] == pattern[m - 1 - i + j]) j--;
+        suff[i] = i - j;
+    }
+}
+
+static void _istringfind_suffix(unsigned char *pattern, int m, int suff[]) {
+    int f, g, i;
+    
+    suff[m - 1] = m;
+    g = m - 1;
+    for (i = m - 2; i >= 0; --i) {
+        if (i > g && suff[i + m - 1 - f] < i - g)
+            suff[i] = suff[i + m - 1 - f];
+        else {
+            if (i < g)
+                g = i;
+            f = i;
+            while (g >= 0 && pattern[g] == pattern[g + m - 1 - f])
+                --g;
+            suff[i] = f - g;
+        }
+    }
+}
+
+static void _istringfind_prebmgs(unsigned char *pattern, int m, int bmGs[])
+{
+    int i, j;
+    int suff[256];
+    
+    _istringfind_suffix(pattern, m, suff);
+
+    for(i = 0; i < m; i++) {
+        bmGs[i] = m;
+    }
+    
+    j = 0;
+    for(i = m - 1; i >= 0; i--) {
+        if(suff[i] == i + 1) {
+            for(; j < m - 1 - i; j++) {
+                if(bmGs[j] == m)
+                    bmGs[j] = m - 1 - i;
+            }
+        }
+    }
+    
+    for(i = 0; i <= m - 2; i++) {
+        bmGs[m - 1 - suff[i]] = m - 1 - i;
+    }
+}
+int _istringfind_boyermoore(unsigned char *pattern, int m, unsigned char *text, int n)
+{
+    int i, j, bmBc[256], bmGs[256];
+    
+    /* Preprocessing */
+    _istringfind_prebmbc(pattern, m, bmBc);
+    _istringfind_prebmgs(pattern, m, bmGs);
+    
+    /* Searching */
+    j = 0;
+    while(j <= n - m) {
+        for(i = m - 1; i >= 0 && pattern[i] == text[i + j]; i--);
+        if(i < 0) {
+            /* printf("Find it, the position is %d\n", j); */
+            /* j += bmGs[0]; */
+            return j;
+        }else {
+            j += imax(bmBc[text[i + j]] - m + 1 + i, bmGs[i]);
+        }
+    }
+    
+    return kindex_invalid;
+}
+
+/*find the index in istring */
+int istringfind(const istring rfs, const char *sub, int len, int index) {
+    icheckret(index>=0 && index<istringlen(rfs), kindex_invalid);
+    
+    return _istringfind_boyermoore((unsigned char*) (istringbuf(rfs) + index),
+                                   istringlen(rfs)-index,
+                                   (unsigned char*)sub,
+                                   len);
+}
+
+
+
+/*sub string*/
+istring istringsub(const istring s, int index, int len) {
+    return islicedby(s, index, len);
+}
+
+/*return the array of istring*/
+iarray* istringsplit(const istring s, const char* split, int len) {
+    int subindex = 0;
+    int lastsubindex = -len;
+    size_t size = istringlen(s);
+    istring sub;
+    iarray* arr = iarraymakeiref(8);
+    
+    while (subindex < size) {
+        /* we can hold the precombined table */
+        subindex = istringfind(s, split, len, lastsubindex+len);
+        if (subindex == kindex_invalid) {
+            subindex = size;
+        }
+        
+        sub = istringsub(s, lastsubindex+len, subindex-lastsubindex-1);
+        iarrayadd(arr, &sub);
+        irelease(sub);
+        
+        lastsubindex = subindex;
+    }
+    
+    return arr;
+}
+
+/*return the new istring with new component*/
+istring istringrepleace(const istring s, const char* olds, const char* news) {
+    iretain(kstring_zero);
+    return kstring_zero;
+}
+
+/*return the new istring append with value*/
+istring istringappend(const istring s, const char* append) {
+    iretain(kstring_zero);
+    return kstring_zero;
+}
+
 /* free resouces of polygon3d */
 static void _ipolygon3d_entry_free(iref *ref) {
     ipolygon3d *poly = (ipolygon3d*)ref;
@@ -3392,7 +3591,7 @@ inode *imapgetnode(const imap *map, const icode *code, int level, int find) {
 		node = node->childs[codei];
 	}
 	iplog(__Since(micro), "[IMAP-Node] Find Node (%d, %s) With Result %p\n",
-			level, code->code, node);
+			level, code->code, (void*)node);
 
 	/* 尽可能的返回 */
 	if (find == EnumFindBehaviorFuzzy) {

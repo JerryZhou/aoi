@@ -1098,6 +1098,48 @@ const void* isliceat(const islice *slice, int index);
 #define isliceof(slice, type, i) (((type *)isliceat(slice, i))[0])
     
 /*************************************************************/
+/* istring                                                   */
+/*************************************************************/
+
+typedef islice* istring;
+  
+/* declare the string in stack, no need to free */
+#define ideclarestring(name, value) \
+iarray name##_array = {1, NULL, NULL, NULL, NULL, strlen(value), strlen(value), value};\
+islice name##_slice = {1, NULL, NULL, NULL, NULL, &kstring_zero_array, 0, strlen(value)};\
+islice * name = & name##_slice
+    
+/*Make a string by c-style string */
+istring istringmake(const char* s);
+
+/*Return the string length */
+size_t istringlen(const istring s);
+
+/*visit the real string buffer*/
+const char* istringbuf(const istring s);
+
+/*format the string and return the value*/
+istring istringformat(const char* format, ...);
+
+/*compare the two istring*/
+int istringcompare(const istring lfs, const istring rfs);
+    
+/*find the index in istring */
+int istringfind(const istring rfs, const char *sub, int len, int index);
+    
+/*sub string*/
+istring istringsub(const istring s, int index, int len);
+    
+/*return the array of istring*/
+iarray* istringsplit(const istring s, const char* split, int len);
+    
+/*return the new istring with new component*/
+istring istringrepleace(const istring s, const char* olds, const char* news);
+  
+/*return the new istring append with value*/
+istring istringappend(const istring s, const char* append);
+    
+/*************************************************************/
 /* ipolygon3d                                                */
 /*************************************************************/
     
