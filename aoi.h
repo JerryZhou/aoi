@@ -1132,6 +1132,9 @@ istring istringsub(const istring s, int index, int len);
     
 /*return the array of istring*/
 iarray* istringsplit(const istring s, const char* split, int len);
+   
+/*return the array of sting joined by dealer */
+istring istringjoin(const iarray* ss, const char* join, int len);
     
 /*return the new istring with new component*/
 istring istringrepleace(const istring s, const char* olds, const char* news);

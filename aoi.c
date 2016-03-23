@@ -2227,7 +2227,6 @@ const void* isliceat(const islice *slice, int index) {
 /* istring                                                   */
 /*************************************************************/
 
-
 ideclarestring(kstring_zero, "");
 
 /*Make a string by c-style string */
@@ -2378,8 +2377,6 @@ int istringfind(const istring rfs, const char *sub, int len, int index) {
                                    len);
 }
 
-
-
 /*sub string*/
 istring istringsub(const istring s, int index, int len) {
     return islicedby(s, index, len);
@@ -2410,16 +2407,46 @@ iarray* istringsplit(const istring s, const char* split, int len) {
     return arr;
 }
 
+/*return the array of sting joined by dealer */
+istring istringjoin(const iarray* ss, const char* join, int len) {
+    iarray *joined = iarraymakechar(8);
+    istring s;
+    size_t i = 0;
+    size_t num = iarraylen(ss);
+    if (num) {
+        s = iarrayof(ss, istring, 0);
+        iarrayinsert(joined, 0, istringbuf(s), istringlen(s));
+    }
+    for (i=1; i<num; ++i) {
+        iarrayinsert(joined, iarraylen(joined), join, len);
+        s = iarrayof(ss, istring, 0);
+        iarrayinsert(joined, iarraylen(joined), istringbuf(s), istringlen(s));
+    }
+    
+    s = islicemakearg(joined, ":");
+    iarrayfree(joined);
+    return s;
+}
+
 /*return the new istring with new component*/
 istring istringrepleace(const istring s, const char* olds, const char* news) {
-    iretain(kstring_zero);
-    return kstring_zero;
+    iarray *splits = istringsplit(s, olds, strlen(olds));
+    istring ns = istringjoin(splits, news, strlen(news));
+    iarrayfree(splits);
+    
+    return ns;
 }
 
 /*return the new istring append with value*/
 istring istringappend(const istring s, const char* append) {
-    iretain(kstring_zero);
-    return kstring_zero;
+    istring ns;
+    iarray *arr = iarraymakechar(istringlen(s) + strlen(append));
+    iarrayinsert(arr, 0, istringbuf(s), istringlen(s));
+    iarrayinsert(arr, iarraylen(arr), append, strlen(append));
+    ns = islicemakearg(arr, ":");
+    iarrayfree(arr);
+    
+    return ns;
 }
 
 /* free resouces of polygon3d */
