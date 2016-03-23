@@ -13,6 +13,7 @@ Please see examples for more details.
 
 #include "aoi.h"
 #include <math.h>
+#include <stdarg.h>
 
 #ifdef _WIN32
 #ifdef __cplusplus
@@ -1747,7 +1748,7 @@ static const iarrayentry _arr_entry_int64 = {
     EnumArrayFlagSimple |
     EnumArrayFlagKeepOrder |
     EnumArrayFlagMemsetZero,
-    sizeof(ireal),
+    sizeof(int64_t),
     _iarray_entry_swap_copy,
     _iarray_entry_assign_copy,
     _iarray_entry_cmp_int64,
@@ -1771,7 +1772,7 @@ static const iarrayentry _arr_entry_char = {
     EnumArrayFlagSimple |
     EnumArrayFlagKeepOrder |
     EnumArrayFlagMemsetZero,
-    sizeof(ireal),
+    sizeof(char),
     _iarray_entry_swap_copy,
     _iarray_entry_assign_copy,
     _iarray_entry_cmp_char,
@@ -2252,10 +2253,152 @@ const char* istringbuf(const istring s) {
     return (const char*)isliceat(s, 0);
 }
 
+/* Helper for irg_print() doing the actual number -> string
+ * conversion. 's' must point to a string with room for at least
+ * _IRB_LLSTR_SIZE bytes.
+ *
+ * The function returns the length of the null-terminated string
+ * representation stored at 's'. */
+#define _IRB_LLSTR_SIZE 21
+
+size_t _ill2str(char *s, int64_t value) {
+    char *p, aux;
+    uint64_t v;
+    size_t l;
+    
+    /* Generate the string representation, this method produces
+     * an reversed string. */
+    v = (value < 0) ? -value : value;
+    p = s;
+    do {
+        *p++ = '0'+(v%10);
+        v /= 10;
+    } while(v);
+    if (value < 0) *p++ = '-';
+    
+    /* Compute length and add null term. */
+    l = p-s;
+    *p = '\0';
+    
+    /* Reverse the string. */
+    p--;
+    while(s < p) {
+        aux = *s;
+        *s = *p;
+        *p = aux;
+        s++;
+        p--;
+    }
+    return l;
+}
+
+/* Identical _ill2str(), but for unsigned long long type. */
+size_t _iull2str(char *s, uint64_t v) {
+    char *p, aux;
+    size_t l;
+    
+    /* Generate the string representation, this method produces
+     * an reversed string. */
+    p = s;
+    do {
+        *p++ = '0'+(v%10);
+        v /= 10;
+    } while(v);
+    
+    /* Compute length and add null term. */
+    l = p-s;
+    *p = '\0';
+    
+    /* Reverse the string. */
+    p--;
+    while(s < p) {
+        aux = *s;
+        *s = *p;
+        *p = aux;
+        s++;
+        p--;
+    }
+    return l;
+}
+
 /*format the string and return the value*/
-istring istringformat(const char* format, ...) {
-    iretain(kstring_zero);
-    return kstring_zero;
+istring istringformat(const char* fmt, ...) {
+    istring s;
+    iarray *arr = iarraymakechar(strlen(fmt)*2);
+    const char *f = fmt;
+    size_t i;
+    va_list ap;
+    
+    char next, *str;
+    size_t l;
+    int64_t num;
+    uint64_t unum;
+    
+    char buf[_IRB_LLSTR_SIZE];
+    
+    va_start(ap,fmt);
+    f = fmt;    /* Next format specifier byte to process. */
+    i = 0;
+    while(*f) {
+        
+        /* Make sure there is always space for at least 1 char. */
+        switch(*f) {
+            case '%':
+                next = *(f+1);
+                f++;
+                switch(next) {
+                    case 's':
+                    case 'S':
+                        str = va_arg(ap,char*);
+                        l = strlen(str);/*(next == 's') ?  : sdslen(str);*/
+                        iarrayinsert(arr, iarraylen(arr), str, l);
+                        i += l;
+                        break;
+                    case 'v':
+                    case 'V':
+                        s = va_arg(ap, istring);
+                        iarrayinsert(arr, iarraylen(arr), istringbuf(s), istringlen(s));
+                        break;
+                    case 'i':
+                    case 'I':
+                        if (next == 'i')
+                            num = va_arg(ap,int);
+                        else
+                            num = va_arg(ap,int64_t);
+                    {
+                        l = _ill2str(buf, num);
+                        iarrayinsert(arr, iarraylen(arr), buf, l);
+                        i += l;
+                    }
+                        break;
+                    case 'u':
+                    case 'U':
+                        if (next == 'u')
+                            unum = va_arg(ap,unsigned int);
+                        else
+                            unum = va_arg(ap,uint64_t);
+                    {
+                        l = _iull2str(buf, unum);
+                        iarrayinsert(arr, iarraylen(arr), buf, l);
+                        i += l;
+                    }
+                        break;
+                    default: /* Handle %% and generally %<unknown>. */
+                        iarrayinsert(arr, iarraylen(arr), f, 1);
+                        break;
+                }
+                break;
+            default:
+                iarrayinsert(arr, iarraylen(arr), f, 1);
+                break;
+        }
+        f++;
+    }
+    va_end(ap);
+    
+    s = islicemakearg(arr, ":");
+    iarrayfree(arr);
+    return s;
 }
 
 /*compare the two istring*/

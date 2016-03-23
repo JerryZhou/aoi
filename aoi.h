@@ -27,6 +27,7 @@
 #include <windows.h>
 #define snprintf _snprintf
 typedef _int64 int64_t;
+typedef _uint64 uint64_t;
 
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
@@ -1119,6 +1120,23 @@ size_t istringlen(const istring s);
 const char* istringbuf(const istring s);
 
 /*format the string and return the value*/
+/* This function is similar to sdscatprintf, but much faster as it does
+ * not rely on sprintf() family functions implemented by the libc that
+ * are often very slow. Moreover directly handling the sds string as
+ * new data is concatenated provides a performance improvement.
+ *
+ * However this function only handles an incompatible subset of printf-alike
+ * format specifiers:
+ *
+ * %s - C String
+ * %i - signed int
+ * %I - 64 bit signed integer (long long, int64_t)
+ * %u - unsigned int
+ * %U - 64 bit unsigned integer (unsigned long long, uint64_t)
+ * %v - istring
+ * %V - istring
+ * %% - Verbatim "%" character.
+ */
 istring istringformat(const char* format, ...);
 
 /*compare the two istring*/
