@@ -20,6 +20,10 @@ include_directories(${CMAKE_SOURCE_DIR})
 add_executable(aoi-prof ${CMAKE_SOURCE_DIR}/prof/prof.c)
 target_link_libraries(aoi-prof aoi)
 
+# texas
+include_directories(${CMAKE_SOURCE_DIR})
+add_executable(aoi-texas ${CMAKE_SOURCE_DIR}/game-texas/texas.h ${CMAKE_SOURCE_DIR}/game-texas/texas.c)
+
 # lua aoi
 set(CMAKE_BUILD_TYPE Release)
 find_package(Lua REQUIRED)
