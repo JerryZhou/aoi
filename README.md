@@ -1,6 +1,5 @@
 ## TODO:
 * foundation
-    - iwref: weak reference pointer
     - idict: a hash dict
     - istring: a c style string, ending with zero
     - imath: ivec2 imatrix basic mathmatics
