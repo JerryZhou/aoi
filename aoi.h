@@ -134,6 +134,9 @@ typedef int64_t iid;
 /* type define */
 typedef unsigned char ibyte;
 typedef unsigned char ibool;
+    
+/* return the next pow of two */
+int inextpot(int size);
 
 /*************************************************************/
 /* ipos                                                      */
@@ -1106,8 +1109,8 @@ typedef islice* istring;
   
 /* declare the string in stack, no need to free */
 #define ideclarestring(name, value) \
-iarray name##_array = {1, NULL, NULL, NULL, NULL, strlen(value), strlen(value), value};\
-islice name##_slice = {1, NULL, NULL, NULL, NULL, &kstring_zero_array, 0, strlen(value)};\
+iarray name##_array = {1, NULL, NULL, NULL, NULL, strlen(value), strlen(value), (char*)value};\
+islice name##_slice = {1, NULL, NULL, NULL, NULL, &name##_array, 0, strlen(value)};\
 islice * name = & name##_slice
     
 /*Make a string by c-style string */
@@ -1124,6 +1127,9 @@ size_t istringlen(const istring s);
 
 /*visit the real string buffer*/
 const char* istringbuf(const istring s);
+    
+/*set the entry for stack string */
+void istringlaw(const istring s);
 
 /*format the string and return the value*/
 /* This function is similar to sdscatprintf, but much faster as it does
@@ -1144,7 +1150,7 @@ const char* istringbuf(const istring s);
  * %% - Verbatim "%" character.
  */
 istring istringformat(const char* format, ...);
-
+    
 /*compare the two istring*/
 int istringcompare(const istring lfs, const istring rfs);
     
@@ -1165,6 +1171,20 @@ istring istringrepleace(const istring s, const char* olds, const char* news);
   
 /*return the new istring append with value*/
 istring istringappend(const istring s, const char* append);
+    
+/*baisc wrap for ::atoi */
+int istringatoi(const istring s);
+ 
+/*[cocos2dx](https://github.com/cocos2d/cocos2d-x/blob/v3/cocos/base/ccUtils.h)*/
+/** Same to ::atof, but strip the string, remain 7 numbers after '.' before call atof.
+ * Why we need this? Because in android c++_static, atof ( and std::atof ) 
+ * is unsupported for numbers have long decimal part and contain
+ * several numbers can approximate to 1 ( like 90.099998474121094 ), it will return inf. 
+ * This function is used to fix this bug.
+ * @param str The string be to converted to double.
+ * @return Returns converted value of a string.
+ */
+double istringatof(const istring s);
     
 /*************************************************************/
 /* ipolygon3d                                                */

@@ -273,6 +273,17 @@ int64_t igetnextmicro(){
 	return gseq;
 }
 
+/* return the next pow of two */
+int inextpot(int x) {
+    x = x - 1;
+    x = x | (x >> 1);
+    x = x | (x >> 2);
+    x = x | (x >> 4);
+    x = x | (x >> 8);
+    x = x | (x >>16);
+    return x + 1;
+}
+
 /* zero point */
 const ipos kipos_zero = {0,0};
 
@@ -2254,6 +2265,7 @@ istring istringdup(const istring s) {
 
 /*Return the string length */
 size_t istringlen(const istring s) {
+    icheckret(s, 0);
     return islicelen(s);
 }
 
@@ -2262,13 +2274,18 @@ const char* istringbuf(const istring s) {
     return (const char*)isliceat(s, 0);
 }
 
+/*set the entry for stack string */
+void istringlaw(const istring s) {
+    s->array->entry = &_arr_entry_char;
+}
+
 /* Helper for irg_print() doing the actual number -> string
  * conversion. 's' must point to a string with room for at least
  * _IRB_LLSTR_SIZE bytes.
  *
  * The function returns the length of the null-terminated string
  * representation stored at 's'. */
-#define _IRB_LLSTR_SIZE 21
+#define _IRB_LLSTR_SIZE 256
 
 size_t _ill2str(char *s, int64_t value) {
     char *p, aux;
@@ -2330,12 +2347,19 @@ size_t _iull2str(char *s, uint64_t v) {
     return l;
 }
 
+size_t _idouble2str(char *s, double d) {
+    size_t n = snprintf(s, 256, "%.4lf", d);
+    s[n] = 0;
+    return n;
+}
+
 /*format the string and return the value*/
 istring istringformat(const char* fmt, ...) {
     istring s;
     iarray *arr = iarraymakechar(strlen(fmt)*2);
     const char *f = fmt;
     size_t i;
+    double d;
     va_list ap;
     
     char next, *str;
@@ -2366,7 +2390,16 @@ istring istringformat(const char* fmt, ...) {
                     case 'v':
                     case 'V':
                         s = va_arg(ap, istring);
-                        iarrayinsert(arr, iarraylen(arr), istringbuf(s), istringlen(s));
+                        l = istringlen(s);
+                        iarrayinsert(arr, iarraylen(arr), istringbuf(s), l);
+                        i += l;
+                        break;
+                    case 'f':
+                    case 'F':
+                        d = va_arg(ap, double);
+                        l = _idouble2str(buf, d);
+                        iarrayinsert(arr, iarraylen(arr), buf, l);
+                        i += l;
                         break;
                     case 'i':
                     case 'I':
@@ -2374,11 +2407,11 @@ istring istringformat(const char* fmt, ...) {
                             num = va_arg(ap,int);
                         else
                             num = va_arg(ap,int64_t);
-                    {
+                        {
                         l = _ill2str(buf, num);
                         iarrayinsert(arr, iarraylen(arr), buf, l);
                         i += l;
-                    }
+                        }
                         break;
                     case 'u':
                     case 'U':
@@ -2386,11 +2419,11 @@ istring istringformat(const char* fmt, ...) {
                             unum = va_arg(ap,unsigned int);
                         else
                             unum = va_arg(ap,uint64_t);
-                    {
+                        {
                         l = _iull2str(buf, unum);
                         iarrayinsert(arr, iarraylen(arr), buf, l);
                         i += l;
-                    }
+                        }
                         break;
                     default: /* Handle %% and generally %<unknown>. */
                         iarrayinsert(arr, iarraylen(arr), f, 1);
@@ -2625,6 +2658,42 @@ istring istringappend(const istring s, const char* append) {
     iarrayfree(arr);
     
     return ns;
+}
+
+/*baisc wrap for ::atoi */
+int istringatoi(const istring s) {
+    char buf[256+1] = {0};
+    size_t size = istringlen(s);
+    icheckret(size, 0);
+    strncpy(buf, istringbuf(s), imin(256, size));
+    
+    return atoi(buf);
+}
+
+/*[cocos2dx](https://github.com/cocos2d/cocos2d-x/blob/v3/cocos/base/ccUtils.h)*/
+/** Same to ::atof, but strip the string, remain 7 numbers after '.' before call atof.
+ * Why we need this? Because in android c++_static, atof ( and std::atof )
+ * is unsupported for numbers have long decimal part and contain
+ * several numbers can approximate to 1 ( like 90.099998474121094 ), it will return inf.
+ * This function is used to fix this bug.
+ * @param str The string be to converted to double.
+ * @return Returns converted value of a string.
+ */
+double istringatof(const istring s) {
+    char buf[256+1] = {0};
+    char* dot = NULL;
+    size_t size = istringlen(s);
+    
+    icheckret(size, 0.0);
+    strncpy(buf, istringbuf(s), imin(256, size));
+    
+    /* strip string, only remain 7 numbers after '.' */
+    dot = strchr(buf, '.');
+    if (dot != NULL && dot - buf + 8 < 256) {
+        dot[8] = '\0';
+    }
+    
+    return atof(buf);
 }
 
 /*************************************************************/
