@@ -4211,6 +4211,55 @@ SP_CASE(istring , istringreplace) {
     irelease(xjs);
 }
 
+SP_CASE(istring, istringappend) {
+    istring s = istringmake("a:b:c:d:e:f:g");
+    
+    istring js = istringappend(s, "-abcdefg");
+    
+    istring xjs = istringmake("a:b:c:d:e:f:g-abcdefg");
+    
+    SP_TRUE(istringcompare(js, xjs) == 0);
+    
+    irelease(js);
+    irelease(xjs);
+    irelease(s);
+}
+
+SP_CASE(istring, istringcompare) {
+    istring sa = istringmake("a");
+    istring sb = istringmake("b");
+    istring sab = istringmake("ab");
+    
+    
+    irelease(sa);
+    irelease(sb);
+    irelease(sab);
+}
+
+SP_CASE(istring, istringformat) {
+    istring s = istringformat("efg %i %f abc", 1, 1.0);
+    iarray* ss = istringsplit(s, " ", 1);
+    
+    ideclarestring(efg, "efg");
+    istringlaw(efg);
+    
+    SP_TRUE(istringcompare(iarrayof(ss, istring, 0), efg) == 0);
+    
+    int i = istringatoi(iarrayof(ss, istring, 1));
+    SP_EQUAL(i, 1);
+    
+    double d = istringatof(iarrayof(ss, istring, 2));
+    SP_TRUE(ireal_equal(d, 1));
+    
+    ideclarestring(abc, "abc");
+    istringlaw(abc);
+    
+    SP_TRUE(istringcompare(iarrayof(ss, istring, 3), abc) == 0);
+    
+    irelease(s);
+    iarrayfree(ss);
+}
+
 SP_SUIT(iline2d);
 
 SP_CASE(iline2d, nothing) {
