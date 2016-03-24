@@ -4101,7 +4101,114 @@ SP_CASE(iheap, iheapadjust) {
         
         iarrayfree(arr);
     }
+}
+
+SP_SUIT(istring);
+
+SP_CASE(istring, istringmake) {
+    istring s = istringmake("abcdefg");
+    char c;
     
+    SP_EQUAL(istringlen(s), 7);
+    c = isliceof(s, char, 0);
+    SP_EQUAL(isliceof(s, char, 0), 'a');
+    c = isliceof(s, char, 1);
+    c = isliceof(s, char, 2);
+    c = isliceof(s, char, 3);
+    SP_EQUAL(isliceof(s, char, 1), 'b');
+    SP_EQUAL(isliceof(s, char, 2), 'c');
+    SP_EQUAL(isliceof(s, char, 3), 'd');
+    SP_EQUAL(isliceof(s, char, 4), 'e');
+    SP_EQUAL(isliceof(s, char, 5), 'f');
+    SP_EQUAL(isliceof(s, char, 6), 'g');
+    
+    irelease(s);
+}
+
+SP_CASE(istring, istringbuf) {
+    
+    istring s = istringmake("abcdefg");
+    
+    SP_EQUAL(istringlen(s), 7);
+    
+    const char* buf = istringbuf(s);
+    
+    SP_EQUAL(buf[0], 'a');
+    SP_EQUAL(buf[1], 'b');
+    
+    SP_EQUAL(buf[7], 0);
+    
+    irelease(s);
+}
+
+SP_CASE(istring, istringsplit) {
+    
+    istring s = istringmake("a:b:c:d:e:f:g");
+    
+    iarray *ss = istringsplit(s, ":", 1);
+    
+    const char* buf;
+    
+    SP_EQUAL(iarraylen(ss), 7);
+    
+    istring s0 = iarrayof(ss, istring, 0);
+    buf = istringbuf(s0);
+    SP_EQUAL(isliceof(s0, char, 0), 'a');
+    
+    istring s1 = iarrayof(ss, istring, 1);
+    buf = istringbuf(s1);
+    SP_EQUAL(isliceof(s1, char, 0), 'b');
+    
+    istring s2 = iarrayof(ss, istring, 2);
+    buf = istringbuf(s2);
+    SP_EQUAL(isliceof(s2, char, 0), 'c');
+    
+    istring s3 = iarrayof(ss, istring, 3);
+    buf = istringbuf(s3);
+    SP_EQUAL(isliceof(s3, char, 0), 'd');
+    
+    istring s6 = iarrayof(ss, istring, 6);
+    buf = istringbuf(s6);
+    SP_EQUAL(isliceof(s6, char, 0), 'g');
+    
+    iarrayfree(ss);
+    
+    irelease(s);
+}
+
+SP_CASE(istring, istringjoin) {
+    
+    istring s = istringmake("a:b:c:d:e:f:g");
+    
+    iarray *ss = istringsplit(s, ":", 1);
+    
+    istring js = istringjoin(ss, "-", 1);
+    
+    SP_TRUE(istringcompare(s, js) != 0);
+    
+    istring xjs = istringmake("a-b-c-d-e-f-g");
+    
+    SP_TRUE(istringcompare(xjs, js) == 0);
+    
+    irelease(s);
+    irelease(js);
+    irelease(xjs);
+    
+    iarrayfree(ss);
+}
+
+SP_CASE(istring , istringreplace) {
+    istring s = istringmake("a:b:c:d:e:f:g");
+    
+    istring js = istringrepleace(s, ":", "-");
+    
+    istring xjs = istringmake("a-b-c-d-e-f-g");
+    
+    SP_TRUE(istringcompare(js, xjs) == 0);
+    
+    irelease(s);
+    irelease(js);
+    irelease(xjs);
 }
 
 SP_SUIT(iline2d);
