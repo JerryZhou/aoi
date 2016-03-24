@@ -1112,6 +1112,12 @@ islice * name = & name##_slice
     
 /*Make a string by c-style string */
 istring istringmake(const char* s);
+    
+/*Make a string by s and len*/
+istring istringmakelen(const char* s, size_t len);
+    
+/*Make a copy of s with c-style string*/
+istring istringdup(const istring s);
 
 /*Return the string length */
 size_t istringlen(const istring s);
@@ -1146,7 +1152,7 @@ int istringcompare(const istring lfs, const istring rfs);
 int istringfind(const istring rfs, const char *sub, int len, int index);
     
 /*sub string*/
-istring istringsub(const istring s, int index, int len);
+istring istringsub(const istring s, int begin, int end);
     
 /*return the array of istring*/
 iarray* istringsplit(const istring s, const char* split, int len);

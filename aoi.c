@@ -2232,15 +2232,24 @@ ideclarestring(kstring_zero, "");
 
 /*Make a string by c-style string */
 istring istringmake(const char* s) {
+    return istringmakelen(s, strlen(s));
+}
+
+/*Make a string by s and len*/
+istring istringmakelen(const char* s, size_t len) {
     islice *str;
-    size_t len = strlen(s);
     iarray *arr = iarraymakechar(len+1);
     iarrayinsert(arr, 0, s, len);
-    iarrayof(arr, char, len) = 0;
+    ((char*)iarraybuffer(arr))[len] = 0;
     
     str = islicemake(arr, 0, len, 0);
     iarrayfree(arr);
     return str;
+}
+
+/*Make a copy of s with c-style string*/
+istring istringdup(const istring s) {
+    return istringmakelen(istringbuf(s), istringlen(s));
 }
 
 /*Return the string length */
@@ -2486,9 +2495,10 @@ static void _istringfind_prebmgs(unsigned char *pattern, int m, int bmGs[])
         bmGs[m - 1 - suff[i]] = m - 1 - i;
     }
 }
-int _istringfind_boyermoore(unsigned char *pattern, int m, unsigned char *text, int n)
+iarray* _istringfind_boyermoore(unsigned char *pattern, int m, unsigned char *text, int n, int num)
 {
     int i, j, bmBc[256], bmGs[256];
+    iarray *indexs = iarraymakeint(num);
     
     /* Preprocessing */
     _istringfind_prebmbc(pattern, m, bmBc);
@@ -2496,56 +2506,81 @@ int _istringfind_boyermoore(unsigned char *pattern, int m, unsigned char *text, 
     
     /* Searching */
     j = 0;
-    while(j <= n - m) {
+    while(j <= n - m && num) {
         for(i = m - 1; i >= 0 && pattern[i] == text[i + j]; i--);
         if(i < 0) {
-            /* printf("Find it, the position is %d\n", j); */
-            /* j += bmGs[0]; */
-            return j;
+            iarrayadd(indexs, &j);
+            /*printf("Find it, the position is %d\n", j); */
+            j += bmGs[0];
+            --num;
         }else {
             j += imax(bmBc[text[i + j]] - m + 1 + i, bmGs[i]);
         }
     }
     
-    return kindex_invalid;
+    return indexs;
 }
 
 /*find the index in istring */
 int istringfind(const istring rfs, const char *sub, int len, int index) {
+    iarray *indexs;
     icheckret(index>=0 && index<istringlen(rfs), kindex_invalid);
     
-    return _istringfind_boyermoore((unsigned char*) (istringbuf(rfs) + index),
+    indexs = _istringfind_boyermoore((unsigned char*)sub, len,
+                                   (unsigned char*) (istringbuf(rfs) + index),
                                    istringlen(rfs)-index,
-                                   (unsigned char*)sub,
-                                   len);
+                                     1);
+    
+    if (iarraylen(indexs)) {
+        index = iarrayof(indexs, int, 0);
+        iarrayfree(indexs);
+    }  else {
+        index = kindex_invalid;
+    }
+    return index;
 }
 
 /*sub string*/
-istring istringsub(const istring s, int index, int len) {
-    return islicedby(s, index, len);
+istring istringsub(const istring s, int begin, int end) {
+    return islicedby(s, begin, end);
 }
 
 /*return the array of istring*/
 iarray* istringsplit(const istring s, const char* split, int len) {
     int subindex = 0;
-    int lastsubindex = -len;
+    int lastsubindex = 0;
+    int i;
     size_t size = istringlen(s);
     istring sub;
     iarray* arr = iarraymakeiref(8);
     
-    while (subindex < size) {
-        /* we can hold the precombined table */
-        subindex = istringfind(s, split, len, lastsubindex+len);
-        if (subindex == kindex_invalid) {
-            subindex = size;
+    /*find all the sub*/
+    iarray* indexs = _istringfind_boyermoore((unsigned char*)split, len,
+                                             (unsigned char*) (istringbuf(s)),
+                                             size,
+                                             size);
+    if (iarraylen(indexs)) {
+        /*go through the sub*/
+        for (i=0; i<iarraylen(indexs); ++i) {
+            subindex = iarrayof(indexs, int, i);
+            sub = istringsub(s, lastsubindex, subindex);
+            lastsubindex = subindex + len;
+            
+            iarrayadd(arr, &sub);
+            irelease(sub);
         }
         
-        sub = istringsub(s, lastsubindex+len, subindex-lastsubindex-1);
+        /*the last sub*/
+        subindex = iarrayof(indexs, int, 0);
+        sub = istringsub(s, lastsubindex, size);
         iarrayadd(arr, &sub);
         irelease(sub);
-        
-        lastsubindex = subindex;
+    } else {
+        iarrayadd(arr, &s);
     }
+    
+    /*free the find indexs*/
+    iarrayfree(indexs);
     
     return arr;
 }
@@ -2562,7 +2597,7 @@ istring istringjoin(const iarray* ss, const char* join, int len) {
     }
     for (i=1; i<num; ++i) {
         iarrayinsert(joined, iarraylen(joined), join, len);
-        s = iarrayof(ss, istring, 0);
+        s = iarrayof(ss, istring, i);
         iarrayinsert(joined, iarraylen(joined), istringbuf(s), istringlen(s));
     }
     
@@ -2591,6 +2626,10 @@ istring istringappend(const istring s, const char* append) {
     
     return ns;
 }
+
+/*************************************************************/
+/* ipolygon3d                                                */
+/*************************************************************/
 
 /* free resouces of polygon3d */
 static void _ipolygon3d_entry_free(iref *ref) {
