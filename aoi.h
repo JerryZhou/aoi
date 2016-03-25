@@ -544,6 +544,7 @@ int imetaregister(const char* name, int size, int capacity);
     __ideclaremeta(iarray, 0),                \
     __ideclaremeta(islice, 0),                \
     __ideclaremeta(iringbuffer, 0),           \
+    __ideclaremeta(idict, 0),                 \
     __ideclaremeta(ipolygon3d, 0),            \
     __ideclaremeta(ipolygon2d, 0)
     
@@ -1260,6 +1261,99 @@ const char* iringbufferraw(iringbuffer *r);
  * %u(unsigned int),
  * %U(unsigned 64bit) */
 size_t iringbufferfmt(iringbuffer *rb, const char * fmt, ...);
+    
+/*************************************************************/
+/*  idict                                                    */
+/*************************************************************/
+/* [redis](https://github.com/antirez/redis) */
+/* see details dict.h dict.c in redis */
+    
+/* dict type */
+typedef struct idicttype {
+    unsigned int (*hashFunction)(const void *key);
+    void *(*keyDup)(void *privdata, const void *key);
+    void *(*valDup)(void *privdata, const void *obj);
+    int (*keyCompare)(void *privdata, const void *key1, const void *key2);
+    void (*keyDestructor)(void *privdata, void *key);
+    void (*valDestructor)(void *privdata, void *obj);
+} idicttype;
+
+/* dict entry save in hash table */
+typedef struct idictentry {
+    void *key;
+    union {
+        void *val;
+        uint64_t u64;
+        int64_t s64;
+        double d;
+    } v;
+    struct idictentry *next;
+} idictentry;
+
+/* This is our hash table structure. Every dictionary has two of this as we
+ * implement incremental rehashing, for the old to the new table. */
+typedef struct idicthashtable {
+    idictentry **table;
+    unsigned long size;
+    unsigned long sizemask;
+    unsigned long used;
+    
+}idicthashtable;
+    
+/* Real has table structure */
+typedef struct idict {
+    irefdeclare;
+    
+    idicttype *type;
+    void *privdata;
+    idicthashtable ht[2];
+    long rehashidx; /* rehashing not in progress if rehashidx == -1 */
+    unsigned long iterators; /* number of iterators currently running */
+} idict;
+    
+/* If safe is set to 1 this is a safe iterator, that means, you can call
+ * dictAdd, dictFind, and other functions against the dictionary even while
+ * iterating. Otherwise it is a non safe iterator, and only dictNext()
+ * should be called while iterating. */
+typedef struct idictiterator {
+    idict *d;
+    long index;
+    int table, safe;
+    idictentry *entry, *nextEntry;
+    /* unsafe iterator fingerprint for misuse detection. */
+    int64_t fingerprint;
+} idictiterator;
+    
+/* the dict foreach scanner */
+typedef void (*idictscanfunction)(void *privdata, const idictentry *de);
+    
+/* make a dict with type and privdata */
+idict *idictmake(idicttype *type, void *privdata);
+
+/* get value by key */
+void *idictget(idict *d, const void *key);
+
+/* set value by key */
+/* Add an element, discarding the old if the key already exists.
+ * Return 1 if the key was added from scratch, 0 if there was already an
+ * element with such key and dictReplace() just performed a value update
+ * operation. */
+int idictset(idict *d, const void *key, void *value);
+    
+/* Search and remove an element */
+int idictremove(idict *d, const void *key);
+
+/* get the dict size */
+size_t idictsize(idict *d);
+    
+/* clear all the key-values */
+void idictclear(idict *d);
+
+/* if the dict has the key-value */
+int idicthas(idict *d, const void *key);
+    
+/* scan the dict */
+unsigned long idictscan(idict *d, unsigned long v, idictscanfunction fn, void *privdata);
 
 /*************************************************************/
 /* ipolygon3d                                                */

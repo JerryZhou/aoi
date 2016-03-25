@@ -14,6 +14,8 @@ Please see examples for more details.
 #include "aoi.h"
 #include <math.h>
 #include <stdarg.h>
+#include <ctype.h>
+#include <assert.h>
 
 #ifdef _WIN32
 #ifdef __cplusplus
@@ -2958,6 +2960,1039 @@ size_t iringbufferfmt(iringbuffer *rb, const char * fmt, ...) {
     va_end(ap);
     
     return i;
+}
+
+/*************************************************************/
+/*  idict                                                    */
+/*************************************************************/
+
+/* Using idictenableresize() / dictdisableresize() we make possible to
+ * enable/disable resizing of the hash table as needed. This is very important
+ * for Redis, as we use copy-on-write and don't want to move too much memory
+ * around when there is a child performing saving operations.
+ *
+ * Note that even when dict_can_resize is set to 0, not all resizes are
+ * prevented: a hash table is still allowed to grow if the ratio between
+ * the number of elements and the buckets > dict_force_resize_ratio. */
+static int dict_can_resize = 1;
+static unsigned int dict_force_resize_ratio = 5;
+
+#define DICT_OK 0
+#define DICT_ERR 1
+#define DICT_HT_INITIAL_SIZE 4
+
+/* ------------------------------- Macros ------------------------------------*/
+#define idictfreeval(d, entry) \
+    if ((d)->type->valDestructor) \
+        (d)->type->valDestructor((d)->privdata, (entry)->v.val)
+
+#define idictsetval(d, entry, _val_) do { \
+    if ((d)->type->valDup) \
+        entry->v.val = (d)->type->valDup((d)->privdata, _val_); \
+    else \
+        entry->v.val = (_val_); \
+    } while(0)
+
+#define idictsetsignedintegerval(entry, _val_) \
+do { entry->v.s64 = _val_; } while(0)
+
+#define idictsetunsignedintegerval(entry, _val_) \
+do { entry->v.u64 = _val_; } while(0)
+
+#define idictsetdoubleval(entry, _val_) \
+do { entry->v.d = _val_; } while(0)
+
+#define idictfreekey(d, entry) \
+    if ((d)->type->keyDestructor) \
+        (d)->type->keyDestructor((d)->privdata, (entry)->key)
+
+#define idictsetkey(d, entry, _key_) do { \
+        if ((d)->type->keyDup) \
+            entry->key = (d)->type->keyDup((d)->privdata, _key_); \
+        else \
+            entry->key = (_key_); \
+    } while(0)
+
+#define idictcomparekeys(d, key1, key2) \
+    (((d)->type->keyCompare) ? \
+    (d)->type->keyCompare((d)->privdata, key1, key2) : \
+    (key1) == (key2))
+
+#define idicthashkey(d, key) (d)->type->hashFunction(key)
+#define idictgetkey(he) ((he)->key)
+#define idictgetval(he) ((he)->v.val)
+#define idictgetsignedintegerval(he) ((he)->v.s64)
+#define idictgetunsignedintegerval(he) ((he)->v.u64)
+#define idictgetdoubleval(he) ((he)->v.d)
+#define idictslots(d) ((d)->ht[0].size+(d)->ht[1].size)
+#define _idictsize(d) ((d)->ht[0].used+(d)->ht[1].used)
+#define idictisrehashing(d) ((d)->rehashidx != -1)
+
+/* -------------------------- private prototypes ---------------------------- */
+
+static int _idictexpandifneeded(idict *ht);
+static unsigned long _idictnextpower(unsigned long size);
+static int _idictkeyindex(idict *d, const void *key);
+static int _idictinit(idict *ht, idicttype *type, void *privDataPtr);
+static idictentry *_idictfind(idict *d, const void *key);
+static idictentry *_idictaddraw(idict *d, void *key);
+static void *_idictfetchvalue(idict *d, const void *key);
+
+/* -------------------------- private prototypes ---------------------------- */
+
+/* Expand or create the hash table */
+static int _idictexpand(idict *d, unsigned long size);
+
+/* -------------------------- hash functions -------------------------------- */
+
+/* Thomas Wang's 32 bit Mix Function */
+static unsigned int _idictinthashfunction(unsigned int key) {
+    key += ~(key << 15);
+    key ^=  (key >> 10);
+    key +=  (key << 3);
+    key ^=  (key >> 6);
+    key += ~(key << 11);
+    key ^=  (key >> 16);
+    return key;
+}
+
+static uint32_t dict_hash_function_seed = 5381;
+
+static void _idictsethashfunctionseed(uint32_t seed) {
+    dict_hash_function_seed = seed;
+}
+
+static uint32_t _idictgethashfunctionseed(void) {
+    return dict_hash_function_seed;
+}
+
+/* MurmurHash2, by Austin Appleby
+ * Note - This code makes a few assumptions about how your machine behaves -
+ * 1. We can read a 4-byte value from any address without crashing
+ * 2. sizeof(int) == 4
+ *
+ * And it has a few limitations -
+ *
+ * 1. It will not work incrementally.
+ * 2. It will not produce the same results on little-endian and big-endian
+ *    machines.
+ */
+static unsigned int _idictgenhashfunction(const void *key, int len) {
+    /* 'm' and 'r' are mixing constants generated offline.
+     They're not really 'magic', they just happen to work well.  */
+    uint32_t seed = dict_hash_function_seed;
+    const uint32_t m = 0x5bd1e995;
+    const int r = 24;
+    
+    /* Initialize the hash to a 'random' value */
+    uint32_t h = seed ^ len;
+    
+    /* Mix 4 bytes at a time into the hash */
+    const unsigned char *data = (const unsigned char *)key;
+    
+    while(len >= 4) {
+        uint32_t k = *(uint32_t*)data;
+        
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+        
+        h *= m;
+        h ^= k;
+        
+        data += 4;
+        len -= 4;
+    }
+    
+    /* Handle the last few bytes of the input array  */
+    switch(len) {
+        case 3: h ^= data[2] << 16;
+        case 2: h ^= data[1] << 8;
+        case 1: h ^= data[0]; h *= m;
+    };
+    
+    /* Do a few final mixes of the hash to ensure the last few
+     * bytes are well-incorporated. */
+    h ^= h >> 13;
+    h *= m;
+    h ^= h >> 15;
+    
+    return (unsigned int)h;
+}
+
+/* And a case insensitive hash function (based on djb hash) */
+static unsigned int _idictgencasehashfunction(const unsigned char *buf, int len) {
+    unsigned int hash = (unsigned int)dict_hash_function_seed;
+    
+    while (len--)
+        hash = ((hash << 5) + hash) + (tolower(*buf++)); /* hash * 33 + c */
+    return hash;
+}
+
+/* ----------------------------- API implementation ------------------------- */
+
+/* Reset a hash table already initialized with ht_init().
+ * NOTE: This function should only be called by ht_destroy(). */
+static void _idictreset(idicthashtable *ht) {
+    ht->table = NULL;
+    ht->size = 0;
+    ht->sizemask = 0;
+    ht->used = 0;
+}
+
+/* Initialize the hash table */
+static int _idictinit(idict *d, idicttype *type,
+              void *privDataPtr) {
+    _idictreset(&d->ht[0]);
+    _idictreset(&d->ht[1]);
+    d->type = type;
+    d->privdata = privDataPtr;
+    d->rehashidx = -1;
+    d->iterators = 0;
+    return DICT_OK;
+}
+
+/* Resize the table to the minimal size that contains all the elements,
+ * but with the invariant of a USED/BUCKETS ratio near to <= 1 */
+static int _idictresize(idict *d) {
+    int minimal;
+    
+    if (!dict_can_resize || idictisrehashing(d)) return DICT_ERR;
+    minimal = d->ht[0].used;
+    if (minimal < DICT_HT_INITIAL_SIZE)
+        minimal = DICT_HT_INITIAL_SIZE;
+    return _idictexpand(d, minimal);
+}
+
+/* Expand or create the hash table */
+static int _idictexpand(idict *d, unsigned long size) {
+    idicthashtable n; /* the new hash table */
+    unsigned long realsize = _idictnextpower(size);
+    
+    /* the size is invalid if it is smaller than the number of
+     * elements already inside the hash table */
+    if (idictisrehashing(d) || d->ht[0].used > size)
+        return DICT_ERR;
+    
+    /* Rehashing to the same table size is not useful. */
+    if (realsize == d->ht[0].size) return DICT_ERR;
+    
+    /* Allocate the new hash table and initialize all pointers to NULL */
+    n.size = realsize;
+    n.sizemask = realsize-1;
+    n.table = icalloc(1, realsize*sizeof(idictentry*));
+    n.used = 0;
+    
+    /* Is this the first initialization? If so it's not really a rehashing
+     * we just set the first hash table so that it can accept keys. */
+    if (d->ht[0].table == NULL) {
+        d->ht[0] = n;
+        return DICT_OK;
+    }
+    
+    /* Prepare a second hash table for incremental rehashing */
+    d->ht[1] = n;
+    d->rehashidx = 0;
+    return DICT_OK;
+}
+
+/* Performs N steps of incremental rehashing. Returns 1 if there are still
+ * keys to move from the old to the new hash table, otherwise 0 is returned.
+ *
+ * Note that a rehashing step consists in moving a bucket (that may have more
+ * than one key as we use chaining) from the old to the new hash table, however
+ * since part of the hash table may be composed of empty spaces, it is not
+ * guaranteed that this function will rehash even a single bucket, since it
+ * will visit at max N*10 empty buckets in total, otherwise the amount of
+ * work it does would be unbound and the function may block for a long time. */
+static int _idictrehash(idict *d, int n) {
+    int empty_visits = n*10; /* Max number of empty buckets to visit. */
+    if (!idictisrehashing(d)) return 0;
+    
+    while(n-- && d->ht[0].used != 0) {
+        idictentry *de, *nextde;
+        
+        /* Note that rehashidx can't overflow as we are sure there are more
+         * elements because ht[0].used != 0 */
+        assert(d->ht[0].size > (unsigned long)d->rehashidx);
+        while(d->ht[0].table[d->rehashidx] == NULL) {
+            d->rehashidx++;
+            if (--empty_visits == 0) return 1;
+        }
+        de = d->ht[0].table[d->rehashidx];
+        /* Move all the keys in this bucket from the old to the new hash HT */
+        while(de) {
+            unsigned int h;
+            
+            nextde = de->next;
+            /* Get the index in the new hash table */
+            h = idicthashkey(d, de->key) & d->ht[1].sizemask;
+            de->next = d->ht[1].table[h];
+            d->ht[1].table[h] = de;
+            d->ht[0].used--;
+            d->ht[1].used++;
+            de = nextde;
+        }
+        d->ht[0].table[d->rehashidx] = NULL;
+        d->rehashidx++;
+    }
+    
+    /* Check if we already rehashed the whole table... */
+    if (d->ht[0].used == 0) {
+        ifree(d->ht[0].table);
+        d->ht[0] = d->ht[1];
+        _idictreset(&d->ht[1]);
+        d->rehashidx = -1;
+        return 0;
+    }
+    
+    /* More to rehash... */
+    return 1;
+}
+
+/* Rehash for an amount of time between ms milliseconds and ms+1 milliseconds */
+static int _idictrehashmilliseconds(idict *d, int ms) {
+    int64_t start = igetcurmicro();
+    int rehashes = 0;
+    
+    while(_idictrehash(d,100)) {
+        rehashes += 100;
+        if (igetcurmicro()-start > ms) break;
+    }
+    return rehashes;
+}
+
+/* This function performs just a step of rehashing, and only if there are
+ * no safe iterators bound to our hash table. When we have iterators in the
+ * middle of a rehashing we can't mess with the two hash tables otherwise
+ * some element can be missed or duplicated.
+ *
+ * This function is called by common lookup or update operations in the
+ * dictionary so that the hash table automatically migrates from H1 to H2
+ * while it is actively used. */
+static void _idictrehashstep(idict *d) {
+    if (d->iterators == 0) _idictrehash(d,1);
+}
+
+/* Add an element to the target hash table */
+static int _idictadd(idict *d, void *key, void *val)
+{
+    idictentry *entry = _idictaddraw(d,key);
+    
+    if (!entry) return DICT_ERR;
+    idictsetval(d, entry, val);
+    return DICT_OK;
+}
+
+/* Low level add. This function adds the entry but instead of setting
+ * a value returns the dictEntry structure to the user, that will make
+ * sure to fill the value field as he wishes.
+ *
+ * This function is also directly exposed to the user API to be called
+ * mainly in order to store non-pointers inside the hash value, example:
+ *
+ * entry = dictAddRaw(dict,mykey);
+ * if (entry != NULL) dictSetSignedIntegerVal(entry,1000);
+ *
+ * Return values:
+ *
+ * If key already exists NULL is returned.
+ * If key was added, the hash entry is returned to be manipulated by the caller.
+ */
+static idictentry *_idictaddraw(idict *d, void *key) {
+    int index;
+    idictentry *entry;
+    idicthashtable *ht;
+    
+    if (idictisrehashing(d)) _idictrehashstep(d);
+    
+    /* Get the index of the new element, or -1 if
+     * the element already exists. */
+    if ((index = _idictkeyindex(d, key)) == -1)
+        return NULL;
+    
+    /* Allocate the memory and store the new entry.
+     * Insert the element in top, with the assumption that in a database
+     * system it is more likely that recently added entries are accessed
+     * more frequently. */
+    ht = idictisrehashing(d) ? &d->ht[1] : &d->ht[0];
+    entry = icalloc(1, sizeof(*entry));
+    entry->next = ht->table[index];
+    ht->table[index] = entry;
+    ht->used++;
+    
+    /* Set the hash entry fields. */
+    idictsetkey(d, entry, key);
+    return entry;
+}
+
+/* Add an element, discarding the old if the key already exists.
+ * Return 1 if the key was added from scratch, 0 if there was already an
+ * element with such key and dictReplace() just performed a value update
+ * operation. */
+static int _idictreplace(idict *d, void *key, void *val) {
+    idictentry *entry, auxentry;
+    
+    /* Try to add the element. If the key
+     * does not exists dictAdd will suceed. */
+    if (_idictadd(d, key, val) == DICT_OK)
+        return 1;
+    /* It already exists, get the entry */
+    entry = _idictfind(d, key);
+    /* Set the new value and free the old one. Note that it is important
+     * to do that in this order, as the value may just be exactly the same
+     * as the previous one. In this context, think to reference counting,
+     * you want to increment (set), and then decrement (free), and not the
+     * reverse. */
+    auxentry = *entry;
+    idictsetval(d, entry, val);
+    idictfreeval(d, &auxentry);
+    return 0;
+}
+
+/* dictReplaceRaw() is simply a version of dictAddRaw() that always
+ * returns the hash entry of the specified key, even if the key already
+ * exists and can't be added (in that case the entry of the already
+ * existing key is returned.)
+ *
+ * See dictAddRaw() for more information. */
+static idictentry *_idictreplaceraw(idict *d, void *key) {
+    idictentry *entry = _idictfind(d,key);
+    
+    return entry ? entry : _idictaddraw(d,key);
+}
+
+/* Search and remove an element */
+static int _idictgenericdelete(idict *d, const void *key, int nofree) {
+    unsigned int h, idx;
+    idictentry *he, *prevHe;
+    int table;
+    
+    if (d->ht[0].size == 0) return DICT_ERR; /* d->ht[0].table is NULL */
+    if (idictisrehashing(d)) _idictrehashstep(d);
+    h = idicthashkey(d, key);
+    
+    for (table = 0; table <= 1; table++) {
+        idx = h & d->ht[table].sizemask;
+        he = d->ht[table].table[idx];
+        prevHe = NULL;
+        while(he) {
+            if (idictcomparekeys(d, key, he->key)) {
+                /* Unlink the element from the list */
+                if (prevHe)
+                    prevHe->next = he->next;
+                else
+                    d->ht[table].table[idx] = he->next;
+                if (!nofree) {
+                    idictfreekey(d, he);
+                    idictfreeval(d, he);
+                }
+                ifree(he);
+                d->ht[table].used--;
+                return DICT_OK;
+            }
+            prevHe = he;
+            he = he->next;
+        }
+        if (!idictisrehashing(d)) break;
+    }
+    return DICT_ERR; /* not found */
+}
+
+static int _idictdelete(idict *ht, const void *key) {
+    return _idictgenericdelete(ht,key,0);
+}
+
+static int _idictdeletenofree(idict *ht, const void *key) {
+    return _idictgenericdelete(ht,key,1);
+}
+
+/* Destroy an entire dictionary */
+static int _idictclear(idict *d, idicthashtable *ht, void(callback)(void *)) {
+    unsigned long i;
+    
+    /* Free all the elements */
+    for (i = 0; i < ht->size && ht->used > 0; i++) {
+        idictentry *he, *nextHe;
+        
+        if (callback && (i & 65535) == 0) callback(d->privdata);
+        
+        if ((he = ht->table[i]) == NULL) continue;
+        while(he) {
+            nextHe = he->next;
+            idictfreekey(d, he);
+            idictfreeval(d, he);
+            ifree(he);
+            ht->used--;
+            he = nextHe;
+        }
+    }
+    /* Free the table and the allocated cache structure */
+    ifree(ht->table);
+    /* Re-initialize the table */
+    _idictreset(ht);
+    return DICT_OK; /* never fails */
+}
+
+static idictentry *_idictfind(idict *d, const void *key) {
+    idictentry *he;
+    unsigned int h, idx, table;
+    
+    if (d->ht[0].size == 0) return NULL; /* We don't have a table at all */
+    if (idictisrehashing(d)) _idictrehashstep(d);
+    h = idicthashkey(d, key);
+    for (table = 0; table <= 1; table++) {
+        idx = h & d->ht[table].sizemask;
+        he = d->ht[table].table[idx];
+        while(he) {
+            if (idictcomparekeys(d, key, he->key))
+                return he;
+            he = he->next;
+        }
+        if (!idictisrehashing(d)) return NULL;
+    }
+    return NULL;
+}
+
+static void *_idictfetchvalue(idict *d, const void *key) {
+    idictentry *he;
+    
+    he = _idictfind(d,key);
+    return he ? idictgetval(he) : NULL;
+}
+
+/* A fingerprint is a 64 bit number that represents the state of the dictionary
+ * at a given time, it's just a few dict properties xored together.
+ * When an unsafe iterator is initialized, we get the dict fingerprint, and check
+ * the fingerprint again when the iterator is released.
+ * If the two fingerprints are different it means that the user of the iterator
+ * performed forbidden operations against the dictionary while iterating. */
+static uint64_t _idictfingerprint(idict *d) {
+    uint64_t integers[6], hash = 0;
+    int j;
+    
+    integers[0] = (long) d->ht[0].table;
+    integers[1] = d->ht[0].size;
+    integers[2] = d->ht[0].used;
+    integers[3] = (long) d->ht[1].table;
+    integers[4] = d->ht[1].size;
+    integers[5] = d->ht[1].used;
+    
+    /* We hash N integers by summing every successive integer with the integer
+     * hashing of the previous sum. Basically:
+     *
+     * Result = hash(hash(hash(int1)+int2)+int3) ...
+     *
+     * This way the same set of integers in a different order will (likely) hash
+     * to a different number. */
+    for (j = 0; j < 6; j++) {
+        hash += integers[j];
+        /* For the hashing step we use Tomas Wang's 64 bit integer hash. */
+        hash = (~hash) + (hash << 21); /* hash = (hash << 21) - hash - 1; */
+        hash = hash ^ (hash >> 24);
+        hash = (hash + (hash << 3)) + (hash << 8); /* hash * 265 */
+        hash = hash ^ (hash >> 14);
+        hash = (hash + (hash << 2)) + (hash << 4); /* hash * 21 */
+        hash = hash ^ (hash >> 28);
+        hash = hash + (hash << 31);
+    }
+    return hash;
+}
+
+static idictiterator *_idictgetiterator(idict *d) {
+    idictiterator *iter = icalloc(1, sizeof(*iter));
+    
+    iter->d = d;
+    iter->table = 0;
+    iter->index = -1;
+    iter->safe = 0;
+    iter->entry = NULL;
+    iter->nextEntry = NULL;
+    return iter;
+}
+
+static idictiterator *_idictgetsafeiterator(idict *d) {
+    idictiterator *i = _idictgetiterator(d);
+    
+    i->safe = 1;
+    return i;
+}
+
+static idictentry *_idictNext(idictiterator *iter) {
+    while (1) {
+        if (iter->entry == NULL) {
+            idicthashtable *ht = &iter->d->ht[iter->table];
+            if (iter->index == -1 && iter->table == 0) {
+                if (iter->safe)
+                    iter->d->iterators++;
+                else
+                    iter->fingerprint = _idictfingerprint(iter->d);
+            }
+            iter->index++;
+            if (iter->index >= (long) ht->size) {
+                if (idictisrehashing(iter->d) && iter->table == 0) {
+                    iter->table++;
+                    iter->index = 0;
+                    ht = &iter->d->ht[1];
+                } else {
+                    break;
+                }
+            }
+            iter->entry = ht->table[iter->index];
+        } else {
+            iter->entry = iter->nextEntry;
+        }
+        if (iter->entry) {
+            /* We need to save the 'next' here, the iterator user
+             * may delete the entry we are returning. */
+            iter->nextEntry = iter->entry->next;
+            return iter->entry;
+        }
+    }
+    return NULL;
+}
+
+static void _idictreleaseiterator(idictiterator *iter) {
+    if (!(iter->index == -1 && iter->table == 0)) {
+        if (iter->safe)
+            iter->d->iterators--;
+        else
+            assert(iter->fingerprint == _idictfingerprint(iter->d));
+    }
+    ifree(iter);
+}
+
+/* Return a random entry from the hash table. Useful to
+ * implement randomized algorithms */
+static idictentry *_idictgetrandomkey(idict *d) {
+    idictentry *he, *orighe;
+    unsigned int h;
+    int listlen, listele;
+    
+    if (idictsize(d) == 0) return NULL;
+    if (idictisrehashing(d)) _idictrehashstep(d);
+    if (idictisrehashing(d)) {
+        do {
+            /* We are sure there are no elements in indexes from 0
+             * to rehashidx-1 */
+            h = d->rehashidx + (random() % (d->ht[0].size +
+                                            d->ht[1].size -
+                                            d->rehashidx));
+            he = (h >= d->ht[0].size) ? d->ht[1].table[h - d->ht[0].size] :
+            d->ht[0].table[h];
+        } while(he == NULL);
+    } else {
+        do {
+            h = random() & d->ht[0].sizemask;
+            he = d->ht[0].table[h];
+        } while(he == NULL);
+    }
+    
+    /* Now we found a non empty bucket, but it is a linked
+     * list and we need to get a random element from the list.
+     * The only sane way to do so is counting the elements and
+     * select a random index. */
+    listlen = 0;
+    orighe = he;
+    while(he) {
+        he = he->next;
+        listlen++;
+    }
+    listele = random() % listlen;
+    he = orighe;
+    while(listele--) he = he->next;
+    return he;
+}
+
+/* This function samples the dictionary to return a few keys from random
+ * locations.
+ *
+ * It does not guarantee to return all the keys specified in 'count', nor
+ * it does guarantee to return non-duplicated elements, however it will make
+ * some effort to do both things.
+ *
+ * Returned pointers to hash table entries are stored into 'des' that
+ * points to an array of dictEntry pointers. The array must have room for
+ * at least 'count' elements, that is the argument we pass to the function
+ * to tell how many random elements we need.
+ *
+ * The function returns the number of items stored into 'des', that may
+ * be less than 'count' if the hash table has less than 'count' elements
+ * inside, or if not enough elements were found in a reasonable amount of
+ * steps.
+ *
+ * Note that this function is not suitable when you need a good distribution
+ * of the returned items, but only when you need to "sample" a given number
+ * of continuous elements to run some kind of algorithm or to produce
+ * statistics. However the function is much faster than dictGetRandomKey()
+ * at producing N elements. */
+static unsigned int _idictgetsomekeys(idict *d, idictentry **des, unsigned int count) {
+    unsigned long j; /* internal hash table id, 0 or 1. */
+    unsigned long tables; /* 1 or 2 tables? */
+    unsigned long stored = 0, maxsizemask;
+    unsigned long maxsteps;
+    unsigned long i;
+    unsigned long emptylen;
+    idictentry *he;
+    
+    if (idictsize(d) < count) count = idictsize(d);
+    maxsteps = count*10;
+    
+    /* Try to do a rehashing work proportional to 'count'. */
+    for (j = 0; j < count; j++) {
+        if (idictisrehashing(d))
+            _idictrehashstep(d);
+        else
+            break;
+    }
+    
+    tables = idictisrehashing(d) ? 2 : 1;
+    maxsizemask = d->ht[0].sizemask;
+    if (tables > 1 && maxsizemask < d->ht[1].sizemask)
+        maxsizemask = d->ht[1].sizemask;
+    
+    /* Pick a random point inside the larger table. */
+    i = random() & maxsizemask;
+    emptylen = 0; /* Continuous empty entries so far. */
+    while(stored < count && maxsteps--) {
+        for (j = 0; j < tables; j++) {
+            /* Invariant of the dict.c rehashing: up to the indexes already
+             * visited in ht[0] during the rehashing, there are no populated
+             * buckets, so we can skip ht[0] for indexes between 0 and idx-1. */
+            if (tables == 2 && j == 0 && i < (unsigned long) d->rehashidx) {
+                /* Moreover, if we are currently out of range in the second
+                 * table, there will be no elements in both tables up to
+                 * the current rehashing index, so we jump if possible.
+                 * (this happens when going from big to small table). */
+                if (i >= d->ht[1].size) i = d->rehashidx;
+                continue;
+            }
+            if (i >= d->ht[j].size) continue; /* Out of range for this table. */
+            he = d->ht[j].table[i];
+            
+            /* Count contiguous empty buckets, and jump to other
+             * locations if they reach 'count' (with a minimum of 5). */
+            if (he == NULL) {
+                emptylen++;
+                if (emptylen >= 5 && emptylen > count) {
+                    i = random() & maxsizemask;
+                    emptylen = 0;
+                }
+            } else {
+                emptylen = 0;
+                while (he) {
+                    /* Collect all the elements of the buckets found non
+                     * empty while iterating. */
+                    *des = he;
+                    des++;
+                    he = he->next;
+                    stored++;
+                    if (stored == count) return stored;
+                }
+            }
+        }
+        i = (i+1) & maxsizemask;
+    }
+    return stored;
+}
+
+/* Function to reverse bits. Algorithm from:
+ * http://graphics.stanford.edu/~seander/bithacks.html#ReverseParallel */
+static unsigned long _irev(unsigned long v) {
+    unsigned long s = 8 * sizeof(v); /* bit size; must be power of 2 */
+    unsigned long mask = ~0;
+    while ((s >>= 1) > 0) {
+        mask ^= (mask << s);
+        v = ((v >> s) & mask) | ((v << s) & ~mask);
+    }
+    return v;
+}
+
+/* idictscan() is used to iterate over the elements of a dictionary.
+ *
+ * Iterating works the following way:
+ *
+ * 1) Initially you call the function using a cursor (v) value of 0.
+ * 2) The function performs one step of the iteration, and returns the
+ *    new cursor value you must use in the next call.
+ * 3) When the returned cursor is 0, the iteration is complete.
+ *
+ * The function guarantees all elements present in the
+ * dictionary get returned between the start and end of the iteration.
+ * However it is possible some elements get returned multiple times.
+ *
+ * For every element returned, the callback argument 'fn' is
+ * called with 'privdata' as first argument and the dictionary entry
+ * 'de' as second argument.
+ *
+ * HOW IT WORKS.
+ *
+ * The iteration algorithm was designed by Pieter Noordhuis.
+ * The main idea is to increment a cursor starting from the higher order
+ * bits. That is, instead of incrementing the cursor normally, the bits
+ * of the cursor are reversed, then the cursor is incremented, and finally
+ * the bits are reversed again.
+ *
+ * This strategy is needed because the hash table may be resized between
+ * iteration calls.
+ *
+ * dict.c hash tables are always power of two in size, and they
+ * use chaining, so the position of an element in a given table is given
+ * by computing the bitwise AND between Hash(key) and SIZE-1
+ * (where SIZE-1 is always the mask that is equivalent to taking the rest
+ *  of the division between the Hash of the key and SIZE).
+ *
+ * For example if the current hash table size is 16, the mask is
+ * (in binary) 1111. The position of a key in the hash table will always be
+ * the last four bits of the hash output, and so forth.
+ *
+ * WHAT HAPPENS IF THE TABLE CHANGES IN SIZE?
+ *
+ * If the hash table grows, elements can go anywhere in one multiple of
+ * the old bucket: for example let's say we already iterated with
+ * a 4 bit cursor 1100 (the mask is 1111 because hash table size = 16).
+ *
+ * If the hash table will be resized to 64 elements, then the new mask will
+ * be 111111. The new buckets you obtain by substituting in ??1100
+ * with either 0 or 1 can be targeted only by keys we already visited
+ * when scanning the bucket 1100 in the smaller hash table.
+ *
+ * By iterating the higher bits first, because of the inverted counter, the
+ * cursor does not need to restart if the table size gets bigger. It will
+ * continue iterating using cursors without '1100' at the end, and also
+ * without any other combination of the final 4 bits already explored.
+ *
+ * Similarly when the table size shrinks over time, for example going from
+ * 16 to 8, if a combination of the lower three bits (the mask for size 8
+ * is 111) were already completely explored, it would not be visited again
+ * because we are sure we tried, for example, both 0111 and 1111 (all the
+ * variations of the higher bit) so we don't need to test it again.
+ *
+ * WAIT... YOU HAVE *TWO* TABLES DURING REHASHING!
+ *
+ * Yes, this is true, but we always iterate the smaller table first, then
+ * we test all the expansions of the current cursor into the larger
+ * table. For example if the current cursor is 101 and we also have a
+ * larger table of size 16, we also test (0)101 and (1)101 inside the larger
+ * table. This reduces the problem back to having only one table, where
+ * the larger one, if it exists, is just an expansion of the smaller one.
+ *
+ * LIMITATIONS
+ *
+ * This iterator is completely stateless, and this is a huge advantage,
+ * including no additional memory used.
+ *
+ * The disadvantages resulting from this design are:
+ *
+ * 1) It is possible we return elements more than once. However this is usually
+ *    easy to deal with in the application level.
+ * 2) The iterator must return multiple elements per call, as it needs to always
+ *    return all the keys chained in a given bucket, and all the expansions, so
+ *    we are sure we don't miss keys moving during rehashing.
+ * 3) The reverse cursor is somewhat hard to understand at first, but this
+ *    comment is supposed to help.
+ */
+unsigned long idictscan(idict *d,
+                       unsigned long v,
+                       idictscanfunction fn,
+                       void *privdata) {
+    idicthashtable *t0, *t1;
+    const idictentry *de, *next;
+    unsigned long m0, m1;
+    
+    if (idictsize(d) == 0) return 0;
+    
+    if (!idictisrehashing(d)) {
+        t0 = &(d->ht[0]);
+        m0 = t0->sizemask;
+        
+        /* Emit entries at cursor */
+        de = t0->table[v & m0];
+        while (de) {
+            next = de->next;
+            fn(privdata, de);
+            de = next;
+        }
+        
+    } else {
+        t0 = &d->ht[0];
+        t1 = &d->ht[1];
+        
+        /* Make sure t0 is the smaller and t1 is the bigger table */
+        if (t0->size > t1->size) {
+            t0 = &d->ht[1];
+            t1 = &d->ht[0];
+        }
+        
+        m0 = t0->sizemask;
+        m1 = t1->sizemask;
+        
+        /* Emit entries at cursor */
+        de = t0->table[v & m0];
+        while (de) {
+            next = de->next;
+            fn(privdata, de);
+            de = next;
+        }
+        
+        /* Iterate over indices in larger table that are the expansion
+         * of the index pointed to by the cursor in the smaller table */
+        do {
+            /* Emit entries at cursor */
+            de = t1->table[v & m1];
+            while (de) {
+                next = de->next;
+                fn(privdata, de);
+                de = next;
+            }
+            
+            /* Increment bits not covered by the smaller mask */
+            v = (((v | m0) + 1) & ~m0) | (v & m0);
+            
+            /* Continue while bits covered by mask difference is non-zero */
+        } while (v & (m0 ^ m1));
+    }
+    
+    /* Set unmasked bits so incrementing the reversed cursor
+     * operates on the masked bits of the smaller table */
+    v |= ~m0;
+    
+    /* Increment the reverse cursor */
+    v = _irev(v);
+    v++;
+    v = _irev(v);
+    
+    return v;
+}
+
+/* ------------------------- private functions ------------------------------ */
+
+/* Expand the hash table if needed */
+static int _idictexpandifneeded(idict *d) {
+    /* Incremental rehashing already in progress. Return. */
+    if (idictisrehashing(d)) return DICT_OK;
+    
+    /* If the hash table is empty expand it to the initial size. */
+    if (d->ht[0].size == 0) return _idictexpand(d, DICT_HT_INITIAL_SIZE);
+    
+    /* If we reached the 1:1 ratio, and we are allowed to resize the hash
+     * table (global setting) or we should avoid it but the ratio between
+     * elements/buckets is over the "safe" threshold, we resize doubling
+     * the number of buckets. */
+    if (d->ht[0].used >= d->ht[0].size &&
+        (dict_can_resize ||
+         d->ht[0].used/d->ht[0].size > dict_force_resize_ratio)) {
+        return _idictexpand(d, d->ht[0].used*2);
+    }
+    return DICT_OK;
+}
+
+/* Our hash table capability is a power of two */
+static unsigned long _idictnextpower(unsigned long size) {
+    unsigned long i = DICT_HT_INITIAL_SIZE;
+    
+    if (size >= INT32_MAX) return INT32_MAX;
+    while(1) {
+        if (i >= size)
+            return i;
+        i *= 2;
+    }
+}
+
+/* Returns the index of a free slot that can be populated with
+ * a hash entry for the given 'key'.
+ * If the key already exists, -1 is returned.
+ *
+ * Note that if we are in the process of rehashing the hash table, the
+ * index is always returned in the context of the second (new) hash table. */
+static int _idictkeyindex(idict *d, const void *key) {
+    unsigned int h, idx, table;
+    idictentry *he;
+    
+    /* Expand the hash table if needed */
+    if (_idictexpandifneeded(d) == DICT_ERR)
+        return -1;
+    /* Compute the key hash value */
+    h = idicthashkey(d, key);
+    for (table = 0; table <= 1; table++) {
+        idx = h & d->ht[table].sizemask;
+        /* Search if this slot does not already contain the given key */
+        he = d->ht[table].table[idx];
+        while(he) {
+            if (idictcomparekeys(d, key, he->key))
+                return -1;
+            he = he->next;
+        }
+        if (!idictisrehashing(d)) break;
+    }
+    return idx;
+}
+
+static void _idictempty(idict *d, void(callback)(void*)) {
+    _idictclear(d,&d->ht[0],callback);
+    _idictclear(d,&d->ht[1],callback);
+    d->rehashidx = -1;
+    d->iterators = 0;
+}
+
+static void _idictenableresize(void) {
+    dict_can_resize = 1;
+}
+
+static void _idictdisableresize(void) {
+    dict_can_resize = 0;
+}
+
+/* Clear & Release the hash table */
+/* release the hash table and free dict self */
+static void _idict_entry_free(iref *ref) {
+    idict *d = icast(idict, ref);
+    
+    _idictclear(d,&d->ht[0],NULL);
+    _idictclear(d,&d->ht[1],NULL);
+    
+    iobjfree(d);
+}
+
+/* make dict with type and privdata */
+idict *idictmake(idicttype *type, void *privdata) {
+    idict *d = iobjmalloc(idict);
+    d->free = _idict_entry_free;
+    _idictinit(d, type, privdata);
+    return d;
+}
+
+/* get value by key */
+void *idictget(idict *d, const void *key) {
+    return _idictfetchvalue(d, key);
+}
+
+/* set value by key */
+int idictset(idict *d, const void *key, void *value) {
+    return _idictreplace(d, (void*)key, value);
+}
+
+/* Search and remove an element */
+int idictremove(idict *d, const void *key) {
+    return _idictdelete(d, key);
+}
+
+/* get the dict size */
+size_t idictsize(idict *d){
+    return (size_t)(_idictsize(d));
+}
+
+/* clear all the key-values */
+void idictclear(idict *d) {
+    _idictempty(d, NULL);
+}
+
+/* if the dict has the key-value */
+int idicthas(idict *d, const void *key) {
+    idictentry *he;
+    
+    he = _idictfind(d,key);
+    return he != NULL;
 }
 
 /*************************************************************/
