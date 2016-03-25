@@ -114,14 +114,9 @@ static int lua__map_new(lua_State *L)
 	int divide = 1;
 	ipos pos = {0.0, 0.0};
 	isize size;
+	int top = lua_gettop(L);
 
 	luaL_checktype(L, 1, LUA_TTABLE);
-
-	lua_rawgeti(L, 1, 1);
-	size.w = luaL_checknumber(L, -1);
-	lua_rawgeti(L, 1, 2);
-	size.h = luaL_checknumber(L, -1);
-
 	divide = luaL_optint(L, 2, 1);
 
 	if (lua_type(L, 3) == LUA_TTABLE) {
@@ -130,6 +125,12 @@ static int lua__map_new(lua_State *L)
 		lua_rawgeti(L, 3, 2);
 		pos.y = luaL_optnumber(L, -1, 0);
 	}
+	lua_settop(L, top);
+
+	lua_rawgeti(L, 1, 1);
+	size.w = luaL_checknumber(L, -1);
+	lua_rawgeti(L, 1, 2);
+	size.h = luaL_checknumber(L, -1);
 
 	map = imapmake(&pos, &size, divide);
 	if (map == NULL) {
