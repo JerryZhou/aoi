@@ -1,7 +1,5 @@
 ## TODO:
 * foundation
-    - idict: a hash dict
-    - istring: a c style string, ending with zero
     - imath: ivec2 imatrix basic mathmatics
 * ai: fsm, learing-deep, game - tree algorithms
 * actor: moving-collide-system
