@@ -1,12 +1,5 @@
 package main
 
-/*
-#cgo CFLAGS: -I ../
-#cgo LDFLAGS: -L ../ -laoi
-#include "../aoi.h"
-*/
-import "C"
-
 import (
 	"fmt"
 	"github.com/llgcode/draw2d/draw2dgl"
@@ -19,12 +12,15 @@ import (
 	"unsafe"
 )
 
-var (
-	ColorUnit         = color.RGBA{0, 128, 0, 255}
-	ColorUnitAim      = color.RGBA{126, 12, 77, 233}
-	ColorRect         = color.RGBA{uint8(0), uint8(0), uint8(128), uint8(255)}
-	ColorSearchCircle = color.RGBA{55, 105, 12, 128}
+/*
+#cgo CFLAGS: -I ../
+#cgo LDFLAGS: -L ../ -laoi
+#include "../aoi.h"
+#include "../navi.h"
+*/
+import "C"
 
+var (
 	UnitRadius           = 10
 	SearchRadius float64 = 200.0
 )
@@ -79,7 +75,7 @@ func (s *AoiSearchResult) Len() int {
 }
 
 func (s *AoiSearchResult) MarkUnits(c color.RGBA) {
-	units := search.Units()
+	units := s.Units()
 	for _, v := range units {
 		v.Color = c
 	}
@@ -87,7 +83,7 @@ func (s *AoiSearchResult) MarkUnits(c color.RGBA) {
 
 func (s *AoiSearchResult) Draw(gc *draw2dgl.GraphicContext) {
 	DrawCircle(gc, ColorSearchCircle, s.X, s.Y, s.Radius)
-	units := search.Units()
+	units := s.Units()
 	for _, v := range units {
 		v.Draw(gc)
 	}
@@ -194,67 +190,6 @@ func (m *AoiMap) UpdateUnit(u *AoiUnit) {
 	C.imapupdateunit(m.M, u.U)
 }
 
-// Draw vertically spaced lines
-func DrawLine(gc *draw2dgl.GraphicContext, x0, y0, x1, y1 float64) {
-	// Draw a line
-	gc.MoveTo(x0, y0)
-	gc.LineTo(x1, y1)
-	gc.Stroke()
-}
-func DrawLineC(gc *draw2dgl.GraphicContext, pos *C.struct_ipos, size *C.struct_isize) {
-	DrawLine(gc, float64(pos.x), float64(pos.y),
-		float64(pos.x)+float64(size.w),
-		float64(pos.y)+float64(size.h))
-}
-
-// Draw a grid
-func DrawGrid(gc *draw2dgl.GraphicContext, x0, y0, x1, y1, dividew, divideh float64) {
-	for w := x0; w <= x1; w = w + dividew {
-		DrawLine(gc, w, y0, w, y1)
-	}
-	for h := y0; h <= y1; h = h + divideh {
-		DrawLine(gc, x0, h, x1, h)
-	}
-}
-
-func DrawGridC(gc *draw2dgl.GraphicContext,
-	pos *C.struct_ipos,
-	size *C.struct_isize,
-	divide *C.struct_isize) {
-	DrawGrid(gc, float64(pos.x), float64(pos.y),
-		float64(pos.x)+float64(size.w),
-		float64(pos.y)+float64(size.h),
-		float64(divide.w),
-		float64(divide.h),
-	)
-}
-
-// Draw a rect
-func DrawRect(gc *draw2dgl.GraphicContext, x0, y0, x1, y1 float64) {
-	gc.BeginPath()
-	draw2dkit.Rectangle(gc, x0, y0, x1, y1)
-	gc.SetFillColor(ColorRect)
-	gc.Fill()
-}
-
-func DrawRectC(gc *draw2dgl.GraphicContext, pos *C.struct_ipos, size *C.struct_isize) {
-	DrawRect(gc, float64(pos.x),
-		float64(pos.y),
-		float64(pos.x+size.w),
-		float64(pos.y+size.h))
-}
-
-func DrawCircle(gc *draw2dgl.GraphicContext, c color.RGBA, x, y, radius float64) {
-	gc.BeginPath()
-	draw2dkit.Circle(gc, x, y, radius)
-	gc.SetFillColor(c)
-	gc.Fill()
-}
-
-func DrawCircleC(gc *draw2dgl.GraphicContext, c color.RGBA, pos *C.struct_ipos, radius C.ireal) {
-	DrawCircle(gc, c, float64(pos.x), float64(pos.y), float64(radius))
-}
-
 // 绘制
 func (m *AoiMap) Draw(gc *draw2dgl.GraphicContext) {
 	// 先绘制地图本身
@@ -286,11 +221,15 @@ func (m *AoiMap) Free() {
 	// fmt.Println("AoiMap finalizer")
 }
 
-var xmap *AoiMap
-var search *AoiSearchResult
+//************************************************************
+//************************************************************
 
-func aoi_init(width, height float64) {
+type AOI struct {
+	xmap   *AoiMap
+	search *AoiSearchResult
+}
 
+func (a *AOI) Init(width, height float64) {
 	factor := 1.0 * 3 / 4
 	sizeh := height * factor
 	sizew := width * factor
@@ -300,46 +239,30 @@ func aoi_init(width, height float64) {
 	pos := C.struct_ipos{x: C.ireal(offsetx), y: C.ireal(offsety)}
 	size := C.struct_isize{w: C.ireal(sizew), h: C.ireal(sizeh)}
 	fmt.Println("values:", width, height, pos, size)
-	xmap = NewAoiMap(&pos, &size, 5)
+	a.xmap = NewAoiMap(&pos, &size, 5)
 
 	for i := 0; i < 100; i++ {
 		u := NewAoiUnit(C.iid(i),
 			C.ireal(offsetx+float64(rand.Int31n(int32(sizew)))),
 			C.ireal(offsety+float64(rand.Int31n(int32(sizeh)))),
 		)
-		xmap.AddUnit(u)
+		a.xmap.AddUnit(u)
 	}
 
-	search = NewAoiSearchResult()
-	xmap.Search(search, 800, 800, SearchRadius)
+	a.search = NewAoiSearchResult()
+	a.xmap.Search(a.search, 800, 800, SearchRadius)
 
-	// xmap.UpdateUnit(u)
-	// xmap.Print(0xffff)
 }
+func (a *AOI) Draw(gc *draw2dgl.GraphicContext) {
+	a.xmap.Draw(gc)
+	a.search.Draw(gc)
 
-func aoi_draw(gc *draw2dgl.GraphicContext) {
-	/*
-		r, _ := strconv.ParseInt(os.Args[1], 10, 0)
-		g, _ := strconv.ParseInt(os.Args[2], 10, 0)
-		b, _ := strconv.ParseInt(os.Args[3], 10, 0)
-		a, _ := strconv.ParseInt(os.Args[4], 10, 0)
-	*/
-	xmap.Draw(gc)
-	search.Draw(gc)
 }
-
-func aoi_mouse_press(x, y float64) {
-	x, y = aoi_mouse_translate(x, y)
-	xmap.Search(search, x, y, SearchRadius)
+func (a *AOI) MousePress(x, y float64) {
+	a.xmap.Search(a.search, x, y, SearchRadius)
 	redraw = true
 }
-
-func aoi_mouse_move(x, y float64) {
-	x, y = aoi_mouse_translate(x, y)
-	xmap.Search(search, x, y, SearchRadius)
+func (a *AOI) MouseMove(x, y float64) {
+	a.xmap.Search(a.search, x, y, SearchRadius)
 	redraw = true
-}
-
-func aoi_mouse_translate(x, y float64) (float64, float64) {
-	return scalex * x, float64(height) - scaley*y
 }

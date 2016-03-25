@@ -8,7 +8,7 @@ set(CMAKE_C_FLAGS "-O2 -Wall -Werror=declaration-after-statement -std=c89 -pedan
 project (aoi)
 
 # aoi 库文件
-add_library(aoi STATIC aoi.c aoi.h)
+add_library(aoi STATIC aoi.c aoi.h navi.c navi.h)
 
 # aoi 单元测试
 include_directories(${CMAKE_SOURCE_DIR})
@@ -20,6 +20,10 @@ include_directories(${CMAKE_SOURCE_DIR})
 add_executable(aoi-prof ${CMAKE_SOURCE_DIR}/prof/prof.c)
 target_link_libraries(aoi-prof aoi)
 
+# texas
+include_directories(${CMAKE_SOURCE_DIR})
+add_executable(aoi-texas ${CMAKE_SOURCE_DIR}/game-texas/texas.h ${CMAKE_SOURCE_DIR}/game-texas/texas.c)
+
 # lua aoi
 set(CMAKE_BUILD_TYPE Release)
 find_package(Lua REQUIRED)
@@ -30,5 +34,6 @@ set_target_properties(laoi PROPERTIES PREFIX "" SUFFIX ".so")
 
 # copy the test.lua to build
 configure_file(${CMAKE_SOURCE_DIR}/lua-bind/test.lua test.lua)
+configure_file(${CMAKE_SOURCE_DIR}/test/navi.map navi.map)
 
 

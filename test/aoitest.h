@@ -10,6 +10,7 @@
 #define ml_aoitest_h
 
 #include "aoi.h"
+#include "navi.h"
 #include "simpletest.h"
 
 // 清理掉所有缓存并打印内存日志
@@ -177,6 +178,77 @@ SP_CASE(imeta, iaoiistype) {
     iaoicacheclear(imetaof(sp_test_cache_clear));
 }
 
+// **********************************************************************************
+// iwref
+SP_SUIT(iwref);
+
+SP_CASE(iwref, iwrefmake) {
+    iref *ref = iobjmalloc(iref);
+    iretain(ref);
+    
+    iwref *wref0 = iwrefmake(ref);
+    SP_EQUAL(irefcast(wref0->wref), ref);
+    iref *strongref = iwrefstrong(wref0);
+    SP_EQUAL(strongref, ref);
+    irelease(strongref);
+    SP_EQUAL(irefcast(wref0->wref), ref);
+    
+    irelease(ref);
+    SP_EQUAL(wref0->wref, NULL);
+    strongref = iwrefstrong(wref0);
+    SP_EQUAL(strongref, NULL);
+    
+    irelease(wref0);
+}
+
+SP_CASE(iwref, iwrefmakeby) {
+    
+    iref *ref = iobjmalloc(iref);
+    iretain(ref);
+    
+    iwref *wref0 = iwrefmake(ref);
+    SP_EQUAL(irefcast(wref0->wref), ref);
+    iref *strongref = iwrefstrong(wref0);
+    SP_EQUAL(strongref, ref);
+    irelease(strongref);
+    SP_EQUAL(irefcast(wref0->wref), ref);
+    
+    iwref *wref1 = iwrefmakeby(wref0);
+    SP_EQUAL(irefcast(wref1->wref), ref);
+    SP_EQUAL(wref0, wref1);
+    iref *strongref1 = iwrefstrong(wref1);
+    SP_EQUAL(strongref1, ref);
+    irelease(strongref1);
+    SP_EQUAL(irefcast(wref1->wref), ref);
+    SP_EQUAL(wref0, wref1);
+    
+    irelease(ref);
+    SP_EQUAL(wref0->wref, NULL);
+    strongref = iwrefstrong(wref0);
+    SP_EQUAL(strongref, NULL);
+    
+    SP_EQUAL(wref1->wref, NULL);
+    strongref = iwrefstrong(wref1);
+    SP_EQUAL(strongref, NULL);
+    
+    irelease(wref0);
+}
+
+SP_CASE(iwref, makenull) {
+    iwref *wref0 = iwrefmake(NULL);
+    iwref *wref1 = iwrefmake(NULL);
+    
+    SP_EQUAL(wref0, wref1);
+    
+    iref *strong = iwrefstrong(wref0);
+    SP_EQUAL(strong, NULL);
+    
+    irelease(wref0);
+    irelease(wref1);
+    
+    iwref *wrefzero = iwrefmakeby(NULL);
+    SP_EQUAL(wrefzero, NULL);
+}
 
 // **********************************************************************************
 // time
@@ -890,7 +962,7 @@ SP_CASE(icode, nothing) {
 SP_SUIT(iuserdata);
 
 SP_CASE(iuserdata, nothing) {
-    iuserdata u = {0, NULL};
+    iuserdata u = {0, 0, 0, 0, NULL, NULL, NULL, NULL};
     
     SP_EQUAL(u.u1, 0);
     
@@ -973,36 +1045,36 @@ SP_CASE(inode, neighborsadd) {
     node_graphics g;
     _inode_prepare_graphics(&g);
     
-    ineighborsadd(g.A, g.B);
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.B));
     
-    SP_EQUAL(g.A->neighbors, NULL);
-    SP_EQUAL(g.B->neighbors_walkable, NULL);
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 1);
-    SP_EQUAL(ireflistfirst(g.B->neighbors)->value, irefcast(g.A));
-    SP_EQUAL(ireflistfirst(g.A->neighbors_walkable)->value, irefcast(g.B));
+    SP_EQUAL(g.A->neighbors_from, NULL);
+    SP_EQUAL(g.B->neighbors_to, NULL);
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 1);
+    SP_EQUAL(ireflistfirst(g.B->neighbors_from)->value, irefcast(g.A));
+    SP_EQUAL(ireflistfirst(g.A->neighbors_to)->value, irefcast(g.B));
     
-    ineighborsadd(g.A, g.D);
-    ineighborsadd(g.B, g.C);
-    ineighborsadd(g.B, g.E);
-    ineighborsadd(g.C, g.D);
-    ineighborsadd(g.D, g.B);
-    ineighborsadd(g.E, g.B);
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.C));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.E));
+    ineighborsadd(icast(irefneighbors, g.C), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.D), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.E), icast(irefneighbors, g.B));
     
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 3);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 3);
     
-    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.C->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.C->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors_from), 1);
     
-    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.D->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.D->neighbors_from), 2);
     
-    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.E->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.E->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.E->neighbors_from), 1);
     
     _inode_free_graphics(&g);
 }
@@ -1011,34 +1083,34 @@ SP_CASE(inode, ineighborsdel) {
     
     node_graphics g;
     _inode_prepare_graphics(&g);
-    ineighborsadd(g.A, g.B);
-    ineighborsadd(g.A, g.D);
-    ineighborsadd(g.B, g.C);
-    ineighborsadd(g.B, g.E);
-    ineighborsadd(g.C, g.D);
-    ineighborsadd(g.D, g.B);
-    ineighborsadd(g.E, g.B);
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.C));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.E));
+    ineighborsadd(icast(irefneighbors, g.C), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.D), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.E), icast(irefneighbors, g.B));
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 3);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 3);
     
-    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.C->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.C->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors_from), 1);
     
-    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.D->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.D->neighbors_from), 2);
     
-    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.E->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.E->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.E->neighbors_from), 1);
     
-    ineighborsdel(g.A, g.B);
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    ineighborsdel(icast(irefneighbors, g.A), icast(irefneighbors, g.B));
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 2);
     
     
     _inode_free_graphics(&g);
@@ -1047,44 +1119,44 @@ SP_CASE(inode, ineighborsdel) {
 SP_CASE(inode, ineighborsclean) {
     node_graphics g;
     _inode_prepare_graphics(&g);
-    ineighborsadd(g.A, g.B);
-    ineighborsadd(g.A, g.D);
-    ineighborsadd(g.B, g.C);
-    ineighborsadd(g.B, g.E);
-    ineighborsadd(g.C, g.D);
-    ineighborsadd(g.D, g.B);
-    ineighborsadd(g.E, g.B);
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.A), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.C));
+    ineighborsadd(icast(irefneighbors, g.B), icast(irefneighbors, g.E));
+    ineighborsadd(icast(irefneighbors, g.C), icast(irefneighbors, g.D));
+    ineighborsadd(icast(irefneighbors, g.D), icast(irefneighbors, g.B));
+    ineighborsadd(icast(irefneighbors, g.E), icast(irefneighbors, g.B));
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 2)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 3);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 2)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 3);
     
-    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.C->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.C->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors_from), 1);
     
-    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.D->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.D->neighbors_from), 2);
     
-    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.E->neighbors), 1);
+    SP_EQUAL(ireflistlen(g.E->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.E->neighbors_from), 1);
     
-    ineighborsclean(g.B);
+    ineighborsclean(icast(irefneighbors, g.B));
     
-    SP_EQUAL(ireflistlen(g.A->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.A->neighbors), 0)
+    SP_EQUAL(ireflistlen(g.A->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.A->neighbors_from), 0)
     
-    SP_EQUAL(ireflistlen(g.B->neighbors_walkable), 0)
-    SP_EQUAL(ireflistlen(g.B->neighbors), 0);
+    SP_EQUAL(ireflistlen(g.B->neighbors_to), 0)
+    SP_EQUAL(ireflistlen(g.B->neighbors_from), 0);
     
-    SP_EQUAL(ireflistlen(g.C->neighbors_walkable), 1)
-    SP_EQUAL(ireflistlen(g.C->neighbors), 0);
+    SP_EQUAL(ireflistlen(g.C->neighbors_to), 1)
+    SP_EQUAL(ireflistlen(g.C->neighbors_from), 0);
     
-    SP_EQUAL(ireflistlen(g.D->neighbors_walkable), 0)
-    SP_EQUAL(ireflistlen(g.D->neighbors), 2);
+    SP_EQUAL(ireflistlen(g.D->neighbors_to), 0)
+    SP_EQUAL(ireflistlen(g.D->neighbors_from), 2);
     
-    SP_EQUAL(ireflistlen(g.E->neighbors_walkable), 0)
-    SP_EQUAL(ireflistlen(g.E->neighbors), 0);
+    SP_EQUAL(ireflistlen(g.E->neighbors_to), 0)
+    SP_EQUAL(ireflistlen(g.E->neighbors_from), 0);
     
     _inode_free_graphics(&g);
 }
@@ -3035,6 +3107,135 @@ SP_CASE(searching_bench_right, searchpos){
     imapfree(map);
 }
 
+static void silly_search_lineofsight(imap *map,
+                                     iunit **units,
+                                     int num,
+                                     const iline2d *line,
+                                     isearchresult *result) {
+    ifilter *filter = NULL;
+    
+    int i =0;
+    iunit *unit = NULL;
+    
+    filter = ifiltermake_line2d(&line->start, &line->end, iepsilon);
+    isearchresultclean(result);
+    
+    for (i=0; i<num; ++i) {
+        unit = units[i];
+        /* 是否满足条件 */
+        if (ifilterrun(map, filter, unit) == iiok) {
+            ireflistadd(result->units, irefcast(unit));
+        }
+    }
+}
+
+static void __print_list_unit(const ireflist *list) {
+    printf("[");
+    irefjoint *first = ireflistfirst(list);
+    while (first) {
+        iunit * u = icast(iunit, first->value);
+        printf("%lld%s", u->id, first->next == NULL ? "" :", ");
+        first = first->next;
+    }
+    printf("]\n");
+}
+
+SP_CASE(searching_bench_right, lineofsight_accurate) {
+    static const int MAX_COUNT = 8;
+    static const int MAP_SIZE = 8;
+    ipos pos = {0, 0};
+    isize size = {MAP_SIZE, MAP_SIZE};
+    int divide = 3;
+    iarray *units = iarraymakeiref(MAX_COUNT);
+    int i = 0;
+    int maxunit = MAX_COUNT;
+    iline2d line;
+    isearchresult* resultlfs = isearchresultmake();
+    isearchresult* resultrfs = isearchresultmake();
+    imap *map = imapmake(&pos, &size, divide);
+    
+    for (i=0; i<maxunit; ++i) {
+        iunit *u = imakeunit((iid)i, (ireal)(i), (ireal)(i));
+        /* 给单元加一个随机半径 */
+        u->radius = (ireal)(1);
+        imapaddunit(map, u);
+        iarrayadd(units, &u);
+        
+        ifreeunit(u);
+    }
+    
+    printf("**********************\n");
+#define __x_set_sight(x0, y0, x1, y1) \
+    line.start.x = x0; line.start.y = y0; line.end.x = x1; line.end.y = y1
+    
+    {
+        __x_set_sight(1, 1, 3, 3);
+        silly_search_lineofsight(map, (iunit**)iarraybuffer(units), MAX_COUNT, &line, resultrfs);
+        __print_list_unit(resultrfs->units);
+        imaplineofsight(map, &line.start, &line.end, resultlfs);
+        __print_list_unit(resultlfs->units);
+    }
+    printf("**********************\n");
+    
+    iarrayfree(units);
+    isearchresultfree(resultrfs);
+    isearchresultfree(resultlfs);
+    imapfree(map);
+}
+
+SP_CASE(searching_bench_right, lineofsight) {
+    SP_TRUE(1);
+    
+    static const int MAX_COUNT = 2000;
+    static const int MAP_SIZE = 512;
+    ipos pos = {0, 0};
+    ipos to = {0, 0};
+    iline2d line;
+    isize size = {MAP_SIZE, MAP_SIZE};
+    int divide = 5;
+    iarray *units = iarraymakeiref(MAX_COUNT);
+    int i = 0;
+    int maxunit = MAX_COUNT;
+    int bench = 2000;
+    int maxunitrange = 2;
+    isearchresult* resultlfs = isearchresultmake();
+    isearchresult* resultrfs = isearchresultmake();
+    imap *map = imapmake(&pos, &size, divide);
+    
+    for (i=0; i<maxunit; ++i) {
+        iunit * u = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
+        /* 给单元加一个随机半径 */
+        u->radius = (ireal)(rand()%100)/100*maxunitrange;
+        imapaddunit(map, u);
+        iarrayadd(units, &u);
+        ifreeunit(u);
+    }
+   
+    for(i=0;i<bench; ++i) {
+        pos.x = (ireal)(rand()%MAP_SIZE);
+        pos.y = (ireal)(rand()%MAP_SIZE);
+        to.x = (ireal)(rand()%MAP_SIZE);
+        to.y = (ireal)(rand()%MAP_SIZE);
+        line.start = pos;
+        line.end = to;
+        
+        silly_search_lineofsight(map, (iunit**)iarraybuffer(units), MAX_COUNT, &line, resultrfs);
+        //__print_list_unit(resultrfs->units);
+        
+        imaplineofsight(map, &pos, &to, resultlfs);
+        //__print_list_unit(resultlfs->units);
+        
+        SP_EQUAL(ireflistlen(resultrfs->units), ireflistlen(resultlfs->units));
+        
+        SP_EQUAL(silly_checksum(resultrfs->units), silly_checksum(resultlfs->units));
+    }
+    
+    iarrayfree(units);
+    isearchresultfree(resultlfs);
+    isearchresultfree(resultrfs);
+    imapfree(map);
+}
+
 SP_SUIT(iarray);
 
 static iarray *_iarray_make_int(size_t size) {
@@ -3540,6 +3741,7 @@ SP_CASE(iarray_iref, iarrayset) {
     _arr_iref_try_free = 0;
 }
 
+
 SP_SUIT(islice);
 
 SP_CASE(islice, islicemake) {
@@ -3592,5 +3794,967 @@ SP_CASE(islice, islicemake) {
     
     iarrayfree(arr);
 }
+
+SP_CASE(islice, islicemakeby) {
+    /* arr[0:8] */
+    iarray *arr = iarraymakeint(8);
+    int values[] = {0, 1, 2};
+    iarrayinsert(arr, 0, values, 3);
+    
+    /* slice = arr[0:3:8]  */
+    islice *slice_0_3_8 = isliced(arr, 0, 3);
+    SP_EQUAL(islicelen(slice_0_3_8), 3);
+    SP_EQUAL(islicecapacity(slice_0_3_8), 8);
+    SP_EQUAL(isliceof(slice_0_3_8, int, 0), 0);
+    SP_EQUAL(isliceof(slice_0_3_8, int, 1), 1);
+    SP_EQUAL(isliceof(slice_0_3_8, int, 2), 2);
+    
+    /* child = slice[1:2:8] */
+    islice *child = islicedby(slice_0_3_8, 1, 2);
+    SP_EQUAL(islicelen(child), 1);
+    SP_EQUAL(islicecapacity(child), 7);
+    SP_EQUAL(isliceof(child, int, 0), 1);
+    SP_EQUAL(isliceat(child, 1), NULL);
+    
+    /* sub = child[1:1:7] */
+    islice* sub = islicedby(child, 1, 1);
+    SP_EQUAL(islicelen(sub), 0);
+    SP_EQUAL(islicecapacity(sub), 6);
+    SP_EQUAL(isliceat(sub, 0), NULL);
+    
+    /* xslice = slice[8:8]
+     */
+    islice *xslice = isliced(arr, 8, 8);
+    
+    SP_EQUAL(islicelen(xslice), 0);
+    SP_EQUAL(islicecapacity(xslice), 0);
+    
+    islice *yslice = isliced(arr, 5, 5);
+    
+    SP_EQUAL(islicelen(yslice), 0);
+    SP_EQUAL(islicecapacity(yslice), 3);
+    
+    /**/
+    int aps[] = {100, 200};
+    isliceadd(yslice, aps);
+    
+    SP_EQUAL(islicelen(yslice), 1);
+    SP_EQUAL(islicecapacity(yslice), 3);
+    SP_EQUAL(isliceof(yslice, int, 0), 100);
+    
+    SP_EQUAL(iarraylen(arr), 4);
+    SP_EQUAL(iarrayof(arr, int, 3), 100);
+    
+    islicefree(yslice);
+    
+    islicefree(xslice);
+    
+    islicefree(child);
+    
+    islicefree(sub);
+    
+    islicefree(slice_0_3_8);
+    
+    iarrayfree(arr);
+}
+
+#define __slice_arr(arr, ...) islicemakearg(arr, #__VA_ARGS__)
+
+void __slice_print(islice *s) {
+    printf("[");
+    for (int i=0; i <islicelen(s); ++i) {
+        int v = isliceof(s, int, i);
+        printf("%d%s", v, i==islicelen(s)-1 ? "" : ", ");
+    }
+    printf("]");
+}
+
+void __slice_println(islice *s) {
+    __slice_print(s);
+    printf("%s", "\n");
+}
+
+SP_CASE(islice, islicelen_islicecapacity) {
+    /* arr[0:8] */
+    iarray *arr = iarraymakeint(8);
+    int values[] = {0, 1, 2};
+    iarrayinsert(arr, 0, values, 3);
+    
+    islice *slice0 = __slice_arr(arr);
+    __slice_println(slice0);
+    SP_EQUAL(islicelen(slice0), 3);
+    SP_EQUAL(islicecapacity(slice0), 8);
+    islicefree(slice0);
+    
+    islice *slice1 = __slice_arr(arr, 2:);
+    __slice_println(slice1);
+    SP_EQUAL(islicelen(slice1), 1);
+    SP_EQUAL(islicecapacity(slice1), 6);
+    islicefree(slice1);
+    
+    islice *slice2 = __slice_arr(arr, :1);
+    __slice_println(slice2);
+    SP_EQUAL(islicelen(slice2), 1);
+    SP_EQUAL(islicecapacity(slice2), 8);
+    islicefree(slice2);
+    
+    islice *slice3 = __slice_arr(arr, :1:5);
+    __slice_println(slice3);
+    SP_EQUAL(islicelen(slice3), 1);
+    SP_EQUAL(islicecapacity(slice3), 5);
+    islicefree(slice3);
+    
+    islice *slice4 = __slice_arr(arr, :0:5);
+    __slice_println(slice4);
+    SP_EQUAL(islicelen(slice4), 0);
+    SP_EQUAL(islicecapacity(slice4), 5);
+    islicefree(slice4);
+    
+    iarrayfree(arr);
+}
+
+void __array_print(iarray *s) {
+    printf("[");
+    for (int i=0; i <iarraylen(s); ++i) {
+        int v = iarrayof(s, int, i);
+        printf("%d%s", v, i==iarraylen(s)-1 ? "" : ", ");
+    }
+    printf("]");
+}
+
+void __array_println(iarray *s) {
+    __array_print(s);
+    printf("%s", "\n");
+}
+
+
+
+SP_SUIT(iheap);
+
+SP_CASE(iheap, iheapbuild) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+
+    SP_EQUAL(iarrayof(arr, int, 0), 7);
+
+    iarrayfree(arr);
+}
+
+SP_CASE(iheap, iheapadd) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+
+    SP_EQUAL(iarrayof(arr, int, 0), 7);
+    
+    int v = 8;
+    iheapadd(arr, &v);
+    __array_println(arr);
+    SP_EQUAL(iarrayof(arr, int, 0), 8);
+
+    iarrayfree(arr);
+}
+
+SP_CASE(iheap, iheappeek) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+    
+    SP_EQUAL(iarrayof(arr, int, 0), 7);
+    
+    int * u = (int*)iheappeek(arr);
+    SP_EQUAL(*u, 7);
+    
+    iarrayfree(arr);
+}
+
+
+SP_CASE(iheap, iheappop) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+    
+    SP_EQUAL(iarrayof(arr, int, 0), 7);
+    
+    int * u = (int*)iheappeek(arr);
+    SP_EQUAL(*u, 7);
+    
+    iheappop(arr);
+    
+    u = (int*)iheappeek(arr);
+    SP_EQUAL(*u, 6);
+    
+    iheappop(arr);
+    
+    u = (int*)iheappeek(arr);
+    SP_EQUAL(*u, 5);
+    
+    
+    iarrayfree(arr);
+}
+
+SP_CASE(iheap, iheapdelete) {
+    iarray *arr = iarraymakeint(16);
+    int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    iarrayinsert(arr, 0, values, 8);
+    __array_println(arr);
+    iheapbuild(arr);
+    __array_println(arr);
+    
+    /*[7, 4, 6, 3, 0, 5, 2, 1]*/
+    iheapdelete(arr, 0);
+    /*[6, 4, 5, 3, 0, 1, 2]*/
+    __array_println(arr);
+    SP_EQUAL(*(int*)iheappeek(arr), 6);
+    
+    /*[6, 4, 5, 3, 0, 1, 2]*/
+    iheapdelete(arr, 1);
+    /*[6, 3, 5, 2, 0, 1]*/
+    SP_EQUAL(iarrayof(arr, int, 1), 3);
+    SP_EQUAL(iarrayof(arr, int, 2), 5);
+    SP_EQUAL(iarrayof(arr, int, 3), 2);
+    SP_EQUAL(iarrayof(arr, int, 4), 0);
+    SP_EQUAL(iarrayof(arr, int, 5), 1);
+    
+    iarrayfree(arr);
+}
+
+SP_CASE(iheap, iheapadjust) {
+    
+    {
+        iarray *arr = iarraymakeint(16);
+        int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+        iarrayinsert(arr, 0, values, 8);
+        __array_println(arr);
+        iheapbuild(arr);
+        __array_println(arr);
+        
+        /*[7, 4, 6, 3, 0, 5, 2, 1]*/
+        SP_EQUAL(iarrayof(arr, int, 0), 7);
+        SP_EQUAL(iarrayof(arr, int, 1), 4);
+        SP_EQUAL(iarrayof(arr, int, 2), 6);
+        SP_EQUAL(iarrayof(arr, int, 3), 3);
+        SP_EQUAL(iarrayof(arr, int, 4), 0);
+        SP_EQUAL(iarrayof(arr, int, 5), 5);
+        SP_EQUAL(iarrayof(arr, int, 6), 2);
+        SP_EQUAL(iarrayof(arr, int, 7), 1);
+        
+        iarrayof(arr, int, 0) = 1;
+        __array_println(arr);
+        SP_EQUAL(iarrayof(arr, int, 0), 1);
+        
+        iheapadjust(arr, 0);
+        __array_println(arr);
+        SP_EQUAL(iarrayof(arr, int, 0), 6);
+        SP_EQUAL(iarrayof(arr, int, 1), 4);
+        SP_EQUAL(iarrayof(arr, int, 2), 5);
+        SP_EQUAL(iarrayof(arr, int, 3), 3);
+        SP_EQUAL(iarrayof(arr, int, 4), 0);
+        SP_EQUAL(iarrayof(arr, int, 5), 1);
+        SP_EQUAL(iarrayof(arr, int, 6), 2);
+        SP_EQUAL(iarrayof(arr, int, 7), 1);
+        
+        iarrayfree(arr);
+    }
+    
+    {
+        iarray *arr = iarraymakeint(16);
+        int values[] = {0, 1, 2, 3, 4, 5, 6, 7};
+        iarrayinsert(arr, 0, values, 8);
+        __array_println(arr);
+        iheapbuild(arr);
+        __array_println(arr);
+        
+        /*[7, 4, 6, 3, 0, 5, 2, 1]*/
+        SP_EQUAL(iarrayof(arr, int, 0), 7);
+        SP_EQUAL(iarrayof(arr, int, 1), 4);
+        SP_EQUAL(iarrayof(arr, int, 2), 6);
+        SP_EQUAL(iarrayof(arr, int, 3), 3);
+        SP_EQUAL(iarrayof(arr, int, 4), 0);
+        SP_EQUAL(iarrayof(arr, int, 5), 5);
+        SP_EQUAL(iarrayof(arr, int, 6), 2);
+        SP_EQUAL(iarrayof(arr, int, 7), 1);
+        
+        iarrayof(arr, int, 1) = 9;
+        iheapadjust(arr, 1);
+        SP_EQUAL(iarrayof(arr, int, 0), 9);
+        SP_EQUAL(iarrayof(arr, int, 1), 7);
+        SP_EQUAL(iarrayof(arr, int, 2), 6);
+        SP_EQUAL(iarrayof(arr, int, 3), 3);
+        SP_EQUAL(iarrayof(arr, int, 4), 0);
+        SP_EQUAL(iarrayof(arr, int, 5), 5);
+        SP_EQUAL(iarrayof(arr, int, 6), 2);
+        SP_EQUAL(iarrayof(arr, int, 7), 1);
+        
+        iarrayfree(arr);
+    }
+}
+
+SP_SUIT(istring);
+
+SP_CASE(istring, istringmake) {
+    istring s = istringmake("abcdefg");
+    char c;
+    
+    SP_EQUAL(istringlen(s), 7);
+    c = isliceof(s, char, 0);
+    SP_EQUAL(isliceof(s, char, 0), 'a');
+    c = isliceof(s, char, 1);
+    c = isliceof(s, char, 2);
+    c = isliceof(s, char, 3);
+    SP_EQUAL(isliceof(s, char, 1), 'b');
+    SP_EQUAL(isliceof(s, char, 2), 'c');
+    SP_EQUAL(isliceof(s, char, 3), 'd');
+    SP_EQUAL(isliceof(s, char, 4), 'e');
+    SP_EQUAL(isliceof(s, char, 5), 'f');
+    SP_EQUAL(isliceof(s, char, 6), 'g');
+    
+    irelease(s);
+}
+
+SP_CASE(istring, istringbuf) {
+    
+    istring s = istringmake("abcdefg");
+    
+    SP_EQUAL(istringlen(s), 7);
+    
+    const char* buf = istringbuf(s);
+    
+    SP_EQUAL(buf[0], 'a');
+    SP_EQUAL(buf[1], 'b');
+    
+    SP_EQUAL(buf[7], 0);
+    
+    irelease(s);
+}
+
+SP_CASE(istring, istringsplit) {
+    
+    istring s = istringmake("a:b:c:d:e:f:g");
+    
+    iarray *ss = istringsplit(s, ":", 1);
+    
+    const char* buf;
+    
+    SP_EQUAL(iarraylen(ss), 7);
+    
+    istring s0 = iarrayof(ss, istring, 0);
+    buf = istringbuf(s0);
+    SP_EQUAL(isliceof(s0, char, 0), 'a');
+    
+    istring s1 = iarrayof(ss, istring, 1);
+    buf = istringbuf(s1);
+    SP_EQUAL(isliceof(s1, char, 0), 'b');
+    
+    istring s2 = iarrayof(ss, istring, 2);
+    buf = istringbuf(s2);
+    SP_EQUAL(isliceof(s2, char, 0), 'c');
+    
+    istring s3 = iarrayof(ss, istring, 3);
+    buf = istringbuf(s3);
+    SP_EQUAL(isliceof(s3, char, 0), 'd');
+    
+    istring s6 = iarrayof(ss, istring, 6);
+    buf = istringbuf(s6);
+    SP_EQUAL(isliceof(s6, char, 0), 'g');
+    
+    iarrayfree(ss);
+    
+    irelease(s);
+}
+
+SP_CASE(istring, istringjoin) {
+    
+    istring s = istringmake("a:b:c:d:e:f:g");
+    
+    iarray *ss = istringsplit(s, ":", 1);
+    
+    istring js = istringjoin(ss, "-", 1);
+    
+    SP_TRUE(istringcompare(s, js) != 0);
+    
+    istring xjs = istringmake("a-b-c-d-e-f-g");
+    
+    SP_TRUE(istringcompare(xjs, js) == 0);
+    
+    irelease(s);
+    irelease(js);
+    irelease(xjs);
+    
+    iarrayfree(ss);
+}
+
+SP_CASE(istring , istringreplace) {
+    istring s = istringmake("a:b:c:d:e:f:g");
+    
+    istring js = istringrepleace(s, ":", "-");
+    
+    istring xjs = istringmake("a-b-c-d-e-f-g");
+    
+    SP_TRUE(istringcompare(js, xjs) == 0);
+    
+    irelease(s);
+    irelease(js);
+    irelease(xjs);
+}
+
+SP_CASE(istring, istringappend) {
+    istring s = istringmake("a:b:c:d:e:f:g");
+    
+    istring js = istringappend(s, "-abcdefg");
+    
+    istring xjs = istringmake("a:b:c:d:e:f:g-abcdefg");
+    
+    SP_TRUE(istringcompare(js, xjs) == 0);
+    
+    irelease(js);
+    irelease(xjs);
+    irelease(s);
+}
+
+SP_CASE(istring, istringcompare) {
+    istring sa = istringmake("a");
+    istring sb = istringmake("b");
+    istring sab = istringmake("ab");
+    
+    
+    irelease(sa);
+    irelease(sb);
+    irelease(sab);
+}
+
+SP_CASE(istring, istringformat) {
+    istring s = istringformat("efg %i %f abc", 1, 1.0);
+    iarray* ss = istringsplit(s, " ", 1);
+    
+    ideclarestring(efg, "efg");
+    istringlaw(efg);
+    
+    SP_TRUE(istringcompare(iarrayof(ss, istring, 0), efg) == 0);
+    
+    int i = istringatoi(iarrayof(ss, istring, 1));
+    SP_EQUAL(i, 1);
+    
+    double d = istringatof(iarrayof(ss, istring, 2));
+    SP_TRUE(ireal_equal(d, 1));
+    
+    ideclarestring(abc, "abc");
+    istringlaw(abc);
+    
+    SP_TRUE(istringcompare(iarrayof(ss, istring, 3), abc) == 0);
+    
+    irelease(s);
+    iarrayfree(ss);
+}
+
+SP_SUIT(iline2d);
+
+SP_CASE(iline2d, nothing) {
+    SP_TRUE(1);
+}
+
+SP_CASE(iline2d, iline2ddirection) {
+    iline2d line;
+    line.start.x = 1;
+    line.start.y = 1;
+    
+    line.end.x = 2;
+    line.end.y = 3;
+    
+    ivec2 dir = iline2ddirection(&line);
+    ireal len = iline2dlength(&line);
+    
+    SP_TRUE(ireal_equal(dir.v.x, 1/len));
+    SP_TRUE(ireal_equal(dir.v.y, 2/len));
+}
+
+SP_CASE(iline2d, iline2dnormal) {
+    iline2d line;
+    line.start.x = 0;
+    line.start.y = 0;
+    
+    line.end.x = 3;
+    line.end.y = 4;
+    
+    /*direction: (0.6, 0.8)*/
+    /*direction: (0.8, -0.6)*/
+    ivec2 normal = iline2dnormal(&line);
+    SP_TRUE(ireal_equal(normal.v.x, 0.8));
+    SP_TRUE(ireal_equal(normal.v.y, -0.6));
+}
+
+SP_CASE(iline2d, iline2dlength) {
+    iline2d line;
+    line.start.x = 0;
+    line.start.y = 0;
+    
+    line.end.x = 3;
+    line.end.y = 4;
+    
+    /*direction: (0.6, 0.8)*/
+    /*direction: (0.8, -0.6)*/
+    ivec2 normal = iline2dnormal(&line);
+    SP_TRUE(ireal_equal(normal.v.x, 0.8));
+    SP_TRUE(ireal_equal(normal.v.y, -0.6));
+    
+    ireal len = iline2dlength(&line);
+    SP_TRUE(ireal_equal(len, 5));
+}
+
+SP_CASE(iline2d, iline2dsigneddistance) {
+    iline2d line;
+    line.start.x = 0;
+    line.start.y = 0;
+    
+    line.end.x = 3;
+    line.end.y = 0;
+    
+    ipos p0 = {1, 1};
+    
+    ireal d0 = iline2dsigneddistance(&line, &p0);
+    SP_TRUE(ireal_less_zero(d0));
+    SP_TRUE(ireal_equal(d0, -1));
+    
+    ipos p1 = {1, -1};
+    ireal d1 = iline2dsigneddistance(&line, &p1);
+    SP_TRUE(ireal_greater_zero(d1));
+    SP_TRUE(ireal_equal(d1, 1));
+}
+
+SP_CASE(iline2d, iline2dclassifypoint) {
+    iline2d line;
+    line.start.x = 0;
+    line.start.y = 0;
+    
+    line.end.x = 3;
+    line.end.y = 0;
+    
+    ipos p0 = {1, 1};
+    
+    ireal d0 = iline2dsigneddistance(&line, &p0);
+    SP_TRUE(ireal_less_zero(d0));
+    SP_TRUE(ireal_equal(d0, -1));
+    
+    int c0 = iline2dclassifypoint(&line, &p0, iepsilon);
+    SP_EQUAL(c0, EnumPointClass_Left);
+    
+    ipos p1 = {1, -1};
+    ireal d1 = iline2dsigneddistance(&line, &p1);
+    SP_TRUE(ireal_greater_zero(d1));
+    SP_TRUE(ireal_equal(d1, 1));
+    
+    int c1 = iline2dclassifypoint(&line, &p1, iepsilon);
+    SP_EQUAL(c1, EnumPointClass_Right);
+    
+    ipos pz = {1, 0};
+    
+    ireal dz = iline2dsigneddistance(&line, &pz);
+    SP_TRUE(ireal_equal_zero(dz));
+    SP_TRUE(ireal_equal(dz, 0));
+    
+    int cz = iline2dclassifypoint(&line, &pz, iepsilon);
+    SP_EQUAL(cz, EnumPointClass_On);
+}
+
+SP_CASE(iline2d, iline2dintersection) {
+    iline2d line0;
+    line0.start.x = 0;
+    line0.start.y = 0;
+    line0.end.x = 3;
+    line0.end.y = 0;
+    
+    iline2d line1;
+    line1.start.x = 1;
+    line1.start.y = 1;
+    line1.end.x = 1;
+    line1.end.y = -1;
+    
+    ipos p;
+    int pr = iline2dintersection(&line0, &line1, &p);
+    SP_EQUAL(pr, EnumLineClass_Segments_Intersect);
+    SP_TRUE(ireal_equal(p.x, 1));
+    SP_TRUE(ireal_equal(p.y, 0));
+    
+    iline2d line2;
+    line2.start.x = 0;
+    line2.start.y = 1;
+    line2.end.x = 3;
+    line2.end.y = 1;
+    pr = iline2dintersection(&line0, &line2, &p);
+    SP_EQUAL(pr, EnumLineClass_Paralell);
+    
+    
+    iline2d line3;
+    line3.start.x = 0;
+    line3.start.y = 0;
+    line3.end.x = 3;
+    line3.end.y = 0;
+    pr = iline2dintersection(&line0, &line3, &p);
+    SP_EQUAL(pr, EnumLineClass_Collinear);
+    
+    {
+        iline2d line;
+        line.start.x = 4;
+        line.start.y = 0;
+        line.end.x = 6;
+        line.end.y = 0;
+        pr = iline2dintersection(&line0, &line, &p);
+        SP_EQUAL(pr, EnumLineClass_Collinear);
+    }
+    
+    {
+        iline2d line;
+        line.start.x = 0;
+        line.start.y = 5;
+        line.end.x = 4;
+        line.end.y = 1;
+        pr = iline2dintersection(&line0, &line, &p);
+        SP_EQUAL(pr, EnumLineClass_Lines_Intersect);
+    }
+    
+    {
+        iline2d line;
+        line.start.x = 0;
+        line.start.y = 5;
+        line.end.x = 1;
+        line.end.y = 1;
+        pr = iline2dintersection(&line0, &line, &p);
+        SP_EQUAL(pr, EnumLineClass_B_Bisects_A);
+    }
+    
+    {
+        iline2d line;
+        line.start.x = 5;
+        line.start.y = 5;
+        line.end.x = 5;
+        line.end.y = -1;
+        pr = iline2dintersection(&line0, &line, &p);
+        SP_EQUAL(pr, EnumLineClass_A_Bisects_B);
+    }
+}
+
+SP_CASE(iline2d, iline2dclosestpoint) {
+    iline2d line0;
+    line0.start.x = 0;
+    line0.start.y = 0;
+    line0.end.x = 3;
+    line0.end.y = 0;
+    
+    {
+        ipos center;
+        center.x = -1;
+        center.y = 1;
+        
+        ipos v = iline2dclosestpoint(&line0, &center, iepsilon);
+        SP_TRUE(ireal_equal(v.x, 0));
+        SP_TRUE(ireal_equal(v.y, 0));
+    }
+    
+    {
+        ipos center;
+        center.x = 1;
+        center.y = 1;
+        
+        ipos v = iline2dclosestpoint(&line0, &center, iepsilon);
+        SP_TRUE(ireal_equal(v.x, 1));
+        SP_TRUE(ireal_equal(v.y, 0));
+    }
+    
+    {
+        ipos center;
+        center.x = 4;
+        center.y = 1;
+        
+        ipos v = iline2dclosestpoint(&line0, &center, iepsilon);
+        SP_TRUE(ireal_equal(v.x, 3));
+        SP_TRUE(ireal_equal(v.y, 0));
+    }
+}
+
+SP_SUIT(inavi);
+
+SP_CASE(inavi, nothing) {
+    inavi_mm_init();
+
+    SP_TRUE(1);
+}
+
+SP_CASE(inavi, inavimapdescreadfromtextfile) {
+    inavimapdesc desc = {{{0}}, 0, 0, 0};
+    
+    int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
+    SP_EQUAL(err, 0);
+    
+    printf("%s", "\n");
+    
+    __array_println(desc.polygons);
+    __array_println(desc.polygonsindex);
+    __array_println(desc.polygonsconnection);
+    
+    inavimap * map = inavimapmake(8);
+    inavimaploadfromdesc(map, &desc);
+    
+    inavimapdescfreeresource(&desc);
+    inavimapfree(map);
+}
+
+/*map: 8*8 */
+static void __navidesc_prepare(inavimapdesc *desc) {
+    desc->header.size.w = 8;
+    desc->header.size.h = 8;
+    
+    ipos3 points[] = {
+        {0, 0, 0},
+        {1, 0, 0},
+        {0, 0, 3},
+        {1, 0, 3},
+        {0, 0, 4},
+        {1, 0, 4},
+        {4, 0, 4},
+        {4, 0, 3},
+        {5, 0, 3},
+        {5, 0, 4},
+        {5, 0, 7},
+        {4, 0, 7},
+    };
+    desc->header.points = icountof(points);
+    desc->points = iarraymakeipos3(desc->header.points);
+    iarrayinsert(desc->points, 0, points, desc->header.points);
+    
+    int polygons[] = {
+        4,4,4,4,4
+    };
+    desc->header.polygons = icountof(polygons);
+    desc->polygons = iarraymakeint(desc->header.polygons);
+    iarrayinsert(desc->polygons, 0, polygons, desc->header.polygons);
+    
+    int polygonsindex[] = {
+        0,2,3,1,
+        2,4,5,3,
+        5,6,7,3,
+        7,6,9,8,
+        6,11,10,9
+    };
+    desc->header.polygonsize = icountof(polygonsindex);
+    desc->polygonsindex = iarraymakeint(desc->header.polygonsize);
+    iarrayinsert(desc->polygonsindex, 0, polygonsindex, desc->header.polygonsize);
+    
+    int polygonsconnection[] = {
+        -1,1,-1,-1,
+        -1,-1,2,0,
+        -1,3,-1,1,
+        2,4,-1,-1,
+        -1,-1,-1,3,
+    };
+    desc->polygonsconnection = iarraymakeint(desc->header.polygonsize);
+    iarrayinsert(desc->polygonsconnection, 0, polygonsconnection, desc->header.polygonsize);
+    
+    ireal polygonscost[] = {
+        -1,1,-1,-1,
+        -1,-1,2,0,
+        -1,3,-1,1,
+        2,4,-1,-1,
+        -1,-1,-1,3,
+    };
+    desc->polygonscosts = iarraymakeireal(desc->header.polygonsize);
+    iarrayinsert(desc->polygonscosts, 0, polygonscost, desc->header.polygonsize);
+}
+
+SP_SUIT(inavimapdesc);
+
+SP_CASE(inavimapdesc, inavimapdescreadfromtextfile) {
+    inavimapdesc desc = {{{0}}, 0, 0, 0};
+    
+    int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
+    SP_EQUAL(err, 0);
+    
+    printf("%s", "\n");
+    
+    __array_println(desc.polygons);
+    __array_println(desc.polygonsindex);
+    __array_println(desc.polygonsconnection);
+    __array_println(desc.polygonscosts);
+    
+    inavimapdescfreeresource(&desc);
+}
+
+SP_CASE(inavimapdesc, preparedesc) {
+    inavimapdesc desc = {{{0}}, 0, 0, 0};
+    
+    __navidesc_prepare(&desc);
+    
+    printf("%s", "\n");
+    
+    __array_println(desc.polygons);
+    __array_println(desc.polygonsindex);
+    __array_println(desc.polygonsconnection);
+    __array_println(desc.polygonscosts);
+    
+    inavimapdescfreeresource(&desc);
+    
+    SP_TRUE(1);
+}
+
+SP_SUIT(inavicellconnection);
+
+SP_CASE(inavicellconnection, nothing) {
+    SP_TRUE(1);
+    
+    inavicellconnection *con = inavicellconnectionmake();
+    
+    inavicellconnectionfree(con);
+}
+
+SP_SUIT(inavicell);
+
+SP_CASE(inavicell, inavicellmake) {
+    inavimap *map = inavimapmake(8);
+    
+    inavicell *cell = inavicellmake(map, NULL, NULL, NULL);
+    
+    inavicellfree(cell);
+    inavimapfree(map);
+}
+
+SP_CASE(inavicell, test) {
+    /*
+     (ipos) start = (x = 6, y = 0)
+     Printing description of edge.end:
+     (ipos) end = (x = 6, y = 2)
+     Printing description of line->start:
+     (ipos) start = (x = 1.5316666666666667, y = 0.17010416666666667)
+     Printing description of line->end:
+     (ipos) end = (x = 6, y = 1)
+     */
+    iline2d edge = {{6,0}, {6,2}};
+    iline2d line = {{1.5316666666666667, 0.17010416666666667}, {6, 1}};
+    
+    int relation_start = iline2dclassifypoint(&edge, &line.start, iepsilon);
+    int relation_end = iline2dclassifypoint(&edge, &line.end, iepsilon);
+    
+    SP_EQUAL(relation_start, EnumPointClass_Left);
+    SP_EQUAL(relation_end, EnumPointClass_On);
+}
+
+SP_CASE(inavicell, inavimapfind) {
+    inavimap *map = inavimapmake(8);
+    
+    inavimapdesc desc = {{{0}}, 0, 0, 0};
+    
+    int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
+    SP_EQUAL(err, 0);
+    
+    printf("%s", "\n");
+    
+    __array_println(desc.polygons);
+    __array_println(desc.polygonsindex);
+    __array_println(desc.polygonsconnection);
+    __array_println(desc.polygonscosts);
+    
+    inavimaploadfromdesc(map, &desc);
+    
+    ipos3 p = {1.2019791666666666, 0, 0.7873958333333333};
+    inavicell *cell = inavimapfind(map, &p);
+    
+    SP_EQUAL(cell, iarrayof(map->cells, inavicell*, 0));
+    
+    ipos3 end = {4.775729166666666, 0,1.5808333333333333};
+    
+    inavipath * path = inavipathmake();
+    
+    inavimapfindpath(map, NULL, &p, &end, path);
+    
+    {
+        /* cell 1 to cell 3 */
+        ipos3 p0 = {5.718645833333333 ,0 ,0.3851041666666667};
+        ipos3 p1 = {7.53375 ,0 ,3.23625};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+    }
+    
+    {
+        /*cell 0 to cell 2*/
+        ipos3 p0 = {1.5316666666666667, 0, 0.17010416666666667};
+        ipos3 p1 = {6.384375, 0, 0.6238541666666667};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+        
+        inavimapsmoothpath(map, NULL, path, INT32_MAX);
+    }
+    
+    {
+        /*cell 1 to cell 0*/
+        ipos3 p0 = {2.7309375, 0, 1.0340625};
+        ipos3 p1 = {1.3151041666666667, 0, 0.608125};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+        
+        inavimapsmoothpath(map, NULL, path, INT32_MAX);
+    }
+    
+    {
+        /*cell 3 to cell 0*/
+        ipos3 p0 = {7.166458333333333, 0,3.536770833333333};
+        ipos3 p1 = {1.6123958333333333, 0, 0.51625};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+    }
+    
+    {
+        /*cell 1 to cell 3*/
+        ipos3 p0 = {4.6275, 0, 1.1232291666666667};
+        ipos3 p1 = {7.0459375, 0, 8.425520833333334};
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+    }
+    
+    {
+        /*cell 0 to cell 3*/
+        ipos3 p0 = {0.9146875, 0, 0.5341666666666667};
+        ipos3 p1 = {6.977083333333334, 0, 9.5159375};
+        
+        inavimapfindpath(map, NULL, &p0, &p1, path);
+        
+        inavimapsmoothpath(map, NULL, path, INT32_MAX);
+    }
+    
+    inavipathfree(path);
+    
+    inavimapdescfreeresource(&desc);
+    
+    inavimapfree(map);
+}
+
+SP_SUIT(inaviwaypoint);
+
+SP_CASE(inaviwaypoint, nothing) {
+    SP_TRUE(1);
+}
+
+SP_SUIT(inavipath);
+
+SP_CASE(inavipath, nothing) {
+    SP_TRUE(1);
+}
+
+SP_SUIT(inavimap);
+
+SP_CASE(inavimap, nothing) {
+    SP_TRUE(1);
+}
+
+
 
 #endif

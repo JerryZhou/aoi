@@ -13,6 +13,7 @@ Please see examples for more details.
 
 #include "aoi.h"
 #include <math.h>
+#include <stdarg.h>
 
 #ifdef _WIN32
 #ifdef __cplusplus
@@ -272,6 +273,29 @@ int64_t igetnextmicro(){
 	return gseq;
 }
 
+/* return the next pow of two */
+int inextpot(int x) {
+    x = x - 1;
+    x = x | (x >> 1);
+    x = x | (x >> 2);
+    x = x | (x >> 4);
+    x = x | (x >> 8);
+    x = x | (x >>16);
+    return x + 1;
+}
+
+/* sleeping the current thread */
+void isleep(unsigned int milliseconds) {
+#ifdef WIN32
+    Sleep((DWORD)milliseconds);
+#else
+    sleep(milliseconds);
+#endif
+}
+
+/* zero point */
+const ipos kipos_zero = {0,0};
+
 /* 计算距离的平方 */
 ireal idistancepow2(const ipos *p, const ipos *t) {
 	ireal dx = p->x - t->x;
@@ -279,11 +303,30 @@ ireal idistancepow2(const ipos *p, const ipos *t) {
 	return dx*dx + dy*dy;
 }
 
+/* zero point */
+const ipos3 kipos3_zero = {0, 0, 0};
+
+/* 计算距离的平方 */
+ireal idistancepow3(const ipos3 *p, const ipos3 *t) {
+    ireal dx = p->x - t->x;
+	ireal dy = p->y - t->y;
+    ireal dz = p->z - t->z;
+	return dx*dx + dy*dy + dz*dz;
+}
+
+/* 把点在这个方向上进行移动 */
+ipos ivec2movepoint(const ivec2 *dir, ireal dist, const ipos *p) {
+    ipos to = *p;
+    to.x += dir->v.x * dist;
+    to.y += dir->v.y * dist;
+    return to;
+}
+
 /* 两点相减得到向量 */
 ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1) {
 	ivec2 vec;
-	vec.u.v.x = p1->x - p0->x;
-	vec.u.v.y = p1->y - p0->y;
+	vec.v.x = p0->x - p1->x;
+	vec.v.y = p0->y - p1->y;
 	return vec;
 }
 
@@ -291,38 +334,38 @@ ivec2 ivec2subtractpoint(const ipos *p0, const ipos *p1) {
 ireal ivec2dot(const ivec2 *l, const ivec2 *r) {
 	icheckret(l, 0);
 	icheckret(r, 0);
-	return l->u.v.x * r->u.v.x + l->u.v.y + r->u.v.y;
+	return l->v.x * r->v.x + l->v.y * r->v.y;
 }
 
 /* 减法 */
 ivec2 ivec2subtract(const ivec2 *l, const ivec2 *r) {
 	ivec2 vec;
-	vec.u.v.x = r->u.v.x - l->u.v.x;
-	vec.u.v.y = r->u.v.y - l->u.v.y;
+	vec.v.x = r->v.x - l->v.x;
+	vec.v.y = r->v.y - l->v.y;
 	return vec;
 }
 
 /* 加法*/
 ivec2 ivec2add(const ivec2 *l, const ivec2 *r) {
 	ivec2 vec;
-	vec.u.v.x = r->u.v.x + l->u.v.x;
-	vec.u.v.y = r->u.v.y + l->u.v.y;
+	vec.v.x = r->v.x + l->v.x;
+	vec.v.y = r->v.y + l->v.y;
 	return vec;
 }
 
 /* 乘法 */
 ivec2 ivec2multipy(const ivec2 *l, const ireal a) {
 	ivec2 vec;
-	vec.u.v.x = l->u.v.x * a;
-	vec.u.v.y = l->u.v.y * a;
+	vec.v.x = l->v.x * a;
+	vec.v.y = l->v.y * a;
 	return vec;
 }
 
 /* 绝对值 */
 ivec2 ivec2abs(const ivec2* l) {
 	ivec2 vec;
-	vec.u.v.x = fabs(l->u.v.x);
-	vec.u.v.y = fabs(l->u.v.y);
+	vec.v.x = fabs(l->v.x);
+	vec.v.y = fabs(l->v.y);
 	return vec;
 }
 
@@ -354,30 +397,43 @@ ivec2 ivec2perpendicular(const ivec2 *l, const ivec2 *r) {
 	return ivec2subtract(l, &p);
 }
 
+/*************************************************************/
+/* ivec3                                                     */
+/*************************************************************/
+
+/* 两点相减得到向量 */
+ivec3 ivec3subtractpoint(const ipos3 *p0, const ipos3 *p1) {
+    ivec3 v;
+    v.v.x = p0->x - p1->x;
+    v.v.y = p0->y - p1->y;
+    v.v.z = p0->z - p1->z;
+    return v;
+}
+
 /* 加法*/
 ivec3 ivec3add(const ivec3 *l, const ivec3 *r) {
 	ivec3 vec;
-	vec.u.v.x = r->u.v.x + l->u.v.x;
-	vec.u.v.y = r->u.v.y + l->u.v.y;
-	vec.u.v.z = r->u.v.z + l->u.v.z;
+	vec.v.x = r->v.x + l->v.x;
+	vec.v.y = r->v.y + l->v.y;
+	vec.v.z = r->v.z + l->v.z;
 	return vec;
 }
 
 /* 减法 */
 ivec3 ivec3subtract(const ivec3 *l, const ivec3 *r) {
 	ivec3 vec;
-	vec.u.v.x = r->u.v.x - l->u.v.x;
-	vec.u.v.y = r->u.v.y - l->u.v.y;
-	vec.u.v.z = r->u.v.z - l->u.v.z;
+	vec.v.x = r->v.x - l->v.x;
+	vec.v.y = r->v.y - l->v.y;
+	vec.v.z = r->v.z - l->v.z;
 	return vec;
 }
 
 /* 乘法 */
 ivec3 ivec3multipy(const ivec3 *l, ireal a) {
 	ivec3 vec;
-	vec.u.v.x = l->u.v.x * a;
-	vec.u.v.y = l->u.v.y * a;
-	vec.u.v.z = l->u.v.z * a;
+	vec.v.x = l->v.x * a;
+	vec.v.y = l->v.y * a;
+	vec.v.z = l->v.z * a;
 	return vec;
 }
 
@@ -385,9 +441,9 @@ ivec3 ivec3multipy(const ivec3 *l, ireal a) {
  * https://en.wikipedia.org/wiki/Dot_product
  * */
 ireal ivec3dot(const ivec3 *l, const ivec3 *r) {
-	return l->u.v.x * r->u.v.x
-		+ l->u.v.y * r->u.v.y
-		+ l->u.v.z * r->u.v.z;
+	return l->v.x * r->v.x
+		+ l->v.y * r->v.y
+		+ l->v.z * r->v.z;
 }
 
 /* 乘积
@@ -395,9 +451,9 @@ ireal ivec3dot(const ivec3 *l, const ivec3 *r) {
  * */
 ivec3 ivec3cross(const ivec3 *l, const ivec3 *r) {
 	ivec3 vec;
-	vec.u.v.x = l->u.v.y * r->u.v.z - l->u.v.z * r->u.v.y;
-	vec.u.v.y = l->u.v.z * r->u.v.x - l->u.v.x * r->u.v.z;
-	vec.u.v.z = l->u.v.x * r->u.v.y - l->u.v.y * r->u.v.x;
+	vec.v.x = l->v.y * r->v.z - l->v.z * r->v.y;
+	vec.v.y = l->v.z * r->v.x - l->v.x * r->v.z;
+	vec.v.z = l->v.x * r->v.y - l->v.y * r->v.x;
 	return vec;
 }
 
@@ -414,9 +470,9 @@ ireal ivec3length(const ivec3 *l) {
 /* 绝对值 */
 ivec3 ivec3abs(const ivec3* l) {
 	ivec3 vec;
-	vec.u.v.x = fabs(l->u.v.x);
-	vec.u.v.y = fabs(l->u.v.y);
-	vec.u.v.z = fabs(l->u.v.z);
+	vec.v.x = fabs(l->v.x);
+	vec.v.y = fabs(l->v.y);
+	vec.v.z = fabs(l->v.z);
 	return vec;
 }
 
@@ -437,6 +493,261 @@ ivec3 ivec3perpendicular(const ivec3 *l, const ivec3 *r) {
 	ivec3 p = ivec3parallel(l, r);
 	return ivec3subtract(l, &p);
 }
+
+/*************************************************************/
+/* iline2d                                                   */
+/*************************************************************/
+
+/* start ==> end */
+ivec2 iline2ddirection(const iline2d *line) {
+    ivec2 v = ivec2subtractpoint(&line->end, &line->start);
+    return ivec2normalize(&v);
+}
+
+/* start ==> end , rorate -90 */
+ivec2 iline2dnormal(const iline2d *line) {
+    ireal y;
+    ivec2 v = iline2ddirection(line);
+    y = v.v.y;
+    v.v.y = -v.v.x;
+    v.v.x = y;
+    return v;
+}
+
+/**/
+ireal iline2dlength(const iline2d *line) {
+    ivec2 v = ivec2subtractpoint(&line->end, &line->start);
+    return ivec2length(&v);
+}
+
+/*
+ * Determines the signed distance from a point to this line. Consider the line as
+ * if you were standing on start of the line looking towards end. Posative distances
+ * are to the right of the line, negative distances are to the left.
+ * */
+ireal iline2dsigneddistance(const iline2d *line, const ipos *point) {
+    ivec2 v = ivec2subtractpoint(point, &line->start);
+    ivec2 normal = iline2dnormal(line);
+    return ivec2dot(&v, &normal);
+}
+
+/*
+ * Determines the signed distance from a point to this line. Consider the line as
+ * if you were standing on start of the line looking towards end. Posative distances
+ * are to the right of the line, negative distances are to the left.
+ * */
+int iline2dclassifypoint(const iline2d *line, const ipos *point, ireal epsilon) {
+    int      result = EnumPointClass_On;
+    ireal      distance = iline2dsigneddistance(line, point);
+    
+    if (distance > epsilon) {
+        result = EnumPointClass_Right;
+    } else if (distance < -epsilon) {
+        result = EnumPointClass_Left;
+    }
+    
+    return result;
+}
+
+/*
+ * Determines if two segments intersect, and if so the point of intersection. The current
+ * member line is considered line AB and the incomming parameter is considered line CD for
+ * the purpose of the utilized equations.
+ *
+ * A = PointA of the member line
+ * B = PointB of the member line
+ * C = PointA of the provided line
+ * D = PointB of the provided line
+ * */
+int iline2dintersection(const iline2d *line, const iline2d *other,  ipos *intersect) {
+    ireal Ay_minus_Cy = line->start.y - other->start.y;
+    ireal Dx_minus_Cx = other->end.x - other->start.x;
+    ireal Ax_minus_Cx = line->start.x - other->start.x;
+    ireal Dy_minus_Cy = other->end.y - other->start.y;
+    ireal Bx_minus_Ax = line->end.x - line->start.x;
+    ireal By_minus_Ay = line->end.y - line->start.y;
+    
+    ireal Numerator = (Ay_minus_Cy * Dx_minus_Cx) - (Ax_minus_Cx * Dy_minus_Cy);
+    ireal Denominator = (Bx_minus_Ax * Dy_minus_Cy) - (By_minus_Ay * Dx_minus_Cx);
+    
+    ireal FactorAB, FactorCD;
+    
+    /* if lines do not intersect, return now */
+    if (!Denominator)
+    {
+        if (!Numerator)
+        {
+            return EnumLineClass_Collinear;
+        }
+        
+        return EnumLineClass_Paralell;
+    }
+    
+    FactorAB = Numerator / Denominator;
+    FactorCD = ((Ay_minus_Cy * Bx_minus_Ax) - (Ax_minus_Cx * By_minus_Ay)) / Denominator;
+    
+    /* posting (hitting a vertex exactly) is not allowed, shift the results
+     * if they are within a minute range of the end vertecies */
+    /*	
+     if (fabs(FactorCD) < 1.0e-6f) {
+        FactorCD = 1.0e-6f;
+     } if (fabs(FactorCD - 1.0f) < 1.0e-6f) {
+        FactorCD = 1.0f - 1.0e-6f;
+     }
+     */
+    
+    /* if an interection point was provided, fill it in now */
+    if (intersect)
+    {
+        intersect->x = (line->start.x + (FactorAB * Bx_minus_Ax));
+        intersect->y = (line->start.y + (FactorAB * By_minus_Ay));
+    }
+    
+    /* now determine the type of intersection */
+    if ((FactorAB >= 0.0f) && (FactorAB <= 1.0f) && (FactorCD >= 0.0f) && (FactorCD <= 1.0f)) {
+        return EnumLineClass_Segments_Intersect;
+    } else if ((FactorCD >= 0.0f) && (FactorCD <= 1.0f)) {
+        return (EnumLineClass_A_Bisects_B);
+    } else if ((FactorAB >= 0.0f) && (FactorAB <= 1.0f)) {
+        return (EnumLineClass_B_Bisects_A);
+    }
+    
+    return EnumLineClass_Lines_Intersect;
+}
+
+/* Caculating the closest point in the segment to center pos */
+ipos iline2dclosestpoint(const iline2d *line, const ipos *center, ireal epsilon) {
+    /*@see http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html */
+    ipos closest;
+    
+    ivec2 start_to_center = ivec2subtractpoint(center, &line->start);
+    ivec2 line_direction = iline2ddirection(line);
+    ireal line_len = iline2dlength(line);
+    
+    ireal projlen = ivec2dot(&start_to_center, &line_direction);
+    if (projlen <= 0) {
+        closest = line->start;
+    } else if ( ireal_greater_than(projlen, line_len, epsilon)){
+        closest = line->end;
+    } else {
+        closest.x = line->start.x + line_direction.v.x * projlen;
+        closest.y = line->start.y + line_direction.v.y * projlen;
+    }
+    
+    return closest;
+}
+
+/*************************************************************/
+/* iline3d                                                   */
+/*************************************************************/
+
+/* start ==> end */
+ivec3 iline3ddirection(const iline3d *line) {
+    ivec3 v = ivec3subtractpoint(&line->end, &line->start);
+    return ivec3normalize(&v);
+}
+
+/**/
+ireal iline3dlength(const iline3d *line) {
+    ivec3 v = ivec3subtractpoint(&line->end, &line->start);
+    return ivec3length(&v);
+}
+
+/* find the closest point in line */
+ipos3 iline3dclosestpoint(const iline3d *line, const ipos3 *center, ireal epsilon) {
+    /*@see http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html */
+    ipos3 closest;
+    
+    ivec3 start_to_center = ivec3subtractpoint(center, &line->start);
+    ivec3 line_direction = iline3ddirection(line);
+    ireal line_len = iline3dlength(line);
+    
+    ireal projlen = ivec3dot(&start_to_center, &line_direction);
+    if (projlen <= 0) {
+        closest = line->start;
+    } else if ( ireal_greater_than(projlen, line_len, epsilon)){
+        closest = line->end;
+    } else {
+        closest.x = line->start.x + line_direction.v.x * projlen;
+        closest.y = line->start.y + line_direction.v.y * projlen;
+        closest.z = line->start.z + line_direction.v.z * projlen;
+    }
+    
+    return closest;
+}
+
+/*************************************************************/
+/* iplane                                                    */
+/*************************************************************/
+
+/* Setup Plane object given a clockwise ordering of 3D points */
+void iplaneset(iplane *plane, const ipos3 *a, const ipos3 *b, const ipos3 *c) {
+    ivec3 ab = ivec3subtractpoint(a, b);
+    ivec3 ac = ivec3subtractpoint(a, c);
+    ivec3 normal = ivec3cross(&ab, &ac);
+    ivec3 p = {{a->x, a->y, a->z}}; /*change to vec3*/
+    
+    plane->normal = ivec3normalize(&normal);
+    plane->pos = *a;
+    plane->distance = ivec3dot(&p, &plane->normal);
+}
+
+/* TODO: */
+ireal iplanesigneddistance(const iplane *plane, const ipos3 *p) {
+    return 0;
+}
+
+/* Given Z and Y, Solve for X on the plane */
+ireal iplanesolveforx(iplane *plane, ireal y, ireal z) {
+    /*
+     * Ax + By + Cz + D = 0
+     * Ax = -(By + Cz + D)
+     * x = -(By + Cz + D)/A */
+    
+    if (plane->normal.values[0] ) {
+        return ( -(plane->normal.values[1]*y
+                   + plane->normal.values[2]*z
+                   + plane->distance) / plane->normal.values[0] );
+    }
+    
+    return (0.0f);
+}
+    
+/* Given X and Z, Solve for Y on the plane */
+ireal iplanesolvefory(iplane *plane, ireal x, ireal z) {
+    /*
+     * Ax + By + Cz + D = 0
+     * By = -(Ax + Cz + D)
+     * y = -(Ax + Cz + D)/B */
+    
+    if (plane->normal.values[1]) {
+        return ( -(plane->normal.values[0]*x
+                   + plane->normal.values[2]*z
+                   + plane->distance) / plane->normal.values[1] );
+    }
+    
+    return (0.0f);
+ 
+}
+    
+/* Given X and Y, Solve for Z on the plane */
+ireal iplanesolveforz(iplane *plane, ireal x, ireal y) {
+    /*Ax + By + Cz + D = 0
+     * Cz = -(Ax + By + D)
+     * z = -(Ax + By + D)/C */
+    
+    if (plane->normal.values[2]) {
+        return ( -(plane->normal.values[0]*x
+                   + plane->normal.values[1]*y
+                   + plane->distance) / plane->normal.values[2] );
+    }
+    
+    return (0.0f);
+}
+
+/*************************************************************/
+/* irect                                                    */
+/*************************************************************/
 
 /* 判断矩形包含关系 */
 int irectcontains(const irect *con, const irect *r) {
@@ -488,14 +799,33 @@ int irectintersect(const irect *con, const icircle *c) {
 	 * ivec2 p = {c->pos.x, c->pos.y};
 	 */
 	do {
-		ivec2 v = {{{fabs(c->pos.x - con->pos.x), fabs(c->pos.y - con->pos.y)}}};
-		ivec2 h = {{{con->size.w, con->size.h}}};
-		ivec2 u =  {{{v.u.v.x - h.u.v.x, v.u.v.y - h.u.v.y}}};
-		u.u.v.x = u.u.v.x < 0 ? 0 : u.u.v.x;
-		u.u.v.y = u.u.v.y < 0 ? 0 : u.u.v.y;
-		return u.u.v.x * u.u.v.x + u.u.v.y * u.u.v.y < c->radius * c->radius;
+		ivec2 v = {{fabs(c->pos.x - con->pos.x), fabs(c->pos.y - con->pos.y)}};
+		ivec2 h = {{con->size.w, con->size.h}};
+		ivec2 u =  {{v.v.x - h.v.x, v.v.y - h.v.y}};
+		u.v.x = u.v.x < 0 ? 0 : u.v.x;
+		u.v.y = u.v.y < 0 ? 0 : u.v.y;
+		return u.v.x * u.v.x + u.v.y * u.v.y < c->radius * c->radius;
 	} while(0);
 	return 0;
+}
+
+/* Caculating the offset that circle should moved to avoid collided with the line */
+ivec2 icircleoffset(const icircle* circle, const iline2d* line) {
+    /*@see http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html */
+    ipos closest = iline2dclosestpoint(line, &circle->pos, iepsilon);
+    ivec2 dist = ivec2subtractpoint(&circle->pos, &closest);
+    ireal distlen = ivec2length(&dist);
+    ivec2 offset = {{0,0}};
+    if (ireal_greater(distlen, circle->radius)) {
+        return offset;
+    }else if(ireal_equal_zero(distlen)) {
+       /*the circle center is on line: move normal in line */
+        offset = iline2dnormal(line);
+        offset = ivec2multipy(&offset, circle->radius);
+        return offset;
+    }
+    /* normalize(dist) * (radius - distlen) */
+    return ivec2multipy(&dist, (circle->radius - distlen) / distlen);
 }
 
 /* 圆形相交: iiok, iino */
@@ -605,12 +935,64 @@ void irefrelease(iref *ref) {
 	}
 	/* 没有引用了，析构对象 */
 	if (ref->ref == 0) {
+        /* release the hold by wref and ref */
+        if (ref->wref) {
+            ref->wref->wref = NULL;
+            ref->wref = NULL;
+        }
+        /* release resources */
 		if (ref->free) {
 			ref->free(ref);
 		}else {
+            /* just release memory */
 			iobjfree(ref);
 		}
 	}
+}
+
+/*************************************************************/
+/* iwref                                                     */
+/*************************************************************/
+
+/* zero wref */
+static iwref kzero_wref = {1, NULL};
+
+/* make a weak iref by ref */
+iwref *iwrefmake(iref *ref) {
+    volatile iwref *wref;
+    if (ref == NULL) {
+        wref = (iwref*)(&kzero_wref);
+    } else if (ref->wref == NULL) {
+        /* total new wref */
+        ref->wref = iobjmalloc(iwref);
+        ref->wref->wref = icast(iwref, ref);
+        wref = ref->wref;
+    } else {
+        /* extis */
+        wref = ref->wref;
+    }
+    
+    iretain(wref);
+    return (iwref*)wref;
+}
+
+/* make a weak iref by wref */
+iwref *iwrefmakeby(iwref *wref) {
+    icheckret(wref, NULL);
+    return iwrefmake(irefcast(wref->wref));
+}
+
+/* make strong ref: need call irelease */
+iref *iwrefstrong(iwref *wref) {
+    return irefassistretain(iwrefunsafestrong(wref));
+}
+
+/* make strong ref: unneed call irelease */
+iref *iwrefunsafestrong(iwref *wref) {
+    icheckret(wref, NULL);
+    icheckret(wref != &kzero_wref, NULL);
+    
+    return icast(iref, wref->wref);
 }
 
 /* 申请自动释放池子 */
@@ -691,6 +1073,10 @@ irefjoint* irefjointmake(iref *value) {
 void irefjointfree(irefjoint* joint) {
 	icheck(joint);
 	irelease(joint->value);
+    /* release the resouce */
+    if (joint->list && joint->list->entry) {
+        joint->list->entry(joint);
+    }
 	iobjfree(joint);
 }
 
@@ -699,8 +1085,15 @@ ireflist *ireflistmake() {
 	return	iobjmalloc(ireflist);
 }
 
+/* 创建列表 */
+ireflist *ireflistmakeentry(irefjoint_entry_res_free entry) {
+    ireflist *list = iobjmalloc(ireflist);
+    list->entry = entry;
+    return list;
+}
+
 /* 获取列表长度 */
-int ireflistlen(const ireflist *list) {
+size_t ireflistlen(const ireflist *list) {
 	icheckret(list, 0);
 	return list->length;
 }
@@ -737,6 +1130,14 @@ irefjoint* ireflistadd(ireflist *list, iref *value) {
 	icheckret(list, NULL);
 	joint = irefjointmake(value);
 	return ireflistaddjoint(list, joint);
+}
+
+/* 往列表增加节点: 前置节点(会增加引用计数) */
+irefjoint* ireflistaddres(ireflist *list, iref *value, void *res) {
+    irefjoint *joint = ireflistadd(list, value);
+    icheckret(joint, NULL);
+    joint->res = res;
+    return joint;
 }
 
 /* 从节点里面移除节点 , 并且释放当前节点, 并且返回下一个节点 */
@@ -803,12 +1204,89 @@ void ireflistfree(ireflist *list) {
 	iobjfree(list);
 }
 
+/*************************************************************/
+/* irefneighbors                                             */
+/*************************************************************/
+
+/* 设置邻居间关系描述的 释放符号 */
+void ineighborsbuild(irefneighbors *neighbors, irefjoint_entry_res_free entry) {
+    icheck(neighbors);
+    neighbors->neighbors_resfree = entry;
+}
+
+/*
+ * 把节点从 有向图里面拿出来， 没有任何一个节点可以到他
+ */
+void ineighborsclean(irefneighbors *node) {
+    irefjoint* joint = NULL;
+    irefneighbors *neighbor = NULL;
+    icheck(node);
+    
+    /* disconnect to others */
+    joint = ireflistfirst(node->neighbors_to);
+    while (joint) {
+        neighbor = icast(irefneighbors, joint->value);
+        ireflistremove(neighbor->neighbors_from, irefcast(node));
+        joint = joint->next;
+    }
+    ireflistfree(node->neighbors_to);
+    node->neighbors_to = NULL;
+    
+    /* disconnect from others */
+    joint = ireflistfirst(node->neighbors_from);
+    while (joint) {
+        neighbor = icast(irefneighbors, joint->value);
+        ireflistremove(neighbor->neighbors_to, irefcast(node));
+        joint = joint->next;
+    }
+    ireflistfree(node->neighbors_from);
+    node->neighbors_from = NULL;
+}
+
+/*
+ * 没有做重复性的检查
+ * 让 from ==> to
+ */
+void ineighborsadd(irefneighbors *from, irefneighbors *to) {
+    ineighborsaddvalue(from, to, NULL, NULL);
+}
+
+/* 在有向图上加上一单向边 */
+void ineighborsaddvalue(irefneighbors *from, irefneighbors *to, void *from_to, void *to_from) {
+    icheck(from);
+    icheck(to);
+    
+    if (!from->neighbors_to) {
+        from->neighbors_to = ireflistmakeentry(from->neighbors_resfree);
+    }
+    ireflistaddres(from->neighbors_to, irefcast(to), from_to);
+    if (!to->neighbors_from) {
+        to->neighbors_from = ireflistmakeentry(to->neighbors_resfree);
+    }
+    ireflistaddres(to->neighbors_from, irefcast(from), to_from);
+}
+
+/*
+ * 没有做重复性的检查
+ * 让 from !==> to
+ */
+void ineighborsdel(irefneighbors *from, irefneighbors *to) {
+    ireflistremove(from->neighbors_to, irefcast(to));
+    ireflistremove(to->neighbors_from, irefcast(from));
+}
+
+/*invalid index */
+const int kindex_invalid = -1;
+
 /* 释放数组相关的资源 */
 static void _iarray_entry_free(struct iref* ref) {
     iarray *array = (iarray *)ref;
 
     /* 释放资源的时候把shrink关掉 */
     iarrayunsetflag(array, EnumArrayFlagAutoShirk);
+    /* 释放资源的时候把slice 标志位清理掉 */
+    iarrayunsetflag(array, EnumArrayFlagSliced);
+    
     /* 释放 */
     iarraytruncate(array, 0);
     /* 释放内存 */
@@ -830,10 +1308,11 @@ iarray *iarraymake(size_t capacity, const iarrayentry *entry) {
 	iarray *array = (iarray *)iobjmalloc(iarray);
     array->capacity = capacity;
     array->len = 0;
-    array->buffer = (char*)icalloc(capacity, entry->size);
+    array->buffer = capacity > 0 ? (char*)icalloc(capacity, entry->size) : NULL;
     array->free = _iarray_entry_free;
     array->entry = entry;
     array->flag = entry->flag;
+    array->cmp = entry->cmp;
     iretain(array);
 
     return array;
@@ -858,7 +1337,7 @@ size_t iarraycapacity(const iarray *arr) {
 
 /* 查询 */
 #define __arr_i(arr, i) ((void*)((arr)->buffer + (i) * (arr)->entry->size))
-const void* iarrayat(iarray *arr, int index) {
+const void* iarrayat(const iarray *arr, int index) {
     icheckret(arr, NULL);
     icheckret(index>=0 && index<arr->len, NULL);
 
@@ -895,9 +1374,11 @@ int iarrayremove(iarray *arr, int index) {
 
     icheckret(arr, iino);
     icheckret(index>=0 && index<arr->len, iino);
+    /* sliced array can not be removed */
+    icheckret(!iarrayisflag(arr, EnumArrayFlagSliced), iino);
     
     if (!(arr->entry->flag & EnumArrayFlagSimple)) {
-        arr->entry->swap(arr, index, arr_invalid);
+        arr->entry->swap(arr, index, kindex_invalid);
     }
 
     if (arr->flag & EnumArrayFlagKeepOrder) {
@@ -962,9 +1443,16 @@ int iarrayadd(iarray *arr, const void* value) {
 int iarrayinsert(iarray *arr, int index, const void *value, int nums) {
     int i;
     
+    /* check if we need do insert */
+    icheckret(nums > 0, iiok);
+    /* check if the index belong to [0, arr->len] */
     icheckret(index>=0 && index<=arr->len, iino);
+    /* the sliced array can not extend capacity */
+    icheckret(!iarrayisflag(arr, EnumArrayFlagSliced)
+              || (arr->len + nums) <= arr->capacity, iino);
     /* be sure the capacity is enough */
     _iarray_be_capacity(arr, arr->len + nums);
+    /* check if we have been got enough space to do inserting*/
     icheckret(arr->capacity >= arr->len + nums, iino);
     
     /*swap after*/
@@ -1008,6 +1496,8 @@ void iarraytruncate(iarray *arr, size_t len) {
 
     icheck(arr);
     icheck(arr->len > len);
+    /* sliced array can not be truncate */
+    icheck(!iarrayisflag(arr, EnumArrayFlagSliced));
     
     if (arr->entry->flag & EnumArrayFlagSimple) {
         /* direct set the length*/
@@ -1027,8 +1517,18 @@ void iarraytruncate(iarray *arr, size_t len) {
 /* 缩减容量  */
 size_t iarrayshrinkcapacity(iarray *arr, size_t capacity) {
     icheckret(arr->capacity > capacity, arr->capacity);
+    
+    /* sliced array can not be shrink */
+    icheckret(!iarrayisflag(arr, EnumArrayFlagSliced), arr->capacity);
 
     capacity = imax(arr->len, capacity);
+    return _iarray_just_capacity(arr, capacity);
+}
+
+/* 扩大容量 */
+size_t iarrayexpandcapacity(iarray *arr, size_t capacity) {
+    icheckret(arr->capacity < capacity, arr->capacity);
+    
     return _iarray_just_capacity(arr, capacity);
 }
 
@@ -1040,10 +1540,10 @@ static void _iarray_heap_shift(iarray *arr,
     int c = 2 * i + 1;
 
     while(c <= end) {
-        if (c +1 <=end && arr->entry->cmp(arr, c, c+1) < 0 ) {
+        if (c+1 <=end && arr->cmp(arr, c, c+1) < 0 ) {
             c++;
         }
-        if (arr->entry->cmp(arr, i, c) > 0) {
+        if (arr->cmp(arr, i, c) > 0) {
             break;
         } else {
             arr->entry->swap(arr, i, c);
@@ -1054,17 +1554,23 @@ static void _iarray_heap_shift(iarray *arr,
     }
 }
 
-/* 堆排序 */
-static void _iarray_sort_heap(iarray *arr,
-                int start, int end) {
-    int i, j;
+/* 在 [start, end] 上建立堆 */
+static void _iarray_heap_build(iarray *arr, int start, int end) {
+    int i;
     for (i=(end-1)/2; i>=start; i--) {
         _iarray_heap_shift(arr, i, end);
     }
+}
 
-    for (j=start; j<=end; ++j) {
-        arr->entry->swap(arr, start, end-start-j);
-        _iarray_heap_shift(arr, start, end - start - j - 1);
+/* 堆排序 */
+static void _iarray_sort_heap(iarray *arr,
+                int start, int end) {
+    int i;
+    _iarray_heap_build(arr, start, end);
+
+    for (i=start; i<=end; ++i) {
+        arr->entry->swap(arr, start, end-start-i);
+        _iarray_heap_shift(arr, start, end - start - i - 1);
     }
 }
 
@@ -1074,6 +1580,93 @@ void iarraysort(iarray *arr) {
 
     _iarray_sort_heap(arr, 0, arr->len-1);
 }
+
+/*************************************************************/
+/* iheap                                                     */
+/*************************************************************/
+
+
+/* 建立 堆操作 */
+void iheapbuild(iheap *heap) {
+    _iarray_heap_build(heap, 0, iarraylen(heap));
+}
+
+/* 堆大小 */
+size_t iheapsize(const iheap *heap) {
+    return iarraylen(heap);
+}
+
+/* 向下调整堆 */
+static void _iheapadjustup(iheap *heap, int start, int index) {
+    int parent;
+    while(index > start) {
+        parent = (index-1) / 2;
+        if ( heap->cmp(heap, index, parent) > 0) {
+            heap->entry->swap(heap, index, parent);
+            index = parent;
+        } else {
+            break;
+        }
+    }
+}
+
+/* 向下调整堆 */
+static void _iheapadjustdown(iheap *heap, int index, int end) {
+    _iarray_heap_shift(heap, index, end);
+}
+
+/* 建立 堆操作 */
+void iheapadd(iheap *heap, const void *value) {
+    int index = iarraylen(heap);
+    iarrayadd(heap, value);
+    
+    /*adjust up*/
+    _iheapadjustup(heap, 0, index);
+}
+
+/* 堆操作: 调整一个元素 */
+void iheapadjust(iheap *heap, int index) {
+    int i = index;
+    int c = 2*i + 1;
+    int start = 0;
+    int end = (int)iheapsize(heap);
+    
+    if (c+1<=end && heap->cmp(heap, c, c+1) < 0) {
+        c++;
+    }
+    if (c <= end && heap->cmp(heap, c, i) > 0) {
+        _iheapadjustdown(heap, index, end);
+    } else {
+        _iheapadjustup(heap, start, index);
+    }
+}
+
+/* 堆操作: 获取堆顶元素 */
+const void *iheappeek(const iheap *heap) {
+    icheckret(iarraylen(heap) > 0, NULL);
+    return iarrayat(heap, 0);
+}
+
+/* 堆操作: 移除堆顶元素*/
+void iheappop(iheap *heap) {
+    iheapdelete(heap, 0);
+}
+
+/* 堆操作: 移除指定的位置的元素, 仍然保持堆 */
+void iheapdelete(iheap *heap, int index) {
+    icheck(index>=0 && index<iarraylen(heap));
+
+    /*swap last one*/
+    heap->entry->swap(heap, index, iarraylen(heap)-1);
+    /*array remove it*/
+    iarrayremove(heap, iarraylen(heap)-1);
+
+    /*adjust the heap to be still on*/
+    if (iarraylen(heap) > 0 ) {
+        _iarray_heap_shift(heap, index, iarraylen(heap)-1);
+    }
+}
+
 
 /*************************************************************/
 /* iarray - copy                                             */
@@ -1099,11 +1692,11 @@ static void _iarray_entry_swap_copy(struct iarray *arr,
         tmp = buffer;
     }
     
-    if (j == arr_invalid) {
+    if (j == kindex_invalid) {
         /* arr_int[i] = 0;
         may call assign */
         _iarray_entry_assign_copy(arr, i, tmp, 1);
-    } else if (i == arr_invalid) {
+    } else if (i == kindex_invalid) {
         /* arr_int[j] = 0;
         may call assign */
         _iarray_entry_assign_copy(arr, j, tmp, 1);
@@ -1175,7 +1768,7 @@ static const iarrayentry _arr_entry_int64 = {
     EnumArrayFlagSimple |
     EnumArrayFlagKeepOrder |
     EnumArrayFlagMemsetZero,
-    sizeof(ireal),
+    sizeof(int64_t),
     _iarray_entry_swap_copy,
     _iarray_entry_assign_copy,
     _iarray_entry_cmp_int64,
@@ -1199,7 +1792,7 @@ static const iarrayentry _arr_entry_char = {
     EnumArrayFlagSimple |
     EnumArrayFlagKeepOrder |
     EnumArrayFlagMemsetZero,
-    sizeof(ireal),
+    sizeof(char),
     _iarray_entry_swap_copy,
     _iarray_entry_assign_copy,
     _iarray_entry_cmp_char,
@@ -1221,6 +1814,7 @@ static void _iarray_entry_assign_iref(struct iarray *arr,
     iref* *refvalue = (iref* *)value;
     iref* ref = NULL;
     int j = 0;
+    irefarrayentry *entry = (irefarrayentry*)arr->userdata;
     
     /* 附加很多个 */
     while (j < nums) {
@@ -1232,7 +1826,17 @@ static void _iarray_entry_assign_iref(struct iarray *arr,
             ref = refvalue[j];
         }
         
+        /* watch the index change */
+        if (arrs[i] && entry && entry->indexchange) {
+            entry->indexchange(arr, arrs[i], kindex_invalid);
+        }
+        
         iassign(arrs[i], ref);
+        
+        /* watch the index change */
+        if (ref && entry && entry->indexchange) {
+            entry->indexchange(arr, ref, i);
+        }
         ++j;
         ++i;
     }
@@ -1243,18 +1847,26 @@ static void _iarray_entry_swap_iref(struct iarray *arr,
                           int i, int j) {
     iref* tmp;
     iref* *arrs = (iref* *)arr->buffer;
-    if (j == arr_invalid) {
+    irefarrayentry *entry = (irefarrayentry*)arr->userdata;
+    
+    if (j == kindex_invalid) {
         /* arr_int[i] = 0;
          * may call assign */
         _iarray_entry_assign_iref(arr, i, 0, 1);
-    } else if (i == arr_invalid) {
+    } else if (i == kindex_invalid) {
         /* arr_int[j] = 0;
          * may call assign */
         _iarray_entry_assign_iref(arr, j, 0, 1);
     } else {
         tmp = arrs[i];
         arrs[i] = arrs[j];
-        arrs[j] = tmp;    
+        arrs[j] = tmp;
+        
+        /* watch the index change */
+        if (entry && entry->indexchange) {
+            entry->indexchange(arr, arrs[i], i);
+            entry->indexchange(arr, arrs[j], j);
+        }
     }
 }
 
@@ -1278,7 +1890,120 @@ static const iarrayentry _arr_entry_iref = {
 
 /* 内置的引用数组 */
 iarray* iarraymakeiref(size_t capacity) {
-    return iarraymake(capacity, &_arr_entry_iref);
+    return iarraymakeirefwithentry(capacity, NULL);
+}
+
+/* 内置的引用数组 */
+iarray* iarraymakeirefwithentry(size_t capacity, const irefarrayentry *refentry) {
+    iarray*  arr = iarraymake(capacity, &_arr_entry_iref);
+    arr->userdata = (void*)refentry;
+    return arr;
+}
+
+/* 定义ipos 数组 */
+static const iarrayentry _arr_entry_ipos = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ipos),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 ipos 数组*/
+iarray* iarraymakeipos(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_ipos);
+}
+
+/* 定义ipos 数组 */
+static const iarrayentry _arr_entry_ipos3 = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ipos3),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 ipos3 数组*/
+iarray* iarraymakeipos3(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_ipos3);
+}
+
+
+/* 定义isize 数组 */
+static const iarrayentry _arr_entry_isize = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(isize),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 isize 数组*/
+iarray* iarraymakeisize(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_isize);
+}
+
+/* 定义irect 数组 */
+static const iarrayentry _arr_entry_irect = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(irect),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 irect 数组*/
+iarray* iarraymakeirect(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_irect);
+}
+
+/* 定义icircle 数组 */
+static const iarrayentry _arr_entry_icircle = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(icircle),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};   
+/* 内置的 icircle 数组*/
+iarray* iarraymakeicircle(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_icircle);
+}
+
+/* 定义ivec2 数组 */
+static const iarrayentry _arr_entry_ivec2 = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ivec2),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 ivec2 数组*/
+iarray* iarraymakeivec2(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_ivec2);
+}
+
+/* 定义ivec3 数组 */
+static const iarrayentry _arr_entry_ivec3 = {
+    EnumArrayFlagAutoShirk |
+    EnumArrayFlagKeepOrder |
+    EnumArrayFlagMemsetZero,
+    sizeof(ivec3),
+    _iarray_entry_swap_copy,
+    _iarray_entry_assign_copy,
+    NULL,
+};
+/* 内置的 ivec3 数组*/
+iarray* iarraymakeivec3(size_t capacity) {
+    return iarraymake(capacity, &_arr_entry_ivec3);
 }
 
 /*************************************************************/
@@ -1295,14 +2020,25 @@ static void _islice_entry_free(iref *ref) {
 /* 左闭右开的区间 [begin, end) */
 islice *islicemake(iarray *arr, int begin, int end, int capacity) {
     islice* slice;
+    int difflen = imax(end-begin, 0);
+    int diffcap = imax(capacity-begin, 0);
     icheckret(arr, NULL);
     
-    /*begin = [0, arr->len-1] */
-    begin = imin(imax(0, begin), (int)(arr->len)-1);
+    /*begin = [0, arr->len] */
+    begin = imax(0, begin);
+    begin = imin(begin, (arr->len));
     /*end = [begin, arr->len] */
-    end = imin(imax(begin, end), arr->len);
+    end = begin + difflen;
+    end = imin(end, arr->len);
     /*capacity = [end, arr->capacity] */
-    capacity = imin(imax(end, capacity), arr->capacity);
+    capacity = imax(end, begin + diffcap);
+    capacity = imin(capacity, arr->capacity);
+    
+    /* arr marked sliced, 
+     * the array will become the const array with capacity 
+     * can not do operators: iarrayremove, iarrayshirnkcapacity, iarraytruncate
+     * */
+    iarraysetflag(arr, EnumArrayFlagSliced);
     
     slice = iobjmalloc(islice);
     slice->free = _islice_entry_free;
@@ -1317,14 +2053,79 @@ islice *islicemake(iarray *arr, int begin, int end, int capacity) {
 }
 
 /* 左闭右开的区间 [begin, end) */
-islice *islicemakeby(islice *sli, int begin, int end) {
+islice *islicemakeby(islice *sli, int begin, int end, int capacity) {
     icheckret(sli, NULL);
-    /* begin = [sli->begin, sli->end-1] */
-    begin = imin(imax(sli->begin, sli->begin + begin), imax(sli->end-1, 0));
-    /* end = [sli->begin, sli->end] */
-    end = imin(imax(sli->begin, sli->begin + end), imax(sli->end, 0));
     /* real slice */
-    return islicemake(sli->array, begin, end, sli->capacity);
+    return islicemake(sli->array,
+                      sli->begin + begin,
+                      sli->begin + end,
+                      sli->begin + capacity);
+}
+
+
+/* 通过参数创建 "begin:end:capacity"
+ * islicemakearg(arr, ":")
+ * islicemakearg(arr, ":1")
+ * islicemakearg(arr, ":1:5")
+ * islicemakearg(arr, "3:1:5")
+ * islicemakearg(arr, "3:")
+ */
+islice *islicemakearg(iarray *arr, const char* args) {
+    int params[3] = {0, (int)iarraylen(arr), (int)iarraycapacity(arr)};
+    isliceparamsparse(params, args, ':');
+    return islicemake(arr, params[0], params[1], params[2]);
+}
+
+/* 通过参数创建 "begin:end:capacity"
+ * islicemakeargby(arr, ":")
+ * islicemakeargby(arr, ":1")
+ * islicemakeargby(arr, ":1:5")
+ * islicemakeargby(arr, "3:1:5")
+ * islicemakeargby(arr, "3:")
+ */
+islice *islicemakeargby(islice *slice, const char* args) {
+    int params[3] = {0, (int)islicelen(slice), (int)islicecapacity(slice)};
+    isliceparamsparse(params, args, ':');
+    return islicemakeby(slice, params[0], params[1], params[2]);
+}
+
+/* 参数 解析 */
+void isliceparamsparse(int *params, const char* args, const char delim) {
+    int n=0;
+    int m=0;
+    int i=0;
+    int len=0;
+    char buffer[256]= {0};
+    char *arg;
+    if (args == NULL || strlen(args) == 0) {
+        return;
+    }
+    len = strlen(args);
+    if (len > 256) {
+        arg = (char*)calloc(1, len);
+    } else {
+        arg = buffer;
+    }
+    strcpy(arg, args);
+    
+    for (m=0; m<len; ++m) {
+        if (args[m] == delim) {
+            /* found
+            * [n, m) */
+            if (m > n) {
+                params[i] = atoi(arg+n);
+            }
+            n = m+1;
+            ++i;
+        }
+    }
+    if (m > n) {
+        params[i] = atoi(args+n);
+    }
+    
+    if (arg != buffer) {
+        free(arg);
+    }
 }
 
 /* 释放 */
@@ -1347,8 +2148,9 @@ size_t islicecapacity(const islice *slice) {
     return slice->capacity - slice->begin;
 }
 
-/* inner append entry */
-static islice* _islice_append(islice* slice, const void *values, int count) {
+/* 附加
+ * 用法: slice = isliceappendvalues(slice, values, count); */
+islice* isliceappendvalues(islice* slice, const void *values, int count) {
     int appendcount = count;
     int needcapacity = (slice->end+appendcount-1);
     int index = slice->end;
@@ -1356,10 +2158,7 @@ static islice* _islice_append(islice* slice, const void *values, int count) {
     size_t newcapacity = 0;
     islice *newslice;
     iarray * newarray;
-    /*
-     * TODO:
-     * panic(0) if slice->array->entry != append->array->entry
-     */
+    
     
 #define __value_i(values, i, size) (const void *)((char*)values + i * size)
     
@@ -1379,6 +2178,8 @@ static islice* _islice_append(islice* slice, const void *values, int count) {
                          __value_i(values, indexappend, slice->array->entry->size),
                          appendcount - indexappend);
         }
+        /* update the slice end cursor */
+        slice->end += appendcount;
     } else {
         newcapacity = islicecapacity(slice);
         newcapacity = imax(newcapacity, 4);
@@ -1414,24 +2215,994 @@ static islice* _islice_append(islice* slice, const void *values, int count) {
 
 /* 附加 */
 islice* isliceappend(islice *slice, const islice *append) {
-    return _islice_append(slice, __arr_i(append->array, append->begin), islicelen(append));
+    /* should be the same slice entry */
+    icheckret(slice->array->entry == slice->array->entry, slice);
+    return isliceappendvalues(slice,
+                              __arr_i(append->array, append->begin),
+                              islicelen(append));
 }
 
 /* 增加元素 */
 islice* isliceadd(islice *slice, const void *value) {
-    return _islice_append(slice, value, 1);
+    return isliceappendvalues(slice, value, 1);
 }
 
 /* 设置值*/
 int isliceset(islice *slice, int index, const void *value) {
     icheckret(slice, iino);
     icheckret(slice->array, iino);
+    icheckret(index>=0 && index<islicelen(slice), iino);
+    
     return iarrayset(slice->array, slice->begin + index, value);
 }
 
 /* 查询 */
 const void* isliceat(const islice *slice, int index) {
+    /* can not read more than slice can reached */
+    icheckret(index>=0 && index<islicelen(slice), NULL);
+    /* read from array */
     return iarrayat(slice->array, slice->begin+index);
+}
+
+/*************************************************************/
+/* istring                                                   */
+/*************************************************************/
+
+ideclarestring(kstring_zero, "");
+
+/*Make a string by c-style string */
+istring istringmake(const char* s) {
+    return istringmakelen(s, strlen(s));
+}
+
+/*Make a string by s and len*/
+istring istringmakelen(const char* s, size_t len) {
+    islice *str;
+    iarray *arr = iarraymakechar(len+1);
+    iarrayinsert(arr, 0, s, len);
+    ((char*)iarraybuffer(arr))[len] = 0;
+    
+    str = islicemake(arr, 0, len, 0);
+    iarrayfree(arr);
+    return str;
+}
+
+/*Make a copy of s with c-style string*/
+istring istringdup(const istring s) {
+    return istringmakelen(istringbuf(s), istringlen(s));
+}
+
+/*Return the string length */
+size_t istringlen(const istring s) {
+    icheckret(s, 0);
+    return islicelen(s);
+}
+
+/*visit the real string buffer*/
+const char* istringbuf(const istring s) {
+    return (const char*)isliceat(s, 0);
+}
+
+/*set the entry for stack string */
+void istringlaw(const istring s) {
+    s->array->entry = &_arr_entry_char;
+}
+
+/* Helper for irg_print() doing the actual number -> string
+ * conversion. 's' must point to a string with room for at least
+ * _IRB_LLSTR_SIZE bytes.
+ *
+ * The function returns the length of the null-terminated string
+ * representation stored at 's'. */
+#define _IRB_LLSTR_SIZE 256
+
+size_t _ill2str(char *s, int64_t value) {
+    char *p, aux;
+    uint64_t v;
+    size_t l;
+    
+    /* Generate the string representation, this method produces
+     * an reversed string. */
+    v = (value < 0) ? -value : value;
+    p = s;
+    do {
+        *p++ = '0'+(v%10);
+        v /= 10;
+    } while(v);
+    if (value < 0) *p++ = '-';
+    
+    /* Compute length and add null term. */
+    l = p-s;
+    *p = '\0';
+    
+    /* Reverse the string. */
+    p--;
+    while(s < p) {
+        aux = *s;
+        *s = *p;
+        *p = aux;
+        s++;
+        p--;
+    }
+    return l;
+}
+
+/* Identical _ill2str(), but for unsigned long long type. */
+size_t _iull2str(char *s, uint64_t v) {
+    char *p, aux;
+    size_t l;
+    
+    /* Generate the string representation, this method produces
+     * an reversed string. */
+    p = s;
+    do {
+        *p++ = '0'+(v%10);
+        v /= 10;
+    } while(v);
+    
+    /* Compute length and add null term. */
+    l = p-s;
+    *p = '\0';
+    
+    /* Reverse the string. */
+    p--;
+    while(s < p) {
+        aux = *s;
+        *s = *p;
+        *p = aux;
+        s++;
+        p--;
+    }
+    return l;
+}
+
+size_t _idouble2str(char *s, double d) {
+    size_t n = snprintf(s, 256, "%.4lf", d);
+    s[n] = 0;
+    return n;
+}
+
+/*format the string and return the value*/
+istring istringformat(const char* fmt, ...) {
+    istring s;
+    iarray *arr = iarraymakechar(strlen(fmt)*2);
+    const char *f = fmt;
+    size_t i;
+    double d;
+    va_list ap;
+    
+    char next, *str;
+    size_t l;
+    int64_t num;
+    uint64_t unum;
+    
+    char buf[_IRB_LLSTR_SIZE];
+    
+    va_start(ap,fmt);
+    f = fmt;    /* Next format specifier byte to process. */
+    i = 0;
+    while(*f) {
+        
+        /* Make sure there is always space for at least 1 char. */
+        switch(*f) {
+            case '%':
+                next = *(f+1);
+                f++;
+                switch(next) {
+                    case 's':
+                    case 'S':
+                        str = va_arg(ap,char*);
+                        l = strlen(str);/*(next == 's') ?  : sdslen(str);*/
+                        iarrayinsert(arr, iarraylen(arr), str, l);
+                        i += l;
+                        break;
+                    case 'v':
+                    case 'V':
+                        s = va_arg(ap, istring);
+                        l = istringlen(s);
+                        iarrayinsert(arr, iarraylen(arr), istringbuf(s), l);
+                        i += l;
+                        break;
+                    case 'f':
+                    case 'F':
+                        d = va_arg(ap, double);
+                        l = _idouble2str(buf, d);
+                        iarrayinsert(arr, iarraylen(arr), buf, l);
+                        i += l;
+                        break;
+                    case 'i':
+                    case 'I':
+                        if (next == 'i')
+                            num = va_arg(ap,int);
+                        else
+                            num = va_arg(ap,int64_t);
+                        {
+                        l = _ill2str(buf, num);
+                        iarrayinsert(arr, iarraylen(arr), buf, l);
+                        i += l;
+                        }
+                        break;
+                    case 'u':
+                    case 'U':
+                        if (next == 'u')
+                            unum = va_arg(ap,unsigned int);
+                        else
+                            unum = va_arg(ap,uint64_t);
+                        {
+                        l = _iull2str(buf, unum);
+                        iarrayinsert(arr, iarraylen(arr), buf, l);
+                        i += l;
+                        }
+                        break;
+                    default: /* Handle %% and generally %<unknown>. */
+                        iarrayinsert(arr, iarraylen(arr), f, 1);
+                        break;
+                }
+                break;
+            default:
+                iarrayinsert(arr, iarraylen(arr), f, 1);
+                break;
+        }
+        f++;
+    }
+    va_end(ap);
+    
+    s = islicemakearg(arr, ":");
+    iarrayfree(arr);
+    return s;
+}
+
+/*compare the two istring*/
+int istringcompare(const istring lfs, const istring rfs) {
+    size_t lfslen = istringlen(lfs);
+    size_t rfslen = istringlen(rfs);
+    int n = strncmp(istringbuf(lfs), istringbuf(rfs), imin(lfslen, rfslen));
+    if (n) {
+        return n;
+    }
+    return lfslen - rfslen;
+}
+
+/*find the index in istring */
+/*https://en.wikipedia.org/wiki/String_searching_algorithm*/
+/*[Rabin-Karp]http://mingxinglai.com/cn/2013/08/pattern-match/*/
+/*[Sunday](http://blog.163.com/yangfan876@126/blog/static/80612456201342205056344)*/
+/*[Boyer-Moore](http://blog.jobbole.com/52830/) */
+/*[Knuth-Morris-Pratt](http://www.ruanyifeng.com/blog/2013/05/Knuth%E2%80%93Morris%E2%80%93Pratt_algorithm.html)*/
+
+/*Boyer-Moore Algorithm*/
+static void _istringfind_prebmbc(unsigned char *pattern, int m, int bmBc[]) {
+    int i;
+    
+    for(i = 0; i < 256; i++) {
+        bmBc[i] = m;
+    }
+    
+    for(i = 0; i < m - 1; i++) {
+        bmBc[(int)pattern[i]] = m - 1 - i;
+    }
+}
+static void _istringfind_suffix_old(unsigned char *pattern, int m, int suff[]) {
+    int i, j;
+    suff[m - 1] = m;
+    
+    for(i = m - 2; i >= 0; i--){
+        j = i;
+        while(j >= 0 && pattern[j] == pattern[m - 1 - i + j]) j--;
+        suff[i] = i - j;
+    }
+}
+
+static void _istringfind_suffix(unsigned char *pattern, int m, int suff[]) {
+    int f, g, i;
+    
+    suff[m - 1] = m;
+    g = m - 1;
+    for (i = m - 2; i >= 0; --i) {
+        if (i > g && suff[i + m - 1 - f] < i - g)
+            suff[i] = suff[i + m - 1 - f];
+        else {
+            if (i < g)
+                g = i;
+            f = i;
+            while (g >= 0 && pattern[g] == pattern[g + m - 1 - f])
+                --g;
+            suff[i] = f - g;
+        }
+    }
+}
+
+static void _istringfind_prebmgs(unsigned char *pattern, int m, int bmGs[])
+{
+    int i, j;
+    int suff[256];
+    
+    _istringfind_suffix(pattern, m, suff);
+
+    for(i = 0; i < m; i++) {
+        bmGs[i] = m;
+    }
+    
+    j = 0;
+    for(i = m - 1; i >= 0; i--) {
+        if(suff[i] == i + 1) {
+            for(; j < m - 1 - i; j++) {
+                if(bmGs[j] == m)
+                    bmGs[j] = m - 1 - i;
+            }
+        }
+    }
+    
+    for(i = 0; i <= m - 2; i++) {
+        bmGs[m - 1 - suff[i]] = m - 1 - i;
+    }
+}
+iarray* _istringfind_boyermoore(unsigned char *pattern, int m, unsigned char *text, int n, int num)
+{
+    int i, j, bmBc[256], bmGs[256];
+    iarray *indexs = iarraymakeint(num);
+    
+    /* Preprocessing */
+    _istringfind_prebmbc(pattern, m, bmBc);
+    _istringfind_prebmgs(pattern, m, bmGs);
+    
+    /* Searching */
+    j = 0;
+    while(j <= n - m && num) {
+        for(i = m - 1; i >= 0 && pattern[i] == text[i + j]; i--);
+        if(i < 0) {
+            iarrayadd(indexs, &j);
+            /*printf("Find it, the position is %d\n", j); */
+            j += bmGs[0];
+            --num;
+        }else {
+            j += imax(bmBc[text[i + j]] - m + 1 + i, bmGs[i]);
+        }
+    }
+    
+    return indexs;
+}
+
+/*find the index in istring */
+int istringfind(const istring rfs, const char *sub, int len, int index) {
+    iarray *indexs;
+    icheckret(index>=0 && index<istringlen(rfs), kindex_invalid);
+    
+    indexs = _istringfind_boyermoore((unsigned char*)sub, len,
+                                   (unsigned char*) (istringbuf(rfs) + index),
+                                   istringlen(rfs)-index,
+                                     1);
+    
+    if (iarraylen(indexs)) {
+        index = iarrayof(indexs, int, 0);
+        iarrayfree(indexs);
+    }  else {
+        index = kindex_invalid;
+    }
+    return index;
+}
+
+/*sub string*/
+istring istringsub(const istring s, int begin, int end) {
+    return islicedby(s, begin, end);
+}
+
+/*return the array of istring*/
+iarray* istringsplit(const istring s, const char* split, int len) {
+    int subindex = 0;
+    int lastsubindex = 0;
+    int i;
+    size_t size = istringlen(s);
+    istring sub;
+    iarray* arr = iarraymakeiref(8);
+    
+    /*find all the sub*/
+    iarray* indexs = _istringfind_boyermoore((unsigned char*)split, len,
+                                             (unsigned char*) (istringbuf(s)),
+                                             size,
+                                             size);
+    if (iarraylen(indexs)) {
+        /*go through the sub*/
+        for (i=0; i<iarraylen(indexs); ++i) {
+            subindex = iarrayof(indexs, int, i);
+            sub = istringsub(s, lastsubindex, subindex);
+            lastsubindex = subindex + len;
+            
+            iarrayadd(arr, &sub);
+            irelease(sub);
+        }
+        
+        /*the last sub*/
+        subindex = iarrayof(indexs, int, 0);
+        sub = istringsub(s, lastsubindex, size);
+        iarrayadd(arr, &sub);
+        irelease(sub);
+    } else {
+        iarrayadd(arr, &s);
+    }
+    
+    /*free the find indexs*/
+    iarrayfree(indexs);
+    
+    return arr;
+}
+
+/*return the array of sting joined by dealer */
+istring istringjoin(const iarray* ss, const char* join, int len) {
+    iarray *joined = iarraymakechar(8);
+    istring s;
+    size_t i = 0;
+    size_t num = iarraylen(ss);
+    if (num) {
+        s = iarrayof(ss, istring, 0);
+        iarrayinsert(joined, 0, istringbuf(s), istringlen(s));
+    }
+    for (i=1; i<num; ++i) {
+        iarrayinsert(joined, iarraylen(joined), join, len);
+        s = iarrayof(ss, istring, i);
+        iarrayinsert(joined, iarraylen(joined), istringbuf(s), istringlen(s));
+    }
+    
+    s = islicemakearg(joined, ":");
+    iarrayfree(joined);
+    return s;
+}
+
+/*return the new istring with new component*/
+istring istringrepleace(const istring s, const char* olds, const char* news) {
+    iarray *splits = istringsplit(s, olds, strlen(olds));
+    istring ns = istringjoin(splits, news, strlen(news));
+    iarrayfree(splits);
+    
+    return ns;
+}
+
+/*return the new istring append with value*/
+istring istringappend(const istring s, const char* append) {
+    istring ns;
+    iarray *arr = iarraymakechar(istringlen(s) + strlen(append));
+    iarrayinsert(arr, 0, istringbuf(s), istringlen(s));
+    iarrayinsert(arr, iarraylen(arr), append, strlen(append));
+    ns = islicemakearg(arr, ":");
+    iarrayfree(arr);
+    
+    return ns;
+}
+
+/*baisc wrap for ::atoi */
+int istringatoi(const istring s) {
+    char buf[256+1] = {0};
+    size_t size = istringlen(s);
+    icheckret(size, 0);
+    strncpy(buf, istringbuf(s), imin(256, size));
+    
+    return atoi(buf);
+}
+
+/*[cocos2dx](https://github.com/cocos2d/cocos2d-x/blob/v3/cocos/base/ccUtils.h)*/
+/** Same to ::atof, but strip the string, remain 7 numbers after '.' before call atof.
+ * Why we need this? Because in android c++_static, atof ( and std::atof )
+ * is unsupported for numbers have long decimal part and contain
+ * several numbers can approximate to 1 ( like 90.099998474121094 ), it will return inf.
+ * This function is used to fix this bug.
+ * @param str The string be to converted to double.
+ * @return Returns converted value of a string.
+ */
+double istringatof(const istring s) {
+    char buf[256+1] = {0};
+    char* dot = NULL;
+    size_t size = istringlen(s);
+    
+    icheckret(size, 0.0);
+    strncpy(buf, istringbuf(s), imin(256, size));
+    
+    /* strip string, only remain 7 numbers after '.' */
+    dot = strchr(buf, '.');
+    if (dot != NULL && dot - buf + 8 < 256) {
+        dot[8] = '\0';
+    }
+    
+    return atof(buf);
+}
+
+/*************************************************************/
+/* iringbuffer                                               */
+/*************************************************************/
+
+static void _iringbuffer_entry_free(iref *ref) {
+    iringbuffer *r = icast(iringbuffer, ref);
+    iarrayfree(r->buf);
+    iobjfree(r);
+}
+
+/* Make a ring buffer */
+iringbuffer *iringbuffermake(size_t capacity, int flag) {
+    iringbuffer *r = iobjmalloc(iringbuffer);
+    r->buf = iarraymakechar(capacity+1);
+    r->buf->len = capacity;
+    r->free = _iringbuffer_entry_free;
+    r->flag = flag;
+    
+    iretain(r);
+    return r;
+}
+
+/* release the ring buffer */
+void iringbufferfree(iringbuffer *r) {
+    irelease(r);
+}
+
+/* close the ring buffer: can not read and write */
+void iringbufferclose(iringbuffer *r) {
+    r->flag |= EnumRingBufferFlag_ReadChannelShut;
+    r->flag |= EnumRingBufferFlag_WriteChannelShut;
+}
+
+/* shutdown the ringbuffer, to forbid the ringbuffer behavior */
+void iringbuffershut(iringbuffer *r, int channel) {
+    r->flag |= channel;
+}
+
+/* write s to ringbuffer, return count of write */
+size_t iringbufferwrite(iringbuffer *rb, const char* s, size_t length) {
+    size_t empty;
+    size_t write;
+    size_t finish = 0;
+    size_t content;
+    size_t capacity = iarraycapacity(rb->buf)-1;
+    
+    /* write to shut down rb */
+    if (rb->flag & EnumRingBufferFlag_WriteChannelShut) {
+        return -1;
+    }
+    
+    if (finish < length) do {
+        /* should break when got shut down */
+        if (rb->flag & EnumRingBufferFlag_WriteChannelShut) {
+            break;
+        }
+        /* current content size */
+        content = rb->wlen - rb->rlen;
+        
+        /* overide buffer */
+        if (rb->flag & EnumRingBufferFlag_Override) {
+            empty = length - finish;
+        } else {
+            empty = imin(capacity - content, length - finish);
+        }
+        
+        /* no space continue */
+        if (empty == 0) {
+            /* the write channel have been shutdown */
+            if (rb->flag & EnumRingBufferFlag_WriteChannelShut) {
+                break;
+            }
+            /* not block mode, will return right now */
+            if (!(rb->flag & EnumRingBufferFlag_BlockWrite)) {
+                break;
+            }
+            /* need sleep */
+            if (rb->flag & EnumRingBufferFlag_WriteSleep) {
+                isleep(0);
+            }
+            /* can be dynamic resize the space */
+            continue;
+        }
+        
+        /* write data */
+        if (empty > 0) do {
+            write = capacity - rb->wcursor;
+            write = imin(write, empty);
+            
+            memcpy(rb->buf->buffer + rb->wcursor, s + finish, write);
+            rb->wcursor += write;
+            rb->wlen += write;
+            if (rb->wcursor >= capacity) {
+                rb->wcursor = 0;
+            }
+            
+            finish += write;
+            empty -= write;
+        } while(empty > 0);
+        
+    } while(finish < length && (rb->flag & EnumRingBufferFlag_BlockWrite));
+    
+    return finish;
+}
+
+/* read to dst, until read full of dst, return the realy readed count */
+size_t iringbufferread(iringbuffer *rb, char * dst, size_t length) {
+    size_t full;
+    size_t read;
+    size_t finish = 0;
+    size_t capacity = iarraycapacity(rb->buf)-1;
+    
+    /* write to shut down rb */
+    if (rb->flag & EnumRingBufferFlag_ReadChannelShut) {
+        return -1;
+    }
+    
+    if (finish < length) do {
+        /* write to shut down rb */
+        if (rb->flag & EnumRingBufferFlag_ReadChannelShut) {
+            break;
+        }
+        
+        /* write override it */
+        if (rb->flag & EnumRingBufferFlag_Override) {
+            full = length - finish;
+        } else {
+            full = imin((rb->wlen - rb->rlen), length - finish);
+        }
+        
+        /* no content continue */
+        if (full == 0) {
+            /* the write channel have been shutdown */
+            if (rb->flag & EnumRingBufferFlag_WriteChannelShut) {
+                break;
+            }
+            /* the read operating is not block, will return right now */
+            if (!(rb->flag & EnumRingBufferFlag_BlockRead)) {
+                break;
+            }
+            /* need sleep */
+            if (rb->flag & EnumRingBufferFlag_ReadSleep) {
+                isleep(0);
+            }
+            /* can be dynamic resize the space */
+            continue;
+        }
+        
+        /* read data */
+        if (full > 0) do {
+            read = capacity - rb->rcursor;
+            read = imin(read, full);
+            
+            memcpy(dst + finish, rb->buf->buffer + rb->rcursor, read);
+            rb->rcursor += read;
+            rb->rlen += read;
+            if (rb->rcursor >= capacity) {
+                rb->rcursor = 0;
+            }
+            
+            finish += read;
+            full -= read;
+        } while(full > 0);
+        
+    } while(finish < length && (rb->flag & EnumRingBufferFlag_BlockRead));
+    
+    return finish;
+}
+
+/* return the ready count of content */
+size_t iringbufferready(iringbuffer *r) {
+    return r->wlen - r->rlen;
+}
+
+/* giving the raw buffer address, unsafe behavior */
+const char* iringbufferraw(iringbuffer *r) {
+    return (const char*)iarraybuffer(r->buf);
+}
+
+/* Print to rb: support
+ * %s(c null end string),
+ * %i(signed int),
+ * %I(signed 64 bit),
+ * %u(unsigned int),
+ * %U(unsigned 64bit) */
+size_t iringbufferfmt(iringbuffer *rb, const char * fmt, ...) {
+    const char *f = fmt;
+    size_t i;
+    va_list ap;
+    
+    char next, *str;
+    size_t l;
+    int64_t num;
+    uint64_t unum;
+    
+    char buf[_IRB_LLSTR_SIZE];
+    
+    va_start(ap,fmt);
+    f = fmt;    /* Next format specifier byte to process. */
+    i = 0;
+    while(*f) {
+        
+        /* Make sure there is always space for at least 1 char. */
+        switch(*f) {
+            case '%':
+                next = *(f+1);
+                f++;
+                switch(next) {
+                    case 's':
+                    case 'S':
+                        str = va_arg(ap,char*);
+                        l = strlen(str);/*(next == 's') ?  : sdslen(str); */
+                        iringbufferwrite(rb, str, l);
+                        i += l;
+                        break;
+                    case 'i':
+                    case 'I':
+                        if (next == 'i')
+                            num = va_arg(ap,int);
+                        else
+                            num = va_arg(ap,int64_t);
+                    {
+                        l = _ill2str(buf,num);
+                        iringbufferwrite(rb, buf, l);
+                        i += l;
+                    }
+                        break;
+                    case 'u':
+                    case 'U':
+                        if (next == 'u')
+                            unum = va_arg(ap,unsigned int);
+                        else
+                            unum = va_arg(ap,uint64_t);
+                    {
+                        l = _iull2str(buf,unum);
+                        iringbufferwrite(rb, buf, l);
+                        i += l;
+                    }
+                        break;
+                    default: /* Handle %% and generally %<unknown>. */
+                        iringbufferwrite(rb, f, 1);
+                        break;
+                }
+                break;
+            default:
+                iringbufferwrite(rb, f, 1);
+                break;
+        }
+        f++;
+    }
+    va_end(ap);
+    
+    return i;
+}
+
+/*************************************************************/
+/* ipolygon3d                                                */
+/*************************************************************/
+
+/* free resouces of polygon3d */
+static void _ipolygon3d_entry_free(iref *ref) {
+    ipolygon3d *poly = (ipolygon3d*)ref;
+    irelease(poly->pos);
+    poly->pos = NULL;
+    
+    iobjfree(poly);
+}
+
+/* create a polygon 3d*/
+ipolygon3d *ipolygon3dmake(size_t capacity){
+    ipolygon3d *poly = iobjmalloc(ipolygon3d);
+    iarray* array = iarraymakeipos3(capacity);
+    poly->pos = isliced(array, 0, 0);
+    poly->free = _ipolygon3d_entry_free;
+    
+    irelease(array);
+    iretain(poly);
+    return poly;
+}
+
+/* free a polygon 3d*/
+void ipolygon3dfree(ipolygon3d *poly) {
+    irelease(poly);
+}
+
+/* add ivec3 to polygon*/
+void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums) {
+    int i;
+    int j;
+    ireal *values;
+    ireal *max_values = (ireal*)&(poly->max);
+    ireal *min_values = (ireal*)&(poly->min);
+    ireal *accu_values = (ireal*)&(poly->accumulating);
+    int slicelen = islicelen(poly->pos);
+    icheck(v);
+    icheck(poly);
+    icheck(nums);
+    
+    /* update the min and max*/
+    for (j=0; j<nums; ++j) {
+        values = (ireal*)(&v[j]);
+        for (i=0; i<3; ++i) {
+            /* accumulating all pos */
+            accu_values[i] += values[i];
+            /* caculating the max and min */
+            if (values[i] > max_values[i]) {
+                /* for max */
+                max_values[i] = values[i];
+            } else if (values[i] < min_values[i]) {
+                /* for min */
+                min_values[i] = values[i];
+            }
+        }
+    }
+    
+    /* add vec3 */
+    poly->pos = isliceappendvalues(poly->pos, v, nums);
+    
+    /* set polygon plane */
+    if (slicelen<3 && islicelen(poly->pos) >= 3) {
+        /* set plane point */
+        iplaneset(&poly->plane,
+                  &isliceof(poly->pos, ipos3, 0),
+                  &isliceof(poly->pos, ipos3, 1),
+                  &isliceof(poly->pos, ipos3, 2));
+    }
+    
+    /* auto polygon3d finish after add pos */
+    ipolygon3dfinish(poly);
+}
+
+/* caculating the center of polygon3d  */
+void ipolygon3dfinish(ipolygon3d *poly) {
+    size_t n = islicelen(poly->pos);
+    icheck(n > 1);
+    poly->center.x = poly->accumulating.x / n;
+    poly->center.y = poly->accumulating.y / n;
+    poly->center.z = poly->accumulating.z / n;
+}
+
+/* take the polygon3d as a wrap buffer of pos */
+const ipos3 *ipolygon3dpos3(ipolygon3d *polygon, int index) {
+    size_t len = islicelen(polygon->pos);
+    icheckret(len>0, &kipos3_zero);
+    return (const ipos3 *) isliceat(polygon->pos, index%len);
+}
+
+/* take the polygon3d pos (x, z) as a wrap buffer of pos */
+ipos ipolygon3dposxz(ipolygon3d *polygon, int index) {
+    const ipos3* p3 = ipolygon3dpos3(polygon, index);
+    ipos p = {p3->x, p3->z};
+    return p;
+}
+
+/* the the edge (center-middle) point*/
+ipos3 ipolygon3dedgecenter(ipolygon3d *polygon, int index) {
+    const ipos3* p3_start = ipolygon3dpos3(polygon, index);
+    const ipos3* p3_end = ipolygon3dpos3(polygon, index+1);
+    ipos3 center = {
+        (p3_start->x + p3_end->x)/2,
+        (p3_start->y + p3_end->y)/2,
+        (p3_start->z + p3_end->z)/2,
+    };
+    return center;
+}
+
+/* if the point in polygon, just like 2d contains*/
+/* Left Hand System
+ * y     z
+ * ^     ^
+ * |    /
+ * |   /
+ * |  /
+ * | /
+ * |---------> x
+ * */
+int ipolygon3dincollum(const ipolygon3d *poly, const ipos3 *v) {
+    int inside = iino;
+    int i, j, n;
+    ipos3 *ui, *uj;
+    
+    icheckret(v, iiok);
+    icheckret(poly, iino);
+    
+    /* beyond the bounding box*/
+    if (v->x < poly->min.x ||
+        v->x > poly->max.x ||
+        v->z < poly->min.z ||
+        v->z > poly->max.z) {
+        return iino;
+    }
+    
+    /* https://en.wikipedia.org/wiki/Point_in_polygon
+     */
+    n = islicelen(poly->pos);
+    for (i = 0, j = n-1; i<n; j = i++) {
+        ui = (ipos3*)isliceat(poly->pos, i);
+        uj = (ipos3*)isliceat(poly->pos, j);
+        if ((ui->z > v->z) != (uj->z > v->z) &&
+            v->x < ((uj->x - ui->x)
+                      * (v->z - ui->z)
+                      / (uj->z - ui->z)
+                      + ui->x) ) {
+                inside = !inside;
+            }
+    }
+    
+    return inside;
+}
+
+
+
+/* free resouces of polygon3d */
+static void _ipolygon2d_entry_free(iref *ref) {
+    ipolygon2d *poly = (ipolygon2d*)ref;
+    irelease(poly->slice);
+    poly->slice = NULL;
+    
+    iobjfree(poly);
+}
+
+/* create a polygon 2d*/
+ipolygon2d *ipolygon2dmake(size_t capacity) {
+    ipolygon2d *poly = iobjmalloc(ipolygon2d);
+    iarray* array = iarraymakeivec2(capacity);
+    poly->slice = isliced(array, 0, 0);
+    poly->free = _ipolygon2d_entry_free;
+    
+    irelease(array);
+    iretain(poly);
+    return poly;
+}
+
+/* free a polygon 2d*/
+void ipolygon2dfree(ipolygon2d *poly) {
+    irelease(poly);
+}
+
+/* add ivec2 to polygon*/
+void ipolygon2dadd(ipolygon2d *poly, const ivec2 *v, int nums) {
+    int i;
+    int j;
+    icheck(v);
+    icheck(poly);
+    
+    /* update the min and max*/
+    for (j=0; j<nums; ++j) {
+        for (i=0; i<2; ++i) {
+            if (v[j].values[i] > poly->max.values[i]) {
+                /* for max */
+                poly->max.values[i] = v[j].values[i];
+            } else if (v[j].values[i] < poly->min.values[i]) {
+                /* for min */
+                poly->min.values[i] = v[j].values[i];
+            }
+        }
+    }
+    
+    /* add vec2 */
+    poly->slice = isliceappendvalues(poly->slice, v, nums);
+}
+
+/* if the point in polygon
+ * http://stackoverflow.com/questions/217578/how-can-i-determine-whether-a-2d-point-is-within-a-polygon
+ * https://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+ **/
+int ipolygon2dcontains(const ipolygon2d *poly, const ivec2 *v) {
+    int inside = iino;
+    int i, j, n;
+    ivec2 *ui, *uj;
+    
+    icheckret(v, iiok);
+    icheckret(poly, iino);
+    
+    /* beyond the bounding box*/
+    if (v->v.x < poly->min.v.x ||
+        v->v.x > poly->max.v.x ||
+        v->v.y < poly->min.v.y ||
+        v->v.y > poly->max.v.y) {
+        return iino;
+    }
+    
+    /* https://en.wikipedia.org/wiki/Point_in_polygon
+     */
+    n = islicelen(poly->slice);
+    for (i = 0, j = n-1; i<n; j = i++) {
+        ui = (ivec2*)isliceat(poly->slice, i);
+        uj = (ivec2*)isliceat(poly->slice, j);
+        if ((ui->v.y>v->v.y) != (uj->v.y > v->v.y) &&
+            v->v.x < ((uj->v.x - ui->v.x)
+                        * (v->v.y - ui->v.y)
+                        / (uj->v.y - ui->v.y)
+                        + ui->v.x) ) {
+            inside = !inside;
+        }
+    }
+    
+    return inside;
 }
 
 /* cache 的 绑定在 ref 上的回调 */
@@ -1445,14 +3216,20 @@ void _ientrywatch_cache(iref *ref) {
 
 	len = ireflistlen(cache->cache);
 	if (len < cache->capacity) {
+        /* may release some resource hold by ref */
+        if (cache->whenadd) {
+            cache->whenadd(ref);
+        }
+        /* entry the cache */
 		ireflistadd(cache->cache, ref);
 	}else if (cache->envicted){
+        /* the cache is full, may expand the capacity */
 		cache->envicted(ref);
 	}
 }
 
 /* 创造一个cache */
-irefcache *irefcachemake(int capacity, icachenewentry newentry) {
+irefcache *irefcachemake(size_t capacity, icachenewentry newentry) {
 	irefcache *cache = iobjmalloc(irefcache);
 	cache->cache = ireflistmake();
 	cache->capacity = capacity;
@@ -1521,7 +3298,7 @@ void irefcachefree(irefcache *cache) {
 }
 
 /* 当前缓冲区的存储的对象个数 */
-int irefcachesize(irefcache *cache) {
+size_t irefcachesize(irefcache *cache) {
 	return ireflistlen(cache->cache);
 }
 
@@ -1604,7 +3381,7 @@ void ifreenodekeeper(inode *node) {
 	node->units = NULL;
 	node->unitcnt = 0;
 
-	ineighborsclean(node);
+	ineighborsclean(icast(irefneighbors, node));
 	ifreenode(node);
 }
 
@@ -1768,58 +3545,7 @@ static inode* _iaddnodetoparent(imap *map, inode *node, int codei, int idx, cons
 	return child;
 }
 
-/*
- * 把节点从 有向图里面拿出来， 没有任何一个节点可以到他
- */
-void ineighborsclean(inode *node) {
-	irefjoint* joint = NULL;
-	inode *neighbor = NULL;
-	icheck(node);
 
-	/* disconnect to others */
-	joint = ireflistfirst(node->neighbors_walkable);
-	while (joint) {
-		neighbor = icast(inode, joint->value);
-		ireflistremove(neighbor->neighbors, irefcast(node));
-		joint = joint->next;
-	}
-	ireflistfree(node->neighbors_walkable);
-	node->neighbors_walkable = NULL;
-
-	/* disconnect from others */
-	joint = ireflistfirst(node->neighbors);
-	while (joint) {
-		neighbor = icast(inode, joint->value);
-		ireflistremove(neighbor->neighbors_walkable, irefcast(node));
-		joint = joint->next;
-	}
-	ireflistfree(node->neighbors);
-	node->neighbors = NULL;
-}
-
-/*
- * 没有做重复性的检查
- * 让 node ==> to
- */
-void ineighborsadd(inode *node, inode *to) {
-    if (!node->neighbors_walkable) {
-        node->neighbors_walkable = ireflistmake();
-    }
-    ireflistadd(node->neighbors_walkable, irefcast(to));
-    if (!to->neighbors) {
-        to->neighbors = ireflistmake();
-    }
-    ireflistadd(to->neighbors, irefcast(node));
-}
-
-/*
- * 没有做重复性的检查
- * 让 node !==> to
- */
-void ineighborsdel(inode *node, inode *to) {
-    ireflistremove(node->neighbors_walkable, irefcast(to));
-    ireflistremove(to->neighbors, irefcast(node));
-}
 
 /* 移除节点 */
 static int _iremovenodefromparent(imap *map, inode *node) {
@@ -1850,7 +3576,7 @@ static int _iremovenodefromparent(imap *map, inode *node) {
 	node->state = 0;
 
 	/* 清理 邻居 节点*/
-	ineighborsclean(node);
+	ineighborsclean(icast(irefneighbors, node));
 
 #if open_node_utick
 	node->utick = 0;
@@ -2250,7 +3976,7 @@ void imapstatedesc(const imap *map, int require,
 	if (require & EnumMapStateNode) {
 		ilog("%s Node: Count=%lld\n", tag, map->state.nodecount);
 		ilog("%s Node-Leaf: Count=%lld\n", tag, map->state.leafcount);
-		ilog("%s Node-Cache: Count=%d\n", tag, irefcachesize(map->nodecache));
+		ilog("%s Node-Cache: Count=%lu\n", tag, irefcachesize(map->nodecache));
 	}
 	/* 单元信息 */
 	if (require & EnumMapStateUnit) {
@@ -2407,7 +4133,7 @@ inode *imapgetnode(const imap *map, const icode *code, int level, int find) {
 		node = node->childs[codei];
 	}
 	iplog(__Since(micro), "[IMAP-Node] Find Node (%d, %s) With Result %p\n",
-			level, code->code, node);
+			level, code->code, (void*)node);
 
 	/* 尽可能的返回 */
 	if (find == EnumFindBehaviorFuzzy) {
@@ -2844,6 +4570,53 @@ ifilter *ifiltermake_rect(const ipos *pos, const isize *size) {
 	return filter;
 }
 
+/* 线段过滤 
+ * 先求出线段上离圆心最近的点，然后算距离
+ * http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html
+ */
+static int _ientryfilter_line(imap *map,  const ifilter *filter, const iunit* unit) {
+    const ipos *center = &unit->pos;
+    const iline2d *line = &filter->s.u.line.line;
+    ireal epsilon = filter->s.u.line.epsilon;
+    ireal distanceradius = epsilon;
+    ipos closest = iline2dclosestpoint(line, center, epsilon);
+    ireal distance;
+    
+#if iiradius
+    distanceradius += unit->radius * unit->radius;
+#endif
+    distance = idistancepow2(center, &closest);
+    if (ireal_less(distance, distanceradius)) {
+        return iiok;
+    }
+    return iino;
+}
+
+/* 线段过滤器的指纹信息 */
+static int64_t _ientryfilterchecksum_line(imap *map, const ifilter *d) {
+	int64_t hash = 0;
+
+	/* line */
+	_ihash(&hash, __realint(d->s.u.line.line.start.x));
+	_ihash(&hash, __realint(d->s.u.line.line.start.y));
+	_ihash(&hash, __realint(d->s.u.line.line.end.x));
+	_ihash(&hash, __realint(d->s.u.line.line.end.y));
+	_ihash(&hash, __realint(d->s.u.line.epsilon));
+
+	return hash;
+}
+
+/*线段过滤器*/
+ifilter *ifiltermake_line2d(const ipos *from, const ipos *to, ireal epsilon) {
+    ifilter *filter = ifiltermake();
+    filter->s.u.line.line.start = *from;
+    filter->s.u.line.line.end = *to;
+    filter->s.u.line.epsilon = epsilon;
+    filter->entry = _ientryfilter_line;
+    filter->entrychecksum =_ientryfilterchecksum_line;
+    return filter;
+}
+
 /* 搜集树上的所有单元 */
 void imapcollectunit(imap *map, const inode *node, ireflist *list, const ifilter *filter, ireflist *snap) {
 	int i;
@@ -3006,9 +4779,23 @@ int64_t imapchecksumnodelist(imap *map, const ireflist *list, int64_t *maxtick, 
 	return hash;
 }
 
+/* collect the inode and not keep retain */
+inode * _imapcollectnodefrompoint(imap *map, const ipos *point, int level, ireflist *collects) {
+    icode code;
+    inode *node;
+    imapgencode(map, point, &code);
+    node = imapgetnode(map, &code, level, EnumFindBehaviorAccurate);
+    if (node && !_state_is(node->state, EnumNodeStateSearching)) {
+        _state_add(node->state, EnumNodeStateSearching);
+        ireflistadd(collects, irefcast(node));
+        return node;
+    }
+    return NULL;
+}
+
 /* 搜索 */
 void imapsearchfromnode(imap *map, const inode *node,
-		isearchresult* result, ireflist *innodes) {
+		isearchresult* result, const ireflist *innodes) {
 	irefjoint *joint;
 	inode *searchnode;
 	int64_t micro = __Micros;
@@ -3055,59 +4842,140 @@ void imapsearchfromnode(imap *map, const inode *node,
 	/* 性能日志 */
 	iplog(__Since(micro),
 			"[MAP-Unit-Search] Search-Node "
-			"(%d, %s) --> Result: %d Units \n",
+			"(%d, %s) --> Result: %lu Units \n",
 			node->level, node->code.code, ireflistlen(result->units));
+}
+
+/*to see if we clear the node searching tag*/
+static void _imapsearchcollectnode_withclear(imap *map, const irect *rect, int clear, ireflist *collects) {
+    ipos tpos;
+    inode *tnode = NULL;
+    int i;
+    int level = map->divide;
+    /*
+     *^
+     *|(1)(2)
+     *|(0)(3)
+     *|__________>
+     */
+    ireal offsets[] = {rect->pos.x, rect->pos.y,
+        rect->pos.x, rect->pos.y + rect->size.h,
+        rect->pos.x + rect->size.w, rect->pos.y + rect->size.h,
+        rect->pos.x + rect->size.w, rect->pos.y };
+    
+    /* 可能的节点层级 */
+    while (level > 0 && map->nodesizes[level].h < rect->size.h) {
+        --level;
+    }
+    while (level > 0 && map->nodesizes[level].w < rect->size.w) {
+        --level;
+    }
+    
+    /* 获取可能存在数据的节点 */
+    for (i=0; i<4; ++i) {
+        tpos.x =  offsets[2*i];
+        tpos.y =  offsets[2*i+1];
+        /* 跟刚刚一样的节点 */
+        if (tnode && tpos.x >= tnode->code.pos.x
+            && (tnode->code.pos.x + map->nodesizes[tnode->level].w > tpos.x)
+            && tpos.y >= tnode->code.pos.y
+            && (tnode->code.pos.y + map->nodesizes[tnode->level].h > tpos.y)) {
+            continue;
+        }
+        
+        /* TODO: can use the imapmovecode to optimaze*/
+        _imapcollectnodefrompoint(map, &tpos, level, collects);
+    }
+    
+    /* 清理标记 */
+    if (clear == iiok) {
+        imapcollectcleannodetag(map, collects);
+    }
 }
 
 /* 收集包含指定矩形区域的节点(最多4个) */
 void imapsearchcollectnode(imap *map, const irect *rect, ireflist *collects) {
-	icode code;
-	ipos tpos;
-	inode *tnode = NULL;
-	int i;
-	int level = map->divide;
-	/*
-	 *^
-	 *|(1)(2)
-	 *|(0)(3)
-	 *|__________>
-	 */
-	ireal offsets[] = {rect->pos.x, rect->pos.y,
-		rect->pos.x, rect->pos.y + rect->size.h,
-		rect->pos.x + rect->size.w, rect->pos.y + rect->size.h,
-		rect->pos.x + rect->size.w, rect->pos.y };
+    _imapsearchcollectnode_withclear(map, rect, iiok, collects);
+}
 
-	/* 可能的节点层级 */
-	while (level > 0 && map->nodesizes[level].h < rect->size.h) {
-		--level;
-	}
-	while (level > 0 && map->nodesizes[level].w < rect->size.w) {
-		--level;
-	}
+/**/
+static irect _irect_make_from(const ipos *p, const ipos *t) {
+    irect r;
+    
+    r.pos.x = imin(p->x, t->x);
+    r.pos.y = imin(p->y, t->y);
+    r.size.w = imax(fabs(p->x - t->x), iepsilon);
+    r.size.h = imax(fabs(p->y - t->y), iepsilon);
+    return r;
+}
 
-	/* 获取可能存在数据的节点 */
-	for (i=0; i<4; ++i) {
-		tpos.x =  offsets[2*i];
-		tpos.y =  offsets[2*i+1];
-		/* 跟刚刚一样的节点 */
-		if (tnode && tpos.x >= tnode->code.pos.x
-			&& (tnode->code.pos.x + map->nodesizes[tnode->level].w > tpos.x)
-			&& tpos.y >= tnode->code.pos.y
-			&& (tnode->code.pos.y + map->nodesizes[tnode->level].h > tpos.y)) {
-			continue;
-		}
+/* expand the rect with radius */
+static void _irect_expand_radius(irect *r, ireal radius) {
+    r->pos.x -= radius;
+    r->pos.y -= radius;
+    r->size.w += 2 * radius;
+    r->size.h += 2 * radius;
+}
 
-		/* TODO: can use the imapmovecode to optimaze*/
-		imapgencode(map, &tpos, &code);
-		tnode = imapgetnode(map, &code, level, EnumFindBehaviorAccurate);
-		if (tnode && !_state_is(tnode->state, EnumNodeStateSearching)) {
-			_state_add(tnode->state, EnumNodeStateSearching);
-			ireflistadd(collects, irefcast(tnode));
-		}
-	}
-
-	/* 清理标记 */
-	imapcollectcleannodetag(map, collects);
+/* Collecting nodes that intersected with line with map radius */
+void imapsearchcollectline(imap *map, const iline2d *line, ireflist *collects) {
+    ivec2 line_direction = iline2ddirection(line);
+    ireal line_len = iline2dlength(line);
+    
+    ireal radius = 0;
+    ireal movedelta = 0;
+    
+    ipos start = line->start;
+    ipos begin;
+    ipos end;
+    irect r;
+    
+    int movecnt;
+    int i;
+    int level = map->divide;
+    
+#if iiradius
+    radius += map->maxradius;
+    /* if the radius grater than zero,
+     * we should move back the dir with radius*/
+    if (ireal_greater_zero(radius)) {
+        start = ivec2movepoint(&line_direction, -radius, &start);
+        line_len += 2*radius;
+    }
+#endif
+    
+    /* every step will take max 4 node */
+    /* calcuating the node level */
+    while (level > 0 && map->nodesizes[level].h < line_len/4) {
+        --level;
+    }
+    while (level > 0 && map->nodesizes[level].w < line_len/4) {
+        --level;
+    }
+    /* calcuating the step counts and step delta*/
+    movedelta = imin(map->nodesizes[level].h, map->nodesizes[level].w);
+    movecnt = (int)((line_len + movedelta - iepsilon) / movedelta);
+    
+    /* move step by step*/
+    /* collect all the relatived node */
+    begin = start;
+    for (i=0; i < movecnt; ++i) {
+        /* move one step */
+        end = ivec2movepoint(&line_direction, (i+1) * movedelta, &start);
+        r = _irect_make_from(&begin, &end);
+        
+        /*expand the rect with radius*/
+#if iiradius
+        _irect_expand_radius(&r, map->maxradius);
+#endif
+        
+        /* collect the inode*/
+        _imapsearchcollectnode_withclear(map, &r, iino, collects);
+        begin = end;
+    }
+    
+    /* clean the searing tag in node */
+    imapcollectcleannodetag(map, collects);
 }
 
 /* 计算给定节点列表里面节点的最小公共父节点 */
@@ -3153,26 +5021,9 @@ void imapsearchfromrectwithfilter(imap *map, const irect *rect,
 
 	/* 收集可能的候选节点 */
 	imapsearchcollectnode(map, rect, collects);
-
-	/* 没有任何潜在的节点 */
-	if (ireflistlen(collects) == 0) {
-		ireflistfree(collects);
-        /* 清理以前的搜索结果 */
-        isearchresultclean(result);
-		return;
-	}
-
-	/* 计算父节点 */
-	node = imapcaculatesameparent(map, collects);
-
-	/* 造一个距离过滤器 */
-	ifilteradd(result->filter, filter);
-
-	/* 从节点上搜寻结果 */
-	imapsearchfromnode(map, node, result, collects);
-
-	/* 移除范围过滤器 */
-	ifilterremove(result->filter, filter);
+    
+    /* searching the collects */
+    imapsearchfromcollectwithfilter(map, collects, result, filter);
 
 	/* 释放所有候选节点 */
 	ireflistfree(collects);
@@ -3180,11 +5031,36 @@ void imapsearchfromrectwithfilter(imap *map, const irect *rect,
 	/* 性能日志 */
 	iplogwhen(__Since(micro), 10, "[MAP-Unit-Search] Search-Node-Range From: "
 			"(%d, %s: (%.3f, %.3f)) In Rect (%.3f, %.3f , %.3f, %.3f) "
-			"---> Result : %d Units \n",
+			"---> Result : %lu Units \n",
 			node->level, node->code.code,
 			node->code.pos.x, node->code.pos.y,
 			rect->pos.x, rect->pos.y, rect->size.w, rect->size.h,
 			ireflistlen(result->units));
+}
+
+/* Collecting units from nodes(collects) with the filter */
+void imapsearchfromcollectwithfilter(imap *map, const ireflist* collects,
+                                     isearchresult *result, ifilter *filter) {
+    /* parent */
+    inode *node;
+    /* 没有任何潜在的节点 */
+    if (ireflistlen(collects) == 0) {
+        /* 清理以前的搜索结果 */
+        isearchresultclean(result);
+        return;
+    }
+    
+    /* 计算父节点 */
+    node = imapcaculatesameparent(map, collects);
+    
+    /* 造一个距离过滤器 */
+    ifilteradd(result->filter, filter);
+    
+    /* 从节点上搜寻结果 */
+    imapsearchfromnode(map, node, result, collects);
+    
+    /* 移除范围过滤器 */
+    ifilterremove(result->filter, filter);
 }
 
 /* 从地图上搜寻单元, 并附加条件 filter */
@@ -3207,6 +5083,26 @@ void imapsearchfrompos(imap *map, const ipos *pos,
 	imapsearchfromrectwithfilter(map, &rect, result, filter);
 
 	ifilterfree(filter);
+}
+
+/* 从地图上搜寻单元: 视野检测*/
+void imaplineofsight(imap *map, const ipos *from,
+                     const ipos *to, isearchresult *result) {
+    iline2d line = {*from, *to};
+    /* make node list*/
+    ireflist *collects = ireflistmake();
+    /* make line filter*/
+    ifilter *filter = ifiltermake_line2d(from, to, iepsilon);
+    
+    /* collecting the node with line*/
+    imapsearchcollectline(map, &line, collects);
+    
+    /* collect the unit with filter in collects*/
+    imapsearchfromcollectwithfilter(map, collects, result, filter);
+    
+    /* free resouces*/
+    ireflistfree(collects);
+    ifilterfree(filter);
 }
 
 /* 从地图上搜寻单元 */
