@@ -143,6 +143,15 @@ int inextpot(int size);
     
 /* sleeping the current thread */
 void isleep(unsigned int milliseconds);
+    
+/* caculating enough space for the base64 algorithm */
+#define ibase64_encode_out_size(s)	(((s) + 2) / 3 * 4 + 1) /*pendding a zero: c-style-ending*/
+#define ibase64_decode_out_size(s)	(((s)) / 4 * 3)
+   
+/* base64 encode */
+int ibase64encode_n(const unsigned char *in, size_t inlen, char *out, size_t *outsize);
+/* base64 decode */
+int ibase64decode_n(const char *in, size_t inlen, unsigned char *out, size_t *outsize);
 
 /*************************************************************/
 /* ipos                                                      */
