@@ -294,6 +294,46 @@ void isleep(unsigned int milliseconds) {
     sleep(milliseconds);
 #endif
 }
+
+/*create resource*/
+void imutexinit(imutex *mutex) {
+#ifdef WIN32
+    mutex->_mutex = CreateMutex(NULL, 0, NULL);
+#else
+    /* recursive mutex */
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&mutex->_mutex, &attr);
+#endif
+}
+/*release resource*/
+void imutexrelease(imutex *mutex) {
+#ifdef WIN32
+    CloseHandle(mutex->_mutex);
+#else
+    pthread_mutex_destroy(&mutex->_mutex);
+#endif
+}
+
+/*lock mutex*/
+void imutexlock(imutex *mx) {
+#ifdef WIN32
+    WaitForSingleObject(mx->_mutex, 0);
+#else
+    pthread_mutex_lock(&mx->_mutex);
+#endif
+}
+
+/*unlock mutex*/
+void imutexunlock(imutex *mx) {
+#ifdef WIN32
+    ReleaseMutex(mx->_mutex);
+#else
+    pthread_mutex_unlock(&mx->_mutex);
+#endif   
+}
+
 static const char _base64EncodingTable[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const short _base64DecodingTable[256] = {
     -2, -2, -2, -2, -2, -2, -2, -2, -2, -1, -1, -2, -1, -1, -2, -2,

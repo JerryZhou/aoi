@@ -46,6 +46,7 @@ typedef _uint32 uint32_t;
 #include <inttypes.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <pthread.h>
 #endif /* end of: _WIN32 */
 
 /*****
@@ -143,6 +144,25 @@ int inextpot(int size);
     
 /* sleeping the current thread */
 void isleep(unsigned int milliseconds);
+    
+/* recursive mutex */
+typedef struct imutex {
+#ifdef WIN32
+    HANDLE _mutex;
+#else
+    pthread_mutex_t _mutex;
+#endif
+}imutex;
+    
+/*create resource*/
+void imutexinit(imutex *mutex);
+/*release resource*/
+void imutexrelease(imutex *mutex);
+
+/*lock mutex*/
+void imutexlock(imutex *mx);
+/*unlock mutex*/
+void imutexunlock(imutex *mx);
     
 /* caculating enough space for the base64 algorithm */
 #define ibase64_encode_out_size(s)	(((s) + 2) / 3 * 4 + 1) /*pendding a zero: c-style-ending*/
