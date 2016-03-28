@@ -75,6 +75,9 @@ extern "C" {
 
 /* 是否启动单位半径支持 */
 #define iiradius (1)
+    
+/* if we support thread safe in meta system and ref */
+#define iithreadsafe (1)
 
 /* 常用布尔宏 */
 #define iiyes 1
@@ -145,6 +148,10 @@ int inextpot(int size);
 /* sleeping the current thread */
 void isleep(unsigned int milliseconds);
     
+/*************************************************************/
+/* imutex                                                    */
+/*************************************************************/
+
 /* recursive mutex */
 typedef struct imutex {
 #ifdef WIN32
@@ -164,6 +171,29 @@ void imutexlock(imutex *mx);
 /*unlock mutex*/
 void imutexunlock(imutex *mx);
     
+/*************************************************************/
+/* iatomic                                                    */
+/*************************************************************/
+/* compare the store with expected, than store the value with desired */
+uint32_t iatomiccompareexchange(volatile uint32_t *store, uint32_t expected, uint32_t desired);
+
+/* fetch the old value and store the with add*/
+uint32_t iatomicadd(volatile uint32_t *store, uint32_t value);
+
+/* fetch the old value, than do exchange operator */
+uint32_t iatomicexchange(volatile uint32_t *store, uint32_t value);
+    
+/* atomic increment, return the new value */
+uint32_t iatomccincrement(volatile uint32_t *store);
+
+/* atomic decrement, return the new value */
+uint32_t iatomicdecrement(volatile uint32_t *store);
+    
+    
+/*************************************************************/
+/* ibase64                                                   */
+/*************************************************************/
+
 /* caculating enough space for the base64 algorithm */
 #define ibase64_encode_out_size(s)	(((s) + 2) / 3 * 4 + 1) /*pendding a zero: c-style-ending*/
 #define ibase64_decode_out_size(s)	(((s)) / 4 * 3)
@@ -530,6 +560,11 @@ typedef struct imeta {
     int64_t current;
     int64_t alloced;
     int64_t freed;
+    
+/* support thread safe for meta system */
+#if iithreadsafe
+    imutex mutex; /*will never release resouce until program ended */
+#endif
 }imeta;
 
 /* 获取类型的元信息 */
@@ -624,7 +659,7 @@ void iaoimemorystate() ;
 /*************************************************************/
 
 /* 定义引用计数，基础对象 */
-#define irefdeclare volatile int ref; volatile struct iwref * wref; struct irefcache* cache; ientryfree free; ientrywatch watch
+#define irefdeclare volatile uint32_t ref; volatile struct iwref * wref; struct irefcache* cache; ientryfree free; ientrywatch watch
 /* iref 转换成 target */
 #define icast(type, v) ((type*)(v))
 /* 转换成iref */

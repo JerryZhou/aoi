@@ -72,13 +72,34 @@ static int gettimeofday(struct timeval *tp, void *tzp)
 
 #if iimeta
 /* 内存统计 */
-int64_t gcallocsize = 0;
-int64_t gfreesize = 0;
-int64_t gholdsize = 0;
+volatile int64_t gcallocsize = 0;
+volatile int64_t gfreesize = 0;
+volatile int64_t gholdsize = 0;
+
+#if iithreadsafe
+static imutex *_imeta_mutex() {
+    static imutex realmutex;
+    static imutex *mutex = NULL;
+    if (mutex == NULL) {
+        mutex = &realmutex;
+        imutexinit(mutex);
+    }
+    return mutex;
+}
+#define _imeta_global_lock imutexlock(_imeta_mutex())
+#define _imeta_global_unlock imutexunlock(_imeta_mutex())
+#define _imeta_lock imutexlock(&meta->mutex)
+#define _imeta_unlock imutexunlock(&meta->mutex)
+#else
+#define _imeta_global_lock (void)0
+#define _imeta_global_unlock (void)0
+#define _imeta_lock (void)meta
+#define _imeta_unlock (void)meta
+#endif
 
 #undef __ideclaremeta
 /* #define __ideclaremeta(type, cap) {.name=#type, .size=sizeof(type), .current=0, .alloced=0, .freed=0, .cache={.root=NULL, .length=0, .capacity=cap}}*/
-#define __ideclaremeta(type, cap) {#type, {NULL, 0, cap}, sizeof(type), 0, 0, 0}
+#define __ideclaremeta(type, cap) {#type, {NULL, 0, cap}, sizeof(type), -1, 0, 0}
 /* 所有类型的元信息系统 */
 imeta gmetas[] = {__iallmeta,
 	__ideclaremeta(imeta, 0)
@@ -104,11 +125,21 @@ static int gmetacountuser = 0;
 
 /* 获取类型的元信息 */
 imeta *imetaget(int idx) {
+    imeta *meta = NULL;
+    
 	if (idx < 0) {
 		return NULL;
 	}
 	if (idx < gmetacount) {
-		return &gmetas[idx];
+		meta = &gmetas[idx];
+        /*take current as the mark for first time*/
+        if (meta->current == -1) {
+            meta->current = 0;
+#if iithreadsafe
+            imutexinit(&meta->mutex);
+#endif
+        }
+        return meta;
 	}
 	idx -= gmetacount;
 	if (idx <  gmetacountuser ) {
@@ -122,6 +153,9 @@ int imetaregister(const char* name, int size, int capacity) {
 	gmetasuser[gmetacountuser].name = name;
 	gmetasuser[gmetacountuser].size = size;
 	gmetasuser[gmetacountuser].cache.capacity = capacity;
+#if iithreadsafe
+    imutexinit(&gmetasuser[gmetacountuser].mutex);
+#endif
 	return gmetacount + gmetacountuser++;
 }
 
@@ -130,6 +164,9 @@ int imetaregister(const char* name, int size, int capacity) {
  */
 static iobj *_imetapoll(imeta *meta) {
 	iobj *obj = NULL;
+    int newsize = 0;
+   
+    _imeta_lock;
 	if (meta->cache.length) {
 		obj = meta->cache.root;
 		meta->cache.root = meta->cache.root->next;
@@ -137,35 +174,56 @@ static iobj *_imetapoll(imeta *meta) {
 		--meta->cache.length;
 		memset(obj->addr, 0, obj->meta->size);
 	}else {
-		int newsize = sizeof(iobj) + meta->size;
+		newsize = sizeof(iobj) + meta->size;
 		obj = (iobj*)icalloc(1, newsize);
 		obj->meta = meta;
 		obj->size = newsize;
 		obj->meta->alloced += newsize;
 		obj->meta->current += newsize;
-		gcallocsize += newsize;
-		gholdsize += newsize;
+		
 	}
-
+    _imeta_unlock;
+    
+    if (newsize) {
+        _imeta_global_lock;
+        gcallocsize += newsize;
+		gholdsize += newsize;
+        _imeta_global_unlock;
+    }
+    
 	return obj;
 }
 
 /* 释放对象 */
 void imetaobjfree(iobj *obj) {
+    imeta *meta = obj->meta;
+    
+    _imeta_lock;
 	obj->meta->current -= obj->size;
 	obj->meta->freed += obj->size;
+    _imeta_unlock;
+    
+    _imeta_global_lock;
 	gfreesize += obj->size;
 	gholdsize -= obj->size;
+    _imeta_global_unlock;
+    
 	ifree(obj);
 }
 
 /* Meta 的缓冲区管理 */
 void imetapush(iobj *obj) {
+    imeta *meta = obj->meta;
+    
+    _imeta_lock;
 	if (obj->meta->cache.length < obj->meta->cache.capacity) {
 		obj->next = obj->meta->cache.root;
 		obj->meta->cache.root = obj;
 		++obj->meta->cache.length;
+        _imeta_unlock;
 	} else {
+        _imeta_unlock;
+        
 		imetaobjfree(obj);
 	}
 }
@@ -190,6 +248,8 @@ void iaoicacheclear(imeta *meta) {
 	iobj *next = NULL;
 	iobj *cur = NULL;
 	icheck(meta->cache.length);
+    
+    _imeta_lock;
 	cur = meta->cache.root;
 	while (cur) {
 		next = cur->next;
@@ -198,6 +258,7 @@ void iaoicacheclear(imeta *meta) {
 	}
 	meta->cache.root = NULL;
 	meta->cache.length = 0;
+    _imeta_unlock;
 }
 
 /* 打印当前内存状态 */
@@ -333,6 +394,55 @@ void imutexunlock(imutex *mx) {
     pthread_mutex_unlock(&mx->_mutex);
 #endif   
 }
+
+/*************************************************************/
+/* iatomic                                                    */
+/*************************************************************/
+/* compare the store with expected, than store the value with desired */
+uint32_t iatomiccompareexchange(volatile uint32_t *store, uint32_t expected, uint32_t desired) {
+#ifdef WIN32
+    return _InterlockedCompareExchange((volatile LONG*)store, desired, expected);
+#else
+    return __sync_val_compare_and_swap(store, desired, expected);
+#endif
+}
+
+/* fetch the old value and store the with add*/
+uint32_t iatomicadd(volatile uint32_t *store, uint32_t add) {
+#ifdef WIN32
+   return _InterlockedExchangeAdd((volatile LONG*)store, add);
+#else
+    return __sync_add_and_fetch(store, add);
+#endif
+}
+
+/* fetch the old value, than do exchange operator */
+uint32_t iatomicexchange(volatile uint32_t *store, uint32_t value) {
+#ifdef WIN32
+    return _InterlockedExchange((volatile LONG*)store, value);
+#else
+    return __sync_lock_test_and_set(store, value);
+#endif
+}
+    
+/* atomic increment, return the new value */
+uint32_t iatomicincrement(volatile uint32_t *store) {
+#ifdef WIN32
+    return _InterlockedIncrement((volatile LONG*)store);
+#else
+    return __sync_add_and_fetch(store, 1);
+#endif         
+}
+
+/* atomic decrement, return the new value */
+uint32_t iatomicdecrement(volatile uint32_t *store) {
+#ifdef WIN32
+    return _InterlockedDecrement((volatile LONG*)store);
+#else
+    return __sync_sub_and_fetch(store, 1);
+#endif         
+}
+
 
 static const char _base64EncodingTable[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const short _base64DecodingTable[256] = {
@@ -1107,22 +1217,34 @@ int icirclerelation(const icircle *con, const icircle *c) {
 
 /* 增加引用计数 */
 int irefretain(iref *ref) {
+#if iithreadsafe
+    return iatomicincrement(&ref->ref);
+#else
 	return ++ref->ref;
+#endif
 }
 
 /* 释放引用计数 */
 void irefrelease(iref *ref) {
-	--ref->ref;
-	/* 通知 watch */
-	if (ref->watch) {
-		ref->watch(ref);
-	}
+	
 	/* 没有引用了，析构对象 */
-	if (ref->ref == 0) {
+#if iithreadsafe
+    if (iatomicdecrement(&ref->ref) == 0) {
+#else
+    if (ref->ref-- == 0) {
+#endif
+        while (true) {
         /* release the hold by wref and ref */
         if (ref->wref) {
             ref->wref->wref = NULL;
             ref->wref = NULL;
+        }
+        /* 通知 watch */
+    	if (ref->watch) {
+    		ref->watch(ref);
+    	}
+        if (ref->ref != 0) {
+            break;
         }
         /* release resources */
 		if (ref->free) {
@@ -1131,6 +1253,8 @@ void irefrelease(iref *ref) {
             /* just release memory */
 			iobjfree(ref);
 		}
+        break;
+        }
 	}
 }
 
