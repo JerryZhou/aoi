@@ -172,8 +172,10 @@ void imutexlock(imutex *mx);
 void imutexunlock(imutex *mx);
     
 /*************************************************************/
-/* iatomic                                                    */
+/* iatomic                                                   */
 /*************************************************************/
+/* [asf](https://svn.apache.org/repos/asf/avro/trunk/lang/c/src/avro/refcount.h) */
+    
 /* compare the store with expected, than store the value with desired */
 uint32_t iatomiccompareexchange(volatile uint32_t *store, uint32_t expected, uint32_t desired);
 
@@ -188,7 +190,6 @@ uint32_t iatomccincrement(volatile uint32_t *store);
 
 /* atomic decrement, return the new value */
 uint32_t iatomicdecrement(volatile uint32_t *store);
-    
     
 /*************************************************************/
 /* ibase64                                                   */
@@ -701,6 +702,7 @@ void irefrelease(iref *ref);
 /*************************************************************/
 
 /* 弱引用: we can do operators as iref: iretain; irelease; iassign */
+/* the iwref not thread safe: only use iwref in one thread context */
 typedef struct iwref {
     irefdeclare;
 }iwref;

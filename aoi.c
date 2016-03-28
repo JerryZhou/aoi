@@ -403,7 +403,7 @@ uint32_t iatomiccompareexchange(volatile uint32_t *store, uint32_t expected, uin
 #ifdef WIN32
     return _InterlockedCompareExchange((volatile LONG*)store, desired, expected);
 #else
-    return __sync_val_compare_and_swap(store, desired, expected);
+    return __sync_val_compare_and_swap_4(store, desired, expected);
 #endif
 }
 
@@ -412,7 +412,7 @@ uint32_t iatomicadd(volatile uint32_t *store, uint32_t add) {
 #ifdef WIN32
    return _InterlockedExchangeAdd((volatile LONG*)store, add);
 #else
-    return __sync_add_and_fetch(store, add);
+    return __sync_add_and_fetch_4(store, add);
 #endif
 }
 
@@ -421,28 +421,26 @@ uint32_t iatomicexchange(volatile uint32_t *store, uint32_t value) {
 #ifdef WIN32
     return _InterlockedExchange((volatile LONG*)store, value);
 #else
-    return __sync_lock_test_and_set(store, value);
+    return __sync_lock_test_and_set_4(store, value);
 #endif
 }
-    
+
 /* atomic increment, return the new value */
 uint32_t iatomicincrement(volatile uint32_t *store) {
 #ifdef WIN32
     return _InterlockedIncrement((volatile LONG*)store);
 #else
-    return __sync_add_and_fetch(store, 1);
+    return __sync_add_and_fetch_4(store, 1);
 #endif         
 }
 
-/* atomic decrement, return the new value */
 uint32_t iatomicdecrement(volatile uint32_t *store) {
 #ifdef WIN32
     return _InterlockedDecrement((volatile LONG*)store);
 #else
-    return __sync_sub_and_fetch(store, 1);
-#endif         
+    return __sync_sub_and_fetch_4(store, 1);
+#endif
 }
-
 
 static const char _base64EncodingTable[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const short _base64DecodingTable[256] = {
@@ -1231,9 +1229,10 @@ void irefrelease(iref *ref) {
 #if iithreadsafe
     if (iatomicdecrement(&ref->ref) == 0) {
 #else
-    if (ref->ref-- == 0) {
+    if (--ref->ref == 0) {
 #endif
         while (true) {
+        /*printf("atomic-after-decrement %p - %d \n", (void*)ref, ref->ref); */
         /* release the hold by wref and ref */
         if (ref->wref) {
             ref->wref->wref = NULL;
