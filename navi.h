@@ -349,6 +349,19 @@ int inavimapsmoothpath(inavimap *map, iunit *unit, inavipath *path, int steps);
 inavicell * inavimapnextcell(inavimap *map, int conn);
 
 /*************************************************************/
+/* Make relation between the navimap and aoi map             */
+/*************************************************************/
+
+/* Add the cell to aoi map */
+void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap);
+    
+/* Del the cell to aoi map */
+void inavimapcelldel(inavimap *map, inavicell *cell, imap *aoimap);
+    
+/* Find the cells in aoi map */
+iarray *inavimapcellfind(inavimap *map, imap *aoimap);
+
+/*************************************************************/
 /* declare the new type for iimeta system                    */
 /*************************************************************/
 
