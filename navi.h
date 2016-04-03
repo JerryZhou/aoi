@@ -4,6 +4,11 @@
 /*iref iarray islice ivec2 ivec3*/
 #include "aoi.h"
 
+/* ## TODO:
+ * 1 add SpeedUp WayPoint List at every cell
+ * 2 mapping the cell to aoi map
+ */
+
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -225,6 +230,9 @@ typedef struct inavipath {
     ireflist *waypoints;
     /* current node */
     irefjoint *current;
+    
+    /* flag */
+    int32_t flag;
 }inavipath;
     
 /* make a navi path */
@@ -232,6 +240,24 @@ inavipath *inavipathmake();
     
 /* navigation path free */
 void inavipathfree(inavipath *path);
+    
+/* TODO: */
+/* We Call This Behavior: Smoothing Learning */
+/* Speed up the path finding after some finding happended in cell */
+/* Save Recently five path finding logs in every cell */
+typedef struct inavipathspeedup {
+    irefdeclare;
+    
+    /*the pre caculated path */
+    inavipath *path;
+    /* current joint in path about this cell */
+    irefjoint *current;
+    
+    /* require flag */
+    int32_t require;
+    /* exclude flag */
+    int32_t exclude;
+}inavipathspeedup;
 
 /*************************************************************/
 /* inavimap                                                 */
@@ -260,6 +286,7 @@ typedef struct inavimap {
     
     /* Global session Id */
     int64_t sessionid;
+    
 }inavimap;
 
 /* header */
