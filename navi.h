@@ -72,7 +72,8 @@ typedef enum EnumNaviCellFlag {
     
 /* aoi-map: cell unit flag */
 typedef enum EnumNaviUnitFlag {
-  EnumNaviUnitFlag_Cell = 1<<3 | 1<<5 | 1<<9,
+  /* skip searching as we are the navi cell unit */
+  EnumNaviUnitFlag_Cell = 1<<3 | 1<<5 | 1<<9 | EnumUnitFlagSkipSearching,
 } EnumNaviUnitFlag;
 
 /* cell */
