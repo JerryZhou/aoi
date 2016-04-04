@@ -1127,18 +1127,27 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
     /* the empty mapping should be */
     icheck(iarraylen(cell->aoi_cellunits) == 0);
     
+    printf("[INavi Cell-Add] "__icell_format"\n", __icell_value(*cell));
+    
     /* get the polygon3d projection plane in xz */
     ipolygon3dtakerectxz(cell->polygon, &proj);
     /* caculating the contains level in aoi divide */
     level = imapcontainslevel(aoimap, &proj);
     
     /* down-left */
+    pos = irectdownleft(&proj);
     u_downleft = imakeunit(-1, proj.pos.x, proj.pos.y);
     u_downleft->userdata.up1 = cell;
     u_downleft->flag |= EnumNaviUnitFlag_Cell;
     imapaddunittolevel(aoimap, u_downleft, level);
     iarrayadd(cell->aoi_cellunits, &u_downleft);
     iassign(neighbor, u_downleft);
+   
+    printf("[INavi Cell-Add To Node] corner:"__ipos_format" code: %s pos:"__ipos_format" size:"__isize_format"\n",
+           __ipos_value(pos),
+           neighbor->node->code.code,
+           __ipos_value(neighbor->node->code.pos),
+           __isize_value(aoimap->nodesizes[neighbor->node->level]));
     
     /* down-right */
     pos = irectdownright(&proj);
@@ -1150,11 +1159,17 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
         iarrayadd(cell->aoi_cellunits, &u);
         iassign(neighbor, u);
         irelease(u);
+        
+        printf("[INavi Cell-Add To Node] corner:"__ipos_format" code: %s pos:"__ipos_format" size:"__isize_format"\n",
+           __ipos_value(pos),
+           neighbor->node->code.code,
+           __ipos_value(neighbor->node->code.pos),
+           __isize_value(aoimap->nodesizes[neighbor->node->level]));
     }
     
     /* up-left */
     pos = irectupleft(&proj);
-    if (!inodecontains(aoimap, neighbor->node, &pos)) {
+    if (!inodecontains(aoimap, u_downleft->node, &pos)) {
         u = imakeunit(-1, pos.x, pos.y);
         u->userdata.up1 = cell;
         u->flag |= EnumNaviUnitFlag_Cell;
@@ -1162,17 +1177,30 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
         iarrayadd(cell->aoi_cellunits, &u);
         iassign(neighbor, u);
         irelease(u);
+        
+        printf("[INavi Cell-Add To Node] corner:"__ipos_format" code: %s pos:"__ipos_format" size:"__isize_format"\n",
+           __ipos_value(pos),
+           neighbor->node->code.code,
+           __ipos_value(neighbor->node->code.pos),
+           __isize_value(aoimap->nodesizes[neighbor->node->level]));
     }
     
     /* up-right */
     pos = irectupright(&proj);
-    if (!inodecontains(aoimap, neighbor->node, &pos)) {
+    if (!inodecontains(aoimap, u_downleft->node, &pos)
+        && (neighbor == NULL || !inodecontains(aoimap, neighbor->node, &pos))) {
         u = imakeunit(-1, pos.x, pos.y);
         u->flag |= EnumNaviUnitFlag_Cell;
         imapaddunittolevel(aoimap, u, level);
         iarrayadd(cell->aoi_cellunits, &u);
         iassign(neighbor, u);
         irelease(u);
+      
+        printf("[INavi Cell-Add To Node] corner:"__ipos_format" code: %s pos:"__ipos_format" size:"__isize_format"\n",
+           __ipos_value(pos),
+           neighbor->node->code.code,
+           __ipos_value(neighbor->node->code.pos),
+           __isize_value(aoimap->nodesizes[neighbor->node->level]));
     }
     
     irelease(u_downleft);

@@ -150,6 +150,10 @@ typedef struct inavicell {
     ireal costarrival;
     ireal costheuristic;
 }inavicell;
+
+/* the cell format */
+#define __icell_format "[cell: %d min:"__ipos3_format" max:"__ipos3_format"]"
+#define __icell_value(c) (c).cell_index, __ipos3_value((c).polygon->min), __ipos3_value((c).polygon->max)
     
 /* Make a cell with poly and connections */
 inavicell *inavicellmake(struct inavimap* map, ipolygon3d *poly, islice* connections, islice *costs);
