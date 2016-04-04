@@ -474,6 +474,15 @@ typedef struct irect {
 int irectcontains(const irect *con, const irect *r);
 /* 矩形包含: iiok, iino */
 int irectcontainspoint(const irect *con, const ipos *p);
+    
+/* down-left pos*/
+ipos irectdownleft(const irect *con);
+/* down-right pos*/
+ipos irectdownright(const irect *con);
+/* up-left pos*/
+ipos irectupleft(const irect *con);
+/* up-right pos*/
+ipos irectupright(const irect *con);
 
 /*************************************************************/
 /* icircle                                                   */
@@ -1591,6 +1600,7 @@ typedef struct iuserdata {
 
 /* 前置声明 */
 struct inode;
+struct imap;
 
 /* 基本单元状态 */
 typedef enum EnumUnitState {
@@ -1614,6 +1624,8 @@ typedef struct iunit {
     int64_t state;
     /* 更新时间(毫秒) */
     int64_t tick;
+    /* 标志 */
+    int64_t flag;
 
     /* 坐标 */
     ipos  pos;
@@ -1731,6 +1743,9 @@ void ifreenodekeeper(inode *node);
 
 /* 释放节点组成的树 */
 void ifreenodetree(inode *node);
+    
+/*坐标是否在节点里面*/
+int inodecontains(const struct imap *map, const inode *node, const ipos *pos);
 
 /*************************************************************/
 /* imap                                                     */
@@ -1791,6 +1806,7 @@ int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop
 
 /* 根据坐标生成code */
 int imapgencode(const imap *map, const ipos *pos, icode *code);
+int imapgencodewithlevel(const imap *map, const ipos *pos, icode *code, int level);
 
 /* 计算Code */
 /* y */
@@ -1853,6 +1869,9 @@ int imapgen(imap *map);
 
 /* 增加一个单元到地图上 */
 int imapaddunit(imap *map, iunit *unit);
+    
+/* 把单元加入地图， 到指定的分割层次 */
+int imapaddunittolevel(imap *map, iunit *unit, int level);
 
 /* 从地图上移除一个单元 */
 int imapremoveunit(imap *map, iunit *unit);

@@ -1107,6 +1107,32 @@ int irectintersect(const irect *con, const icircle *c) {
 	return 0;
 }
 
+/* down-left pos*/
+ipos irectdownleft(const irect *con) {
+    return con->pos;
+}
+
+/* down-right pos*/
+ipos irectdownright(const irect *con) {
+    ipos p = con->pos;
+    p.x += con->size.w;
+    return p;
+}
+/* up-left pos*/
+ipos irectupleft(const irect *con) {
+    ipos p = con->pos;
+    p.y += con->size.h;
+    return p;
+}
+
+/* up-right pos*/
+ipos irectupright(const irect *con) {
+    ipos p = con->pos;
+    p.x += con->size.w;
+    p.y += con->size.h;
+    return p;
+}
+
 /* Caculating the offset that circle should moved to avoid collided with the line */
 ivec2 icircleoffset(const icircle* circle, const iline2d* line) {
     /*@see http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html */
@@ -4788,6 +4814,14 @@ void ifreenodetree(inode *node) {
 	}
 	ifreenodekeeper(node);
 }
+    
+/*坐标是否在节点里面*/
+int inodecontains(const struct imap *map, const inode *node, const ipos *pos) {
+    irect r = {node->code.pos, map->nodesizes[node->level]};
+    return irectcontainspoint(&r, pos);
+}
+
+
 
 /* 增加叶子节点 */
 void justaddleaf(imap *map, inode *node) {
@@ -5097,9 +5131,14 @@ int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop
 	}
 	return ok;
 }
-
+    
 /* 根据坐标生成code */
 int imapgencode(const imap *map, const ipos *pos, icode *code) {
+    return imapgencodewithlevel(map, pos, code, map->divide);
+}
+
+/* 根据坐标生成code */
+int imapgencodewithlevel(const imap *map, const ipos *pos, icode *code, int level) {
 	/* init value */
 	int i = 0;
 	int iw, ih;
@@ -5120,7 +5159,7 @@ int imapgencode(const imap *map, const ipos *pos, icode *code) {
 	/* | (B , D) */
 	/* | (A , C) */
 	/* -----------> x */
-	for( i=0; i<map->divide; ++i) {
+	for( i=0; i<level; ++i) {
 #if open_log_gencode
 		ilog("[IMAP-GenCode] (%.3f, %.3f) ", np.x, np.y);
 #endif
@@ -5149,7 +5188,7 @@ int imapgencode(const imap *map, const ipos *pos, icode *code) {
 #endif
 	}
 	/* end it */
-	code->code[map->divide] = 0;
+	code->code[i] = 0;
 
 	return iiok;
 }
@@ -5190,7 +5229,6 @@ int imapgenpos(imap *map, ipos *pos, const icode *code) {
 
 	return iiok;
 }
-
 
 /* 编码移动步骤 */
 typedef struct movestep {
@@ -5456,8 +5494,8 @@ int imapgen(imap *map) {
 	return iiok;
 }
 
-/* 增加一个单元到地图上 */
-int imapaddunit(imap *map, iunit *unit) {
+    /* 把单元加入地图， 到指定的分割层次 */
+int imapaddunittolevel(imap *map, iunit *unit, int level) {
 	int ok;
 	int64_t micro;
 
@@ -5465,7 +5503,7 @@ int imapaddunit(imap *map, iunit *unit) {
 	icheckret(map, iino);
 
 	/* move out side */
-	imapgencode(map, &unit->pos, &unit->code);
+	imapgencodewithlevel(map, &unit->pos, &unit->code, level);
 
 	/* log it */
 #if open_log_unit
@@ -5477,6 +5515,11 @@ int imapaddunit(imap *map, iunit *unit) {
 	iplog(__Since(micro), "[IMAP-Unit] Add Unit: %lld - (%.3f, %.3f) - %s\n",
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 	return ok;
+}
+    
+/* 增加一个单元到地图上 */
+int imapaddunit(imap *map, iunit *unit) {
+    return imapaddunittolevel(map, unit, map->divide);
 }
 
 /* 从地图上移除一个单元 */
