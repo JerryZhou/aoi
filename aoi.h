@@ -90,6 +90,46 @@ extern "C" {
 
 /* flat array count */
 #define icountof(arr) (sizeof(arr)/sizeof(arr[0]))
+    
+/* helper for printf isize */
+#define __isize_format "(w:%lf, h:%lf)"
+#define __isize_value(s) (s).w, (s).h
+
+/* helper for printf ipos */
+#define __ipos_format "(x:%lf, y:%lf)"
+#define __ipos_value(p) (p).x, (p).y
+    
+/* helper for printf ipos3 */
+#define __ipos3_format "(x:%lf, y:%lf, z:%lf)"
+#define __ipos3_value(p) (p).x, (p).y, (p).z
+    
+/* helper for printf ivec2 */
+#define __ivec2_format __ipos_format
+#define __ivec2_value(i) __ipos_value((i).v)
+
+/* helper for printf ivec3 */
+#define __ivec3_format __ipos3_format
+#define __ivec3_value(i) __ipos3_value((i).v)
+    
+/* helper for printf iline2d */
+#define __iline2d_format "[start:"__ipos_format" end:"__ipos_format"]"
+#define __iline2d_value(l) __ipos_value((l).start),__ipos_value((l).end)
+    
+/* helper for printf iline3d */
+#define __iline3d_format "[start:"__ipos3_format" end:"__ipos3_format"]"
+#define __iline3d_value(l) __ipos3_value((l).start),__ipos3_value((l).end)
+    
+/* helper for printf iplane */
+#define __iplane_format "[normal:"__ivec3_format" pos:"__ipos3_format" dist:%lf]"
+#define __iplane_value(p) __ivec3_value((p).normal),__ipos3_value((p).pos),(p).distance
+
+/* helper for printf irect */
+#define __irect_format "[pos:"__ipos_format" size:"__isize_format"]"
+#define __irect_value(r) __ipos_value((r).pos),__isize_value((r).size)
+    
+/* helper for printf irect */
+#define __icircle_format "[pos:"__ipos_format" radius:%lf]"
+#define __icircle_value(c) __ipos_value((c).pos), (c).radius
 
 /* 节点查找行为 */
 typedef enum EnumFindBehavior {
@@ -487,7 +527,6 @@ ipos irectupright(const irect *con);
 /*************************************************************/
 /* icircle                                                   */
 /*************************************************************/
-
 
 /* 圆形 */
 typedef struct icircle {
