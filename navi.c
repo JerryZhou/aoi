@@ -1122,6 +1122,7 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
     int level;
     iunit *u_downleft;
     iunit *u;
+    iunit *neighbor = NULL;
     
     /* the empty mapping should be */
     icheck(iarraylen(cell->aoi_cellunits) == 0);
@@ -1137,40 +1138,45 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
     u_downleft->flag |= EnumNaviUnitFlag_Cell;
     imapaddunittolevel(aoimap, u_downleft, level);
     iarrayadd(cell->aoi_cellunits, &u_downleft);
+    iassign(neighbor, u_downleft);
     
     /* down-right */
     pos = irectdownright(&proj);
-    if (!inodecontains(aoimap, u_downleft->node, &pos)) {
+    if (!inodecontains(aoimap, neighbor->node, &pos)) {
         u = imakeunit(-1, pos.x, pos.y);
         u->flag |= EnumNaviUnitFlag_Cell;
         u->userdata.up1 = cell;
         imapaddunittolevel(aoimap, u, level);
         iarrayadd(cell->aoi_cellunits, &u);
+        iassign(neighbor, u);
         irelease(u);
     }
     
     /* up-left */
     pos = irectupleft(&proj);
-    if (!inodecontains(aoimap, u_downleft->node, &pos)) {
+    if (!inodecontains(aoimap, neighbor->node, &pos)) {
         u = imakeunit(-1, pos.x, pos.y);
         u->userdata.up1 = cell;
         u->flag |= EnumNaviUnitFlag_Cell;
         imapaddunittolevel(aoimap, u, level);
         iarrayadd(cell->aoi_cellunits, &u);
+        iassign(neighbor, u);
         irelease(u);
     }
     
     /* up-right */
     pos = irectupright(&proj);
-    if (!inodecontains(aoimap, u_downleft->node, &pos)) {
+    if (!inodecontains(aoimap, neighbor->node, &pos)) {
         u = imakeunit(-1, pos.x, pos.y);
         u->flag |= EnumNaviUnitFlag_Cell;
         imapaddunittolevel(aoimap, u, level);
         iarrayadd(cell->aoi_cellunits, &u);
+        iassign(neighbor, u);
         irelease(u);
     }
     
     irelease(u_downleft);
+    irelease(neighbor);
 }
     
 /* Del the cell to aoi map */
