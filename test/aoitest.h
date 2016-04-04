@@ -505,6 +505,66 @@ SP_CASE(icircle, icirclecontainspoint) {
 
 // **********************************************************************************
 // iname
+SP_SUIT(iformat);
+
+SP_CASE(iformat, all) {
+    printf("\n");
+    
+    ipos p = {1, 2};
+    ipos *pp = &p;
+    printf(__ipos_format"\n", __ipos_value(p));
+    printf(__ipos_format"\n", __ipos_value(*pp));
+    
+    ipos3 p3 = {1, 2, 3};
+    ipos3 *pp3 = &p3;
+    printf(__ipos3_format"\n", __ipos3_value(p3));
+    printf(__ipos3_format"\n", __ipos3_value(*pp3));
+    
+    isize s = {3, 4};
+    isize *ps = &s;
+    printf(__isize_format"\n", __isize_value(s));
+    printf(__isize_format"\n", __isize_value(*ps));
+    
+    ivec2 v2 = {{1, 2}};
+    ivec2 *pv2 = &v2;
+    printf(__ivec2_format"\n", __ivec2_value(v2));
+    printf(__ivec2_format"\n", __ivec2_value(*pv2));
+    
+    ivec3 v3 = {{1, 2, 3}};
+    ivec3 *pv3 = &v3;
+    printf(__ivec3_format"\n", __ivec3_value(v3));
+    printf(__ivec3_format"\n", __ivec3_value(*pv3));
+    
+    iline2d line = {{2, 4}, {5, 6}};
+    iline2d *pline = &line;
+    printf(__iline2d_format"\n", __iline2d_value(line));
+    printf(__iline2d_format"\n", __iline2d_value(*pline));
+    
+    iline3d line3d = {{4, 5, 6}, {7, 8, 9}};
+    iline3d *pline3d = &line3d;
+    printf(__iline3d_format"\n", __iline3d_value(line3d));
+    printf(__iline3d_format"\n", __iline3d_value(*pline3d));
+    
+    iplane plane = {{{1, 2, 3}}, {4, 6, 7}, 5};
+    iplane *pplane = &plane;
+    printf(__iplane_format"\n", __iplane_value(plane));
+    printf(__iplane_format"\n", __iplane_value(*pplane));
+    
+    irect r = {{2, 6}, {6, 9}};
+    irect *pr = &r;
+    printf(__irect_format"\n", __irect_value(r));
+    printf(__irect_format"\n", __irect_value(*pr));
+    
+    icircle c = {{8,8}, 7};
+    icircle *pc = &c;
+    printf(__icircle_format"\n", __icircle_value(c));
+    printf(__icircle_format"\n", __icircle_value(*pc));
+    
+    SP_TRUE(1);
+}
+
+// **********************************************************************************
+// iname
 SP_SUIT(iname);
 
 SP_CASE(iname, nothing) {
@@ -4735,6 +4795,52 @@ SP_CASE(inavicell, inavimapfind) {
     inavimapdescfreeresource(&desc);
     
     inavimapfree(map);
+}
+
+void _cell_array_visitor(const iarray *arr, int idx, const void* value) {
+    inavicell *cell = ((inavicell**)(value))[0];
+    printf(__icell_format"\n", __icell_value(*cell));
+}
+
+SP_CASE(inavicell, inavimapcelladd) {
+    inavimap *map = inavimapmake(8);
+    inavimapdesc desc = {{{0}}, 0, 0, 0};
+    int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
+    SP_EQUAL(err, 0);
+    inavimaploadfromdesc(map, &desc);
+    
+    ipos pos = {0, 0};
+    isize size = {16, 16};
+    imap *aoimap = imapmake(&pos, &size, 4);
+    
+    size_t cellnum = iarraylen(map->cells);
+    while (cellnum--) {
+        inavimapcelladd(map, iarrayof(map->cells, inavicell*, cellnum), aoimap);
+    }
+    
+    ipos3 pos3 = {0, 0, 0};
+    iarray *cells = inavimapcellfind(map, aoimap, &pos3);
+    printf("\n");
+    iarrayforeach(cells, _cell_array_visitor);
+    iarrayfree(cells);
+    
+    cellnum = iarraylen(map->cells);
+    while (cellnum--) {
+        inavimapcelldel(map, iarrayof(map->cells, inavicell*, cellnum), aoimap);
+    }
+    
+    inavimapdescfreeresource(&desc);
+    inavimapfree(map);
+    
+    imapfree(aoimap);
+}
+
+SP_CASE(inavicell, inavimapcelldel) {
+    SP_TRUE(1);
+}
+
+SP_CASE(inavicell, inavimapcellfind) {
+    SP_TRUE(1);
 }
 
 SP_SUIT(inaviwaypoint);
