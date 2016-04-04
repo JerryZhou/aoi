@@ -23,15 +23,6 @@ Please see examples for more details.
 
 /* Max Path Finder Heap Depth */
 #define KMAX_HEAP_DEPTH 64
-/* Max Count Of Navimap Cell Cache */
-#define KMAX_NAVIMAP_CELL_CACHE_COUNT 50000
-/* Max Count Of Navimap Cell Connection Cache */
-#define KMAX_NAVIMAP_CONNECTION_CACHE_COUNT 50000
-/* Max Count Of Navimap Node Cache */
-#define KMAX_NAVIMAP_NODE_CACHE_COUNT 2000
-/* Max Count Of NaviPath Waypoint Cache */
-#define KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT 5000
-
 /*************************************************************/
 /* helper - coordinate system                                */
 /*************************************************************/
@@ -301,6 +292,30 @@ int inavicellclassify(inavicell *cell, const iline2d *line,
         relation = EnumNaviCellRelation_InCell;
     }
     return relation;
+}
+
+/*************************************************************/
+/* inavipathspeedup                                          */
+/*************************************************************/
+
+/* free the speedup */
+static void _inavipathspeedup_entry_free(iref *ref) {
+    inavipathspeedup *speed = icast(inavipathspeedup, ref);
+    irelease(speed->path);
+    iobjfree(speed);
+}
+
+/*make one*/
+inavipathspeedup* inavipathspeedupmake() {
+    inavipathspeedup *speed = iobjmalloc(inavipathspeedup);
+    speed->free = _inavipathspeedup_entry_free;
+    iretain(speed);
+    return speed;
+}
+    
+/*free it*/
+void inavipathspeedupfree(inavipathspeedup *speed) {
+    irelease(speed);
 }
 
 /* release the resource hold by desc */
@@ -1072,7 +1087,8 @@ int inavimapsmoothpath(inavimap *map, iunit *unit, inavipath *path, int steps) {
 
 /* Add the cell to aoi map */
 void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
-    /*todo:*/
+    irect proj;
+    ipolygon3dtakerectxz(cell->polygon, &proj);
 }
     
 /* Del the cell to aoi map */
@@ -1090,35 +1106,18 @@ iarray *inavimapcellfind(inavimap *map, imap *aoimap) {
 /* implement the new type for iimeta system                  */
 /*************************************************************/
 
+#undef __inavi_typeof
+#define __inavi_typeof(type, cachesize) irealdeclareregister(type);
 /* implement meta for inavicell */
-irealdeclareregister(inavicell);
-
-/* implement meta for inavicellconnection */
-irealdeclareregister(inavicellconnection);
-
-/* implement meta for inaviwaypoint */
-irealdeclareregister(inaviwaypoint);
-
-/* implement meta for inavipath */
-irealdeclareregister(inavipath);
-
-/* implement meta for inavinode */
-irealdeclareregister(inavinode);
-
-/* implement meta for inavimap */
-irealdeclareregister(inavimap);
+__inavi_types
 
 /* NB!! should call first before call any navi funcs 
  * will registing all the navi types to meta system
  * */
 int inavi_mm_init() {
-
-    irealimplementregister(inavicell, KMAX_NAVIMAP_CELL_CACHE_COUNT);
-    irealimplementregister(inavicellconnection, KMAX_NAVIMAP_CONNECTION_CACHE_COUNT);
-    irealimplementregister(inavinode, KMAX_NAVIMAP_NODE_CACHE_COUNT);
-    irealimplementregister(inaviwaypoint, KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT);
-    irealimplementregister(inavipath, 0);
-    irealimplementregister(inavimap, 0);
+#undef __inavi_typeof
+#define __inavi_typeof(type, cachesize) irealimplementregister(type, cachesize);
+__inavi_types
 
     return iiok;
 }

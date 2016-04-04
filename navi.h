@@ -258,6 +258,12 @@ typedef struct inavipathspeedup {
     /* exclude flag */
     int32_t exclude;
 }inavipathspeedup;
+    
+/*make one*/
+inavipathspeedup *inavipathspeedupmake();
+    
+/*free it*/
+void inavipathspeedupfree(inavipathspeedup *speed);
 
 /*************************************************************/
 /* inavimap                                                 */
@@ -391,21 +397,28 @@ iarray *inavimapcellfind(inavimap *map, imap *aoimap);
 /*************************************************************/
 /* declare the new type for iimeta system                    */
 /*************************************************************/
+/* Max Count Of Navimap Cell Cache */
+#define KMAX_NAVIMAP_CELL_CACHE_COUNT 50000
+/* Max Count Of Navimap Cell Connection Cache */
+#define KMAX_NAVIMAP_CONNECTION_CACHE_COUNT 50000
+/* Max Count Of Navimap Node Cache */
+#define KMAX_NAVIMAP_NODE_CACHE_COUNT 2000
+/* Max Count Of NaviPath Waypoint Cache */
+#define KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT 5000
+
+/* decalre all the navi type in meta system with cachesize*/
+#define __inavi_typeof(type, cachesize) iideclareregister(type);
+#define __inavi_types \
+        __inavi_typeof(inavicell, KMAX_NAVIMAP_CELL_CACHE_COUNT) \
+        __inavi_typeof(inavipathspeedup, 0) \
+        __inavi_typeof(inavinode, KMAX_NAVIMAP_NODE_CACHE_COUNT) \
+        __inavi_typeof(inavicellconnection, KMAX_NAVIMAP_CONNECTION_CACHE_COUNT) \
+        __inavi_typeof(inaviwaypoint, KMAX_NAVIPATH_WAYPOINT_CACHE_COUNT) \
+        __inavi_typeof(inavipath, 0) \
+        __inavi_typeof(inavimap, 0)
 
 /* declare meta for inavicell */
-iideclareregister(inavicell);
-    
-/* declare meta for inavicellconnection */
-iideclareregister(inavicellconnection);
-    
-/* declare meta for inaviwaypoint */
-iideclareregister(inaviwaypoint);
-    
-/* declare meta for inavipath */
-iideclareregister(inavipath);
-
-/* declare meta for inavimap */
-iideclareregister(inavimap);
+__inavi_types
 
 /* NB!! should call first before call any navi funcs 
  * will registing all the navi types to meta system
