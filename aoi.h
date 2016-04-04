@@ -1610,6 +1610,12 @@ typedef enum EnumUnitState {
     EnumUnitStateMoving = 1<< 6,
     EnumUnitStateSearching = 1<<10,
 }EnumUnitState;
+    
+    /*内置的单元标志*/
+typedef enum EnumUnitFlag {
+    EnumUnitFlagNone = 0,
+    EnumUnitFlagSkipSearching = 1<<2, /*单元需要跳过搜索*/
+} EnumUnitFlag;
 
 /* 单元 */
 typedef struct iunit {

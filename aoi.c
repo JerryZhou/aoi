@@ -6091,6 +6091,10 @@ void imapcollectunit(imap *map, const inode *node, ireflist *list, const ifilter
 		if (havestate) {
 			continue;
 		}
+        /* 需要跳过搜索 */
+        if (_state_is(unit->flag, EnumUnitFlagSkipSearching)) {
+            continue;
+        }
 		/* 是否满足条件 */
 		if (ifilterrun(map, filter, unit) == iiok) {
 			ireflistadd(list, irefcast(unit));
