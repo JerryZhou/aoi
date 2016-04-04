@@ -1703,7 +1703,7 @@ int iarrayunsetflag(iarray *arr, int flag){
 }
 
 /* 是否具备标签 */
-int iarrayisflag(iarray *arr, int flag) {
+int iarrayisflag(const iarray *arr, int flag) {
     return arr->flag & flag;
 }
 
@@ -1918,6 +1918,15 @@ void iarraysort(iarray *arr) {
     icheck(arr->len);
 
     _iarray_sort_heap(arr, 0, arr->len-1);
+}
+    
+/* for each */
+void iarrayforeach(const iarray *arr, iarray_entry_visitor visitor) {
+    size_t size = iarraylen(arr);
+    size_t idx = 0;
+    for (; idx < size; ++idx) {
+        visitor(arr, idx, iarrayat(arr, idx));
+    }
 }
 
 /*************************************************************/
@@ -2582,6 +2591,16 @@ const void* isliceat(const islice *slice, int index) {
     /* read from array */
     return iarrayat(slice->array, slice->begin+index);
 }
+    
+/* foreach */
+void isliceforeach(const islice *slice, islice_entry_visitor visitor) {
+    size_t size = islicelen(slice);
+    size_t idx = 0;
+    for (; idx<size; ++idx) {
+        visitor(slice, idx, isliceat(slice, idx));
+    }
+}
+ 
 
 /*************************************************************/
 /* istring                                                   */
@@ -4387,6 +4406,11 @@ ipolygon3d *ipolygon3dmake(size_t capacity){
     poly->pos = isliced(array, 0, 0);
     poly->free = _ipolygon3d_entry_free;
     
+    /* the min pos */
+    poly->min.x = 0x1.fffffep+127f;
+    poly->min.y = 0x1.fffffep+127f;
+    poly->min.z = 0x1.fffffep+127f;
+    
     irelease(array);
     iretain(poly);
     return poly;
@@ -4864,7 +4888,6 @@ void justremoveleaf(imap *map, inode *node) {
 int justaddunit(imap *map, inode *node, iunit *unit){
 	icheckret(node && unit, iino);
 	icheckret(unit->node == NULL, iino);
-	icheckret(node->level == map->divide, iino);
     
 	++map->state.unitcount;
 
@@ -4892,7 +4915,6 @@ int justaddunit(imap *map, inode *node, iunit *unit){
 int justremoveunit(imap *map, inode *node, iunit *unit) {
 	icheckret(node && unit, iino);
 	icheckret(unit->node == node, iino);
-	icheckret(node->level == map->divide, iino);
     
     /* 移除单元统计 */
 	--map->state.unitcount;

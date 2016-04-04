@@ -906,6 +906,9 @@ typedef int (*iarray_entry_cmp)(struct iarray *arr,
 /* 赋值  */
 typedef void (*iarray_entry_assign)(struct iarray *arr,
         int i, const void *value, int nums);
+/* 遍历 访问 */
+typedef void (*iarray_entry_visitor)(const struct iarray *arr,
+    int i, const void *value);
 
 /* 数组常用控制项 */
 typedef enum EnumArrayFlag {
@@ -985,7 +988,7 @@ int iarraysetflag(iarray *arr, int flag);
 int iarrayunsetflag(iarray *arr, int flag);
 
 /* 是否具备标签 */
-int iarrayisflag(iarray *arr, int flag);
+int iarrayisflag(const iarray *arr, int flag);
 
 /* 删除 */
 int iarrayremove(iarray *arr, int index);
@@ -1013,6 +1016,9 @@ size_t iarrayexpandcapacity(iarray *arr, size_t capacity);
 
 /* 排序 */
 void iarraysort(iarray *arr);
+    
+/* for each */
+void iarrayforeach(const iarray *arr, iarray_entry_visitor visitor);
 
 /*************************************************************/
 /* iheap（big heap）                                          */
@@ -1122,6 +1128,10 @@ typedef struct islice {
     int capacity;
 }islice;
     
+/* 遍历 访问 */
+typedef void (*islice_entry_visitor)(const islice *slice,
+    int i, const void *value);
+    
 /* 左闭右开的区间 [begin, end) */
 islice *islicemake(iarray *arr, int begin, int end, int capacity);
 
@@ -1182,6 +1192,9 @@ int isliceset(islice *slice, int index, const void *value);
     
 /* 查询 */
 const void* isliceat(const islice *slice, int index);
+    
+/* foreach */
+void isliceforeach(const islice *slice, islice_entry_visitor visitor);
     
 /* 辅助宏，获取*/
 #define isliceof(slice, type, i) (((type *)isliceat(slice, i))[0])
@@ -1466,8 +1479,8 @@ void ipolygon3dfree(ipolygon3d *);
 /* add ivec3 to polygon*/
 void ipolygon3dadd(ipolygon3d *poly, const ipos3 *v, int nums);
     
-    /* caculating the center of polygon3d  */
-    void ipolygon3dfinish(ipolygon3d *poly);
+/* caculating the center of polygon3d  */
+void ipolygon3dfinish(ipolygon3d *poly);
     
 /* take the polygon3d as a wrap buffer of pos */
 const ipos3 * ipolygon3dpos3(ipolygon3d *polygon, int index);
