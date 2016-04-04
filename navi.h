@@ -6,7 +6,7 @@
 
 /* ## TODO:
  * 1 add SpeedUp WayPoint List at every cell
- * 2 mapping the cell to aoi map
+ * 2 mapping the cell to aoi map [DONE 2016-04-04]
  */
 
 /* Set up for C function definitions, even when using C++ */
