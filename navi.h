@@ -69,6 +69,11 @@ typedef enum EnumNaviCellFlag {
     EnumNaviCellFlag_Open = 1<<1,
     EnumNaviCellFlag_Close = 1<<2,
 }EnumNaviCellFlag;
+    
+/* aoi-map: cell unit flag */
+typedef enum EnumNaviUnitFlag {
+  EnumNaviUnitFlag_Cell = 1<<3 | 1<<5 | 1<<9,
+} EnumNaviUnitFlag;
 
 /* cell */
 struct inavicell;
@@ -123,6 +128,10 @@ typedef struct inavicell {
     /* auto trace by ref array */
     int cell_index;
     
+    /*the unit mapping in aoi map  */
+    /*[] *iunit */
+    iarray* aoi_cellunits;
+    
     /* session id that the cell last deal */
     int64_t sessionid;
     /* session flag */
@@ -158,6 +167,12 @@ void inavicellfree(inavicell *cell);
     
 /* Fetch the height from cell to pos */
 int inavicellmapheight(inavicell *cell, ipos3 *pos);
+
+/* Release the relation with aoi */
+void inavicellunaoi(inavicell *cell, imap *aoimap);
+    
+/* Just Single Release the relation with aoi */
+void inavicellunlinkaoi(inavicell *cell);
     
 /* Cell relation with line end */
 typedef enum EnumNaviCellRelation {
@@ -392,7 +407,7 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap);
 void inavimapcelldel(inavimap *map, inavicell *cell, imap *aoimap);
     
 /* Find the cells in aoi map */
-iarray *inavimapcellfind(inavimap *map, imap *aoimap);
+iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos);
 
 /*************************************************************/
 /* declare the new type for iimeta system                    */

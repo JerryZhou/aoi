@@ -136,6 +136,10 @@ static void _inavicell_entry_free(iref *ref) {
     /* release the cell connection from */
     irelease(cell->connection);
     
+    /* release the cell units */
+    inavicellunlinkaoi(cell);
+    iarrayfree(cell->aoi_cellunits);
+    
     iobjfree(cell);
 }
 
@@ -168,6 +172,9 @@ inavicell *inavicellmake(struct inavimap* map, ipolygon3d *poly, islice* connect
         /* add connection */
         inavicelladdconnection(cell, map, n, next, isliceof(costs, ireal, n));
     }
+    
+    /* the cell units */
+    cell->aoi_cellunits = iarraymakeiref(4);
     
     iretain(cell);
     return cell;
@@ -248,6 +255,29 @@ int inavicellmapheight(inavicell *cell, ipos3 *pos) {
     pos->y = iplanesolvefory(&cell->polygon->plane, pos->x, pos->z);
     return iiok;
 }
+
+/* Release the relation with aoi */
+void inavicellunaoi(inavicell *cell, imap *aoimap) {
+    iunit *u;
+    size_t size = iarraylen(cell->aoi_cellunits);
+    for (; size; --size) {
+        u = iarrayof(cell->aoi_cellunits, iunit*, size-1);
+        imapremoveunit(aoimap, u);
+    }
+    iarrayremoveall(cell->aoi_cellunits);
+}
+
+/* Just Single Release the relation with aoi */
+void inavicellunlinkaoi(inavicell *cell) {
+    iunit *u;
+    size_t size = iarraylen(cell->aoi_cellunits);
+    for (; size; --size) {
+        u = iarrayof(cell->aoi_cellunits, iunit*, size-1);
+        u->userdata.up1 = NULL;
+        u->flag &= ~EnumNaviUnitFlag_Cell;
+    }
+}
+
 
 /* classify the line relationship with cell */
 int inavicellclassify(inavicell *cell, const iline2d *line,
@@ -1088,18 +1118,92 @@ int inavimapsmoothpath(inavimap *map, iunit *unit, inavipath *path, int steps) {
 /* Add the cell to aoi map */
 void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
     irect proj;
+    ipos pos;
+    int level;
+    iunit *u_downleft;
+    iunit *u;
+    
+    /* the empty mapping should be */
+    icheck(iarraylen(cell->aoi_cellunits) == 0);
+    
+    /* get the polygon3d projection plane in xz */
     ipolygon3dtakerectxz(cell->polygon, &proj);
+    /* caculating the contains level in aoi divide */
+    level = imapcontainslevel(aoimap, &proj);
+    
+    /* down-left */
+    u_downleft = imakeunit(-1, proj.pos.x, proj.pos.y);
+    u_downleft->userdata.up1 = cell;
+    u_downleft->flag |= EnumNaviUnitFlag_Cell;
+    imapaddunittolevel(aoimap, u_downleft, level);
+    iarrayadd(cell->aoi_cellunits, &u_downleft);
+    
+    /* down-right */
+    pos = irectdownright(&proj);
+    if (!inodecontains(aoimap, u_downleft->node, &pos)) {
+        u = imakeunit(-1, pos.x, pos.y);
+        u->flag |= EnumNaviUnitFlag_Cell;
+        u->userdata.up1 = cell;
+        imapaddunittolevel(aoimap, u, level);
+        iarrayadd(cell->aoi_cellunits, &u);
+        irelease(u);
+    }
+    
+    /* up-left */
+    pos = irectupleft(&proj);
+    if (!inodecontains(aoimap, u_downleft->node, &pos)) {
+        u = imakeunit(-1, pos.x, pos.y);
+        u->userdata.up1 = cell;
+        u->flag |= EnumNaviUnitFlag_Cell;
+        imapaddunittolevel(aoimap, u, level);
+        iarrayadd(cell->aoi_cellunits, &u);
+        irelease(u);
+    }
+    
+    /* up-right */
+    pos = irectupright(&proj);
+    if (!inodecontains(aoimap, u_downleft->node, &pos)) {
+        u = imakeunit(-1, pos.x, pos.y);
+        u->flag |= EnumNaviUnitFlag_Cell;
+        imapaddunittolevel(aoimap, u, level);
+        iarrayadd(cell->aoi_cellunits, &u);
+        irelease(u);
+    }
+    
+    irelease(u_downleft);
 }
     
 /* Del the cell to aoi map */
 void inavimapcelldel(inavimap *map, inavicell *cell, imap *aoimap) {
-    /*todo:*/
+    inavicellunaoi(cell, aoimap);
 }
     
 /* Find the cells in aoi map */
-iarray *inavimapcellfind(inavimap *map, imap *aoimap) {
-    /*todo:*/
-    return NULL;
+iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos) {
+    iarray* arr = iarraymakeiref(4);
+    ipos pos2 = {pos->x, pos->z};
+    icode code;
+    inode *node;
+    iunit *u;
+    
+    /* gen node code */
+    imapgencode(aoimap, &pos2, &code);
+    /*Fuzzy Find the top node */
+    node = imapgetnode(aoimap, &code, aoimap->divide, EnumFindBehaviorFuzzy);
+    while (node) {
+        u = node->units;
+        /* for-each unit in node */
+        if (u) do {
+            if (u->flag & EnumNaviUnitFlag_Cell) {
+                iarrayadd(arr, &u->userdata.up1);
+            }
+            u = u->next;
+        }while (u);
+        /*to parent*/
+        node = node->parent;
+    }
+    
+    return arr;
 }
 
 /*************************************************************/
