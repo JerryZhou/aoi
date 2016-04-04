@@ -1753,6 +1753,12 @@ void ifreenodetree(inode *node);
 /*坐标是否在节点里面*/
 int inodecontains(const struct imap *map, const inode *node, const ipos *pos);
 
+/* 从子节点的时间戳更新父节点 */
+int inodeupdatparenttick(inode *node);
+    
+/* 从单元身上获取更新时间戳*/
+int inodeupdatetickfromunit(inode *node, iunit *unit);
+
 /*************************************************************/
 /* imap                                                     */
 /*************************************************************/
@@ -1809,6 +1815,9 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx);
 
 /* 从地图上移除 */
 int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop);
+
+/* 尽可能的回收节点 */
+int imaprecyclenodeaspossible(imap *map, inode *node, inode *stop);
 
 /* 根据坐标生成code */
 int imapgencode(const imap *map, const ipos *pos, icode *code);
@@ -1881,6 +1890,9 @@ int imapaddunittolevel(imap *map, iunit *unit, int level);
 
 /* 从地图上移除一个单元 */
 int imapremoveunit(imap *map, iunit *unit);
+    
+/* direct remove the unit from the unit->node */
+int imapremoveunitdirect(imap *map, iunit *unit);
 
 /* 从地图上检索节点 */
 inode *imapgetnode(const imap *map, const icode *code,

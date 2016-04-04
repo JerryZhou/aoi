@@ -4820,8 +4820,27 @@ int inodecontains(const struct imap *map, const inode *node, const ipos *pos) {
     irect r = {node->code.pos, map->nodesizes[node->level]};
     return irectcontainspoint(&r, pos);
 }
-
-
+    
+/* 从子节点的时间戳更新父节点 */
+int inodeupdatparenttick(inode *node) {
+    inode *parent = node->parent;
+    icheckret(parent, iino);
+    
+	parent->tick = node->tick;
+#if open_node_utick
+	parent->utick = node->tick;
+#endif
+    return iiok;
+}
+    
+/* 从单元身上获取更新时间戳*/
+int inodeupdatetickfromunit(inode *node, iunit *unit) {
+    node->tick = unit->tick;
+#if open_node_utick
+    node->utick = unit->tick;
+#endif   
+    return iiok;
+}
 
 /* 增加叶子节点 */
 void justaddleaf(imap *map, inode *node) {
@@ -4846,15 +4865,14 @@ int justaddunit(imap *map, inode *node, iunit *unit){
 	icheckret(node && unit, iino);
 	icheckret(unit->node == NULL, iino);
 	icheckret(node->level == map->divide, iino);
+    
+	++map->state.unitcount;
 
 	unit->node = node;
 	unit->tick = igetnextmicro();
 
 	node->unitcnt++;
-	node->tick = unit->tick;
-#if open_node_utick
-	node->utick = unit->tick;
-#endif
+    inodeupdatetickfromunit(node, unit);
 
 #if open_log_unit
 	ilog("[IMAP-Unit] Add Unit (%lld, %s) To Node (%d, %s)\n",
@@ -4875,21 +4893,20 @@ int justremoveunit(imap *map, inode *node, iunit *unit) {
 	icheckret(node && unit, iino);
 	icheckret(unit->node == node, iino);
 	icheckret(node->level == map->divide, iino);
+    
+    /* 移除单元统计 */
+	--map->state.unitcount;
 
 #if open_log_unit
 	ilog("[IMAP-Unit] Remove Unit (%lld, %s) From Node (%d, %s)\n",
 			unit->id, unit->code.code, node->level, node->code.code);
 #endif
+    
+    unit->node = NULL;
+	unit->tick = igetnextmicro();
 
 	node->unitcnt--;
-	node->tick = igetnextmicro();
-
-#if open_node_utick
-	node->utick = node->tick;
-#endif
-
-	unit->node = NULL;
-	unit->tick = node->tick;
+    inodeupdatetickfromunit(node, unit);
 
 	list_remove(node->units, unit);
 	irelease(unit);
@@ -4999,15 +5016,14 @@ static int _iremovenodefromparent(imap *map, inode *node) {
 	node->codei = 0;
 	node->code.code[0] = 0;
 	node->tick = 0;
+#if open_node_utick
+	node->utick = 0;
+#endif
 	node->x = node->y = 0;
 	node->state = 0;
 
 	/* 清理 邻居 节点*/
 	ineighborsclean(icast(irefneighbors, node));
-
-#if open_node_utick
-	node->utick = 0;
-#endif
 
 	/* 释放节点 */
 	icacheput(map->nodecache, node);
@@ -5043,8 +5059,6 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
 		_print_unit_add(node, unit, idx);
 		/* log it */
 #endif
-
-		++map->state.unitcount;
 		ok = iiok;
 	}else {
 		/* 定位节点所在的子节点 */
@@ -5067,10 +5081,7 @@ int imapaddunitto(imap *map, inode *node, iunit *unit, int idx) {
 	/* 更新节点信息 */
 	if (ok == iiok) {
 		if (child) {
-			node->tick = child->tick;
-#if open_node_utick
-			node->utick = child->tick;
-#endif
+            inodeupdatparenttick(child);
 		}else {
 			/* 已经在 justaddunit 更新了节点时间戳 */
 		}
@@ -5097,8 +5108,7 @@ int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop
 #endif
 		/* 移除单元 */
 		justremoveunit(map, node, unit);
-		/* 移除单元统计 */
-		--map->state.unitcount;
+		
 		/* 移除成功 */
 		ok = iiok;
 	}else {
@@ -5113,24 +5123,29 @@ int imapremoveunitfrom(imap *map, inode *node, iunit *unit, int idx, inode *stop
 	if (ok == iiok){
 		/* 更新时间 */
 		if (child) {
-			node->tick = child->tick;
-#if open_node_utick
-			node->utick = child->tick;
-#endif
+            inodeupdatparenttick(child);
 		}else {
 			/* 已经在 justremoveunit 更新了时间戳 */
 		}
 		/* 回收可能的节点 */
-		if (node != stop /* 不是停止节点 */
-				&& !_state_is(node->state, EnumNodeStateStatic) /* 不是静态节点 */
-				&& node->childcnt == 0 /* 孩子节点为0 */
-				&& node->unitcnt == 0 /* 上面绑定的单元节点也为空 */
-		   ) {
-			_iremovenodefromparent(map, node);
-		}
+        imaprecyclenodeaspossible(map, node, stop);
 	}
 	return ok;
 }
+    
+/* 尽可能的回收节点 */
+int imaprecyclenodeaspossible(imap *map, inode *node, inode *stop) {
+	if (node != stop /* 不是停止节点 */
+			&& !_state_is(node->state, EnumNodeStateStatic) /* 不是静态节点 */
+			&& node->childcnt == 0 /* 孩子节点为0 */
+			&& node->unitcnt == 0 /* 上面绑定的单元节点也为空 */
+	   ) {
+		_iremovenodefromparent(map, node);
+        return iiok;
+	}
+    return iino;
+}
+
     
 /* 根据坐标生成code */
 int imapgencode(const imap *map, const ipos *pos, icode *code) {
@@ -5522,6 +5537,7 @@ int imapaddunit(imap *map, iunit *unit) {
     return imapaddunittolevel(map, unit, map->divide);
 }
 
+#define __ii_aoi_remove_direct (1)
 /* 从地图上移除一个单元 */
 int imapremoveunit(imap *map, iunit *unit) {
 	int ok;
@@ -5530,6 +5546,13 @@ int imapremoveunit(imap *map, iunit *unit) {
 	icheckret(unit, iino);
 	icheckret(unit->node, iino);
 	icheckret(map, iino);
+    
+    /* open the direct remove */
+#if __ii_aoi_remove_direct
+    if (imapremoveunitdirect(map, unit) == iiok) {
+        return iiok;
+    }
+#endif
 
 	/* log it */
 #if open_log_unit
@@ -5543,6 +5566,47 @@ int imapremoveunit(imap *map, iunit *unit) {
 			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
 
 	return ok;
+}
+    
+/* direct remove the unit from the unit->node */
+int imapremoveunitdirect(imap *map, iunit *unit) {
+    inode *node = unit->node;
+    inode *stop = map->root;
+    inode *remove = NULL;
+	int64_t micro;
+    
+    icheckret(unit, iino);
+	icheckret(unit->node, iino);
+	icheckret(map, iino);
+    
+	/* log it */
+#if open_log_unit
+	ilog("[IMAP-Unit] Remove Unit: %lld - (%.3f, %.3f) - %s\n",
+			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
+#endif
+	micro = __Micros;
+    
+    /*移除节点*/
+    justremoveunit(map, node, unit);
+    
+    /*更新父亲时间戳，回收相关节点*/
+    while (node->parent) {
+        /*更新父节点时间戳*/
+        inodeupdatparenttick(node);
+        
+        /* 记录可以尝试回收可能的节点 */
+        remove = node;
+        node = node->parent;
+        /* 回收可能的节点 */
+        if (stop && imaprecyclenodeaspossible(map, remove, stop)==iino ) {
+            stop = NULL;
+        }
+    }
+    iplog(__Since(micro), "[IMAP-Unit] Remove Unit: "
+			"%lld - (%.3f, %.3f) - %s\n",
+			unit->id, unit->pos.x, unit->pos.y, unit->code.code);
+
+    return iiok;
 }
 
 
