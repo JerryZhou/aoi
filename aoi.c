@@ -606,6 +606,12 @@ ireal idistancepow3(const ipos3 *p, const ipos3 *t) {
 	return dx*dx + dy*dy + dz*dz;
 }
 
+/* get the xy from the p with xz */
+void ipos3takexz(const ipos3 *p, ipos *to) {
+    to->x = p->x;
+    to->y = p->z;
+}
+
 /* 把点在这个方向上进行移动 */
 ipos ivec2movepoint(const ivec2 *dir, ireal dist, const ipos *p) {
     ipos to = *p;
@@ -4489,8 +4495,20 @@ int ipolygon3dincollum(const ipolygon3d *poly, const ipos3 *v) {
     
     return inside;
 }
-
-
+    
+/* give the projection rect in xz-plane */
+void ipolygon3dtakerectxz(const ipolygon3d *poly, irect *r) {
+    ipos min, max;
+    ipos3takexz(&poly->min, &min);
+    ipos3takexz(&poly->max, &max);
+    r->pos = min;
+    r->size.w = max.x - min.x;
+    r->size.h = max.y - min.y;
+}
+    
+/*************************************************************/
+/* ipolygon2d                                                */
+/*************************************************************/
 
 /* free resouces of polygon3d */
 static void _ipolygon2d_entry_free(iref *ref) {
@@ -5673,6 +5691,30 @@ int imapgetblock(const imap *map, int x, int y) {
 	int offset = cur & 8;
 	return (map->blocks[idx] >> offset) & 0x01;
 }
+    
+/* 返回地图水平的分割层次：当前层次的分割单元大于给定的大小, 那么轴对齐的线段的断点最多在两个分割单元内部*/
+int imapcontainslevelw(const imap *map, int level, ireal h) {
+    while (level > 0 && map->nodesizes[level].h < h) {
+        --level;
+    }
+    return level;
+}
+
+/* 返回地图垂直的分割层次：当前层次的分割单元大于给定的大小, 那么轴对齐的线段的断点最多在两个分割单元内部*/
+int imapcontainslevelh(const imap *map, int level, ireal w) {
+    while (level > 0 && map->nodesizes[level].w < w) {
+        --level;
+    }
+    return level;
+}
+
+/* 返回地图的分割层次，当前分割层次可以把矩形包含进最多4个分割单元内*/
+int imapcontainslevel(const imap *map, const irect* r) {
+    int level = map->divide;
+    level = imapcontainslevelw(map, level, r->size.w);
+    level = imapcontainslevelh(map, level, r->size.h);
+    return level;
+}
 
 /* 对一个数字做Hash:Redis */
 static void _ihash(int64_t *hash, int64_t v) {
@@ -6239,12 +6281,7 @@ static void _imapsearchcollectnode_withclear(imap *map, const irect *rect, int c
         rect->pos.x + rect->size.w, rect->pos.y };
     
     /* 可能的节点层级 */
-    while (level > 0 && map->nodesizes[level].h < rect->size.h) {
-        --level;
-    }
-    while (level > 0 && map->nodesizes[level].w < rect->size.w) {
-        --level;
-    }
+    level = imapcontainslevel(map, rect);
     
     /* 获取可能存在数据的节点 */
     for (i=0; i<4; ++i) {
@@ -6321,12 +6358,9 @@ void imapsearchcollectline(imap *map, const iline2d *line, ireflist *collects) {
     
     /* every step will take max 4 node */
     /* calcuating the node level */
-    while (level > 0 && map->nodesizes[level].h < line_len/4) {
-        --level;
-    }
-    while (level > 0 && map->nodesizes[level].w < line_len/4) {
-        --level;
-    }
+    level = imapcontainslevelw(map, level, line_len/4);
+    level = imapcontainslevelh(map, level, line_len/4);
+    
     /* calcuating the step counts and step delta*/
     movedelta = imin(map->nodesizes[level].h, map->nodesizes[level].w);
     movecnt = (int)((line_len + movedelta - iepsilon) / movedelta);

@@ -231,6 +231,9 @@ extern const ipos3 kipos3_zero;
     
 /* 计算距离的平方 */
 ireal idistancepow3(const ipos3 *p, const ipos3 *t);
+   
+/* get the xy from the p with xz */
+void ipos3takexz(const ipos3 *p, ipos *to);
 
 /*************************************************************/
 /* ivec2                                                     */
@@ -1477,6 +1480,9 @@ ipos3 ipolygon3dedgecenter(ipolygon3d *polygon, int index);
  * |---------> x
  * */
 int ipolygon3dincollum(const ipolygon3d *poly, const ipos3 *v);
+    
+/* give the projection rect in xz-plane */
+void ipolygon3dtakerectxz(const ipolygon3d *poly, irect *r);
    
 /*************************************************************/
 /* ipolygon2d                                                */
@@ -1870,6 +1876,13 @@ void imaploadblocks(imap *map, char* blocks);
 
 /* 获取块的状态 */
 int imapgetblock(const imap *map, int x, int y);
+    
+/* 返回地图水平的分割层次：当前层次的分割单元大于给定的大小, 那么轴对齐的线段的断点最多在两个分割单元内部*/
+int imapcontainslevelw(const imap *map, int level, ireal w);
+/* 返回地图垂直的分割层次：当前层次的分割单元大于给定的大小, 那么轴对齐的线段的断点最多在两个分割单元内部*/
+int imapcontainslevelh(const imap *map, int level, ireal h);
+/* 返回地图的分割层次，当前分割层次可以把矩形包含进最多4个分割单元内*/
+int imapcontainslevel(const imap *map, const irect* r);
 
 /*************************************************************/
 /* ifilter                                                   */
