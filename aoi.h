@@ -1636,6 +1636,10 @@ typedef struct icode {
     ipos pos;
 }icode;
 
+/*icode printf format*/
+#define __icode_format "[code: %s pos:"__ipos_format"]"
+#define __icode_value(c) (c).code,__ipos_value((c).pos)
+
 /*************************************************************/
 /* iuserdata                                                 */
 /*************************************************************/
@@ -1789,6 +1793,10 @@ typedef struct inode {
     struct inode *next;
 
 }inode;
+    
+/* inode format */
+#define __inode_format "[code:"__icode_format" size:"__isize_format" level:%d]"
+#define __inode_value(m, n) __icode_value((n).code),__isize_value((m).nodesizes[(n).level]),(n).level
 
 /* 节点内存管理 */
 inode * imakenode();

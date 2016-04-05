@@ -2960,6 +2960,8 @@ iarray* istringsplit(const istring s, const char* split, int len) {
                                              size,
                                              size);
     if (iarraylen(indexs)) {
+        /*make enough space for subs*/
+        iarrayexpandcapacity(arr, iarraylen(indexs));
         /*go through the sub*/
         for (i=0; i<iarraylen(indexs); ++i) {
             subindex = iarrayof(indexs, int, i);
@@ -2976,6 +2978,7 @@ iarray* istringsplit(const istring s, const char* split, int len) {
         iarrayadd(arr, &sub);
         irelease(sub);
     } else {
+        /*add the original string as the first sub*/
         iarrayadd(arr, &s);
     }
     
@@ -2991,16 +2994,19 @@ istring istringjoin(const iarray* ss, const char* join, int len) {
     istring s;
     size_t i = 0;
     size_t num = iarraylen(ss);
+    /*the first one*/
     if (num) {
         s = iarrayof(ss, istring, 0);
         iarrayinsert(joined, 0, istringbuf(s), istringlen(s));
     }
+    /*the after childs*/
     for (i=1; i<num; ++i) {
         iarrayinsert(joined, iarraylen(joined), join, len);
         s = iarrayof(ss, istring, i);
         iarrayinsert(joined, iarraylen(joined), istringbuf(s), istringlen(s));
     }
     
+    /*make slice*/
     s = islicemakearg(joined, ":");
     iarrayfree(joined);
     return s;
