@@ -13,14 +13,6 @@ Please see examples for more details.
 
 #include "navi.h"
 
-#ifndef imax
-#define imax(a, b) ((a) > (b) ? (a) : (b))
-#endif  /* end: ifndef imax */
-
-#ifndef imin
-#define imin(a, b) ((a) < (b) ? (a) : (b))
-#endif /* end: ifndef imin */
-
 /* log some runtime */
 #define __iopen_log_cell_add (1)
 #define __iopen_log_cell_find (1)
@@ -266,18 +258,18 @@ void inavicellunaoi(inavicell *cell, imap *aoimap) {
     iunit *u;
     size_t size = iarraylen(cell->aoi_cellunits);
 #if __iopen_log_cell_del
-    printf("[INavi Cell-UnLink] ##Begin## cell:"__icell_format"\n", __icell_value(*cell));
+    ilog("[INavi Cell-UnLink] ##Begin## cell:"__icell_format"\n", __icell_value(*cell));
 #endif
     for (; size; --size) {
         u = iarrayof(cell->aoi_cellunits, iunit*, size-1);
 #if __iopen_log_cell_del
-    printf("[INavi Cell-UnLink] Unmapping from node:"__inode_format"\n", __inode_value(*aoimap, *u->node));
+    ilog("[INavi Cell-UnLink] Unmapping from node:"__inode_format"\n", __inode_value(*aoimap, *u->node));
 #endif
         imapremoveunit(aoimap, u);
     }
     iarrayremoveall(cell->aoi_cellunits);
 #if __iopen_log_cell_del
-    printf("[INavi Cell-UnLink] ##End## cell:"__icell_format"\n", __icell_value(*cell));
+    ilog("[INavi Cell-UnLink] ##End## cell:"__icell_format"\n", __icell_value(*cell));
 #endif
 }
 
@@ -1006,13 +998,11 @@ inavicell * inavimapnextcell(inavimap *map, int conn) {
     return iarrayof(map->cells, inavicell*, connection->next);
 }
 
-
 /* used to smooth the waypoint */
 typedef struct _inavi_smooth_point {
     inavicell *cell;
     ipos3 pos;
 }_inavi_smooth_point;
-
 
 /*check if we can see each other*/
 int _inavi_cell_lineofsight_test(inavimap *map, _inavi_smooth_point *start, _inavi_smooth_point *end) {
@@ -1142,7 +1132,7 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
     icheck(iarraylen(cell->aoi_cellunits) == 0);
     
 #if __iopen_log_cell_add
-    printf("[INavi Cell-Add] ##Begin## "__icell_format"\n", __icell_value(*cell));
+    ilog("[INavi Cell-Add] ##Begin## "__icell_format"\n", __icell_value(*cell));
 #endif
     
     /* get the polygon3d projection plane in xz */
@@ -1152,7 +1142,7 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
     
 #if __iopen_log_cell_add
 #define __inavi_cell_add_log \
-    printf("[INavi Cell-Add To Node] corner:"__ipos_format" node:"__inode_format"\n", \
+    ilog("[INavi Cell-Add To Node] corner:"__ipos_format" node:"__inode_format"\n", \
            __ipos_value(pos), \
            __inode_value(*aoimap, *neighbor->node))
 #else
@@ -1199,7 +1189,7 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
     }
     
 #if __iopen_log_cell_add
-    printf("[INavi Cell-Add] ##End## "__icell_format"\n", __icell_value(*cell));
+    ilog("[INavi Cell-Add] ##End## "__icell_format"\n", __icell_value(*cell));
 #endif
     
     irelease(u_downleft);
@@ -1221,7 +1211,7 @@ iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos) {
     inavicell *cell;
     
 #if __iopen_log_cell_find
-    printf("[INavi Cell-Find] #Begin# pos:"__ipos_format"\n", __ipos_value(*pos));
+    ilog("[INavi Cell-Find] #Begin# pos:"__ipos_format"\n", __ipos_value(*pos));
 #endif
     
     /* gen node code */
@@ -1230,7 +1220,7 @@ iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos) {
     node = imapgetnode(aoimap, &code, aoimap->divide, EnumFindBehaviorFuzzy);
     while (node) {
 #if __iopen_log_cell_find
-        printf("[INavi Cell-Find] Node:"__inode_format"\n", __inode_value(*aoimap, *node));
+        ilog("[INavi Cell-Find] Node:"__inode_format"\n", __inode_value(*aoimap, *node));
 #endif
         u = node->units;
         /* for-each unit in node */
@@ -1238,7 +1228,7 @@ iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos) {
             if (u->flag & EnumNaviUnitFlag_Cell) {
                 cell = icast(inavicell, u->userdata.up1);
 #if __iopen_log_cell_find
-                printf("[INavi Cell-Find] cell:"__icell_format"\n", __icell_value(*cell));
+                ilog("[INavi Cell-Find] cell:"__icell_format"\n", __icell_value(*cell));
 #endif
                 iarrayadd(arr, &cell);
             }
@@ -1249,11 +1239,45 @@ iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos) {
     }
     
 #if __iopen_log_cell_find
-    printf("[INavi Cell-Find] #End# pos:"__ipos_format"\n", __ipos_value(*pos));
+    ilog("[INavi Cell-Find] #End# pos:"__ipos_format"\n", __ipos_value(*pos));
 #endif
     
     return arr;
 }
+
+/*************************************************************/
+/* Map Convex-Hull-Algorithm                                 */
+/*************************************************************/
+/*[QuickHull](http://www.cnblogs.com/Booble/archive/2011/03/10/1980089.html)*/
+/*[](http://xuewen.cnki.net/CJFD-BJHK901.019.html) */
+/*[](https://en.wikipedia.org/wiki/Convex_hull)*/
+/*[QuickHull](http://www.cs.princeton.edu/courses/archive/spr10/cos226/demo/ah/QuickHull.html)*/
+/*[ConvexHull](http://www.csie.ntnu.edu.tw/~u91029/ConvexHull.html)*/
+
+/* 
+ * @return: [] *ipolygon3d 
+ * @param pos: [] *ipos3 */
+iarray* inavimapgenconvex3d(iarray* pos) {
+    /*todo:*/
+    return NULL;
+}
+
+/*
+ * @return: [] *iarray([]*ipos3)
+ * @param pos: [] *ipos3 */
+iarray* inavimapgenplanes(iarray *pos) {
+    /*todo:*/
+    return NULL;
+}
+
+/* 
+ * @return: [] *ipolygon
+ * @param pos: [] *ipos */
+iarray* inavimapgenconvex(iarray* pos){
+    /*todo:*/
+    return NULL;
+}
+
 
 /*************************************************************/
 /* implement the new type for iimeta system                  */

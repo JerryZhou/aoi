@@ -413,6 +413,25 @@ void inavimapcelldel(inavimap *map, inavicell *cell, imap *aoimap);
     
 /* Find the cells in aoi map */
 iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos);
+    
+/*************************************************************/
+/* Map Convex-Hull-Algorithm                                 */
+/*************************************************************/
+/*
+ * @return: [] *ipolygon3d 
+ * @param pos: [] *ipos3 */
+iarray* inavimapgenconvex3d(iarray* pos);
+    
+/*
+ * @return: [] *iarray([]*ipos3)
+ * @param pos: [] *ipos3 */
+iarray* inavimapgenplanes(iarray *pos);
+    
+/* 
+ * @return: [] *ipolygon
+ * @param pos: [] *ipos */
+iarray* inavimapgenconvex(iarray* pos);
+    
 
 /*************************************************************/
 /* declare the new type for iimeta system                    */
