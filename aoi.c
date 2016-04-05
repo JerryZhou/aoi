@@ -59,11 +59,6 @@ static int gettimeofday(struct timeval *tp, void *tzp)
 #define open_log_profile	(0)
 #define open_log_map_construct  (0)
 
-/* 常用的宏 */
-#define imax(a, b) ((a) > (b) ? (a) : (b))
-#define imin(a, b) ((a) < (b) ? (a) : (b))
-#define iunused(v) (void)(v)
-#define ilog(...) printf(__VA_ARGS__)
 
 /* 状态操作宏 */
 #define _state_add(value, state) value |= state

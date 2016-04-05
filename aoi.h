@@ -91,6 +91,12 @@ extern "C" {
 /* flat array count */
 #define icountof(arr) (sizeof(arr)/sizeof(arr[0]))
     
+/* 常用的宏 */
+#define imax(a, b) ((a) > (b) ? (a) : (b))
+#define imin(a, b) ((a) < (b) ? (a) : (b))
+#define iunused(v) (void)(v)
+#define ilog(...) printf(__VA_ARGS__)
+    
 /* helper for printf isize */
 #define __isize_format "(w:%lf, h:%lf)"
 #define __isize_value(s) (s).w, (s).h
