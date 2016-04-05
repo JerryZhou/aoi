@@ -26,6 +26,10 @@
 
 #include <windows.h>
 #define snprintf _snprintf
+
+// TODO: figure out a multiplatform version of uint64_t
+// - maybe: https://code.google.com/p/msinttypes/
+// - or: http://www.azillionmonkeys.com/qed/pstdint.h
 typedef _int64 int64_t;
 typedef _uint64 uint64_t;
 typedef _int32 int32_t;
