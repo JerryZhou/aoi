@@ -415,6 +415,23 @@ void inavimapcelldel(inavimap *map, inavicell *cell, imap *aoimap);
 iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos);
     
 /*************************************************************/
+/* Map Convex-Polygon-Builder                                */
+/*************************************************************/
+/*for tile based map*/
+typedef struct iheightmap {
+    ipos3 offset;       /*aoi-map: pos*/
+    
+    isize heightsize;
+    iarray *height;     /*[]ireal; len=heightsize.w * height.h */
+    
+    isize blocksize;
+    iarray *block;      /*[]unsigned char; len=(blocksize.w*blocksize.h + 7)/8*/
+}iheightmap;
+    
+/* load from height-map */
+int inavimapdescreadfromheightmap(inavimapdesc *desc, iheightmap *height);
+    
+/*************************************************************/
 /* Map Convex-Hull-Algorithm                                 */
 /*************************************************************/
 /*

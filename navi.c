@@ -977,12 +977,18 @@ static void _inavimapfindpath_cell(inavimap *map,
 int inavimapfindpath(inavimap *map, iunit *unit, const ipos3 *from, const ipos3 *to, inavipath *path) {
     inavicell *start = inavimapfind(map, from);
     inavicell *end = inavimapfind(map, to);
+    icheckret(start && end, 0);
+    
+    /*setup the path*/
     inavipathsetup(path, ++map->sessionid, start, from, end, to);
     
+    /*find the path*/
     _inavimapfindpath_cell(map, unit, path, INT32_MAX);
+    /*auto smooth the whole path*/
 #if iiwaypoint_autosmooth
     inavimapsmoothpath(map, unit, path, INT32_MAX);
 #endif
+    /*return the path count*/
     return ireflistlen(path->waypoints);
 }
 
@@ -1244,6 +1250,15 @@ iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos) {
     
     return arr;
 }
+
+/*************************************************************/
+/* Map Convex-Polygon-Builder                                */
+/*************************************************************/
+/* load from height-map */
+int inavimapdescreadfromheightmap(inavimapdesc *desc, iheightmap *height) {
+    return iiok;
+}
+
 
 /*************************************************************/
 /* Map Convex-Hull-Algorithm                                 */
