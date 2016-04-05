@@ -21,6 +21,11 @@ Please see examples for more details.
 #define imin(a, b) ((a) < (b) ? (a) : (b))
 #endif /* end: ifndef imin */
 
+/* log some runtime */
+#define __iopen_log_cell_add (1)
+#define __iopen_log_cell_find (1)
+#define __iopen_log_cell_del (1)
+
 /* Max Path Finder Heap Depth */
 #define KMAX_HEAP_DEPTH 64
 /*************************************************************/
@@ -260,11 +265,20 @@ int inavicellmapheight(inavicell *cell, ipos3 *pos) {
 void inavicellunaoi(inavicell *cell, imap *aoimap) {
     iunit *u;
     size_t size = iarraylen(cell->aoi_cellunits);
+#if __iopen_log_cell_del
+    printf("[INavi Cell-UnLink] ##Begin## cell:"__icell_format"\n", __icell_value(*cell));
+#endif
     for (; size; --size) {
         u = iarrayof(cell->aoi_cellunits, iunit*, size-1);
+#if __iopen_log_cell_del
+    printf("[INavi Cell-UnLink] Unmapping from node:"__inode_format"\n", __inode_value(*aoimap, *u->node));
+#endif
         imapremoveunit(aoimap, u);
     }
     iarrayremoveall(cell->aoi_cellunits);
+#if __iopen_log_cell_del
+    printf("[INavi Cell-UnLink] ##End## cell:"__icell_format"\n", __icell_value(*cell));
+#endif
 }
 
 /* Just Single Release the relation with aoi */
@@ -1127,12 +1141,23 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
     /* the empty mapping should be */
     icheck(iarraylen(cell->aoi_cellunits) == 0);
     
-    printf("[INavi Cell-Add] "__icell_format"\n", __icell_value(*cell));
+#if __iopen_log_cell_add
+    printf("[INavi Cell-Add] ##Begin## "__icell_format"\n", __icell_value(*cell));
+#endif
     
     /* get the polygon3d projection plane in xz */
     ipolygon3dtakerectxz(cell->polygon, &proj);
     /* caculating the contains level in aoi divide */
     level = imapcontainslevel(aoimap, &proj);
+    
+#if __iopen_log_cell_add
+#define __inavi_cell_add_log \
+    printf("[INavi Cell-Add To Node] corner:"__ipos_format" node:"__inode_format"\n", \
+           __ipos_value(pos), \
+           __inode_value(*aoimap, *neighbor->node))
+#else
+#define __inavi_cell_add_log
+#endif
     
     /* down-left */
     pos = irectdownleft(&proj);
@@ -1142,66 +1167,40 @@ void inavimapcelladd(inavimap *map, inavicell *cell, imap *aoimap) {
     imapaddunittolevel(aoimap, u_downleft, level);
     iarrayadd(cell->aoi_cellunits, &u_downleft);
     iassign(neighbor, u_downleft);
-   
-    printf("[INavi Cell-Add To Node] corner:"__ipos_format" code: %s pos:"__ipos_format" size:"__isize_format"\n",
-           __ipos_value(pos),
-           neighbor->node->code.code,
-           __ipos_value(neighbor->node->code.pos),
-           __isize_value(aoimap->nodesizes[neighbor->node->level]));
+    __inavi_cell_add_log;
+
+/* add a macro to speed it */
+#define __inavi_cell_justaddit \
+    u = imakeunit(-1, pos.x, pos.y); \
+    u->flag |= EnumNaviUnitFlag_Cell; \
+    imapaddunittolevel(aoimap, u, level); \
+    iarrayadd(cell->aoi_cellunits, &u); \
+    iassign(neighbor, u); \
+    irelease(u);\
+    __inavi_cell_add_log
     
     /* down-right */
     pos = irectdownright(&proj);
     if (!inodecontains(aoimap, neighbor->node, &pos)) {
-        u = imakeunit(-1, pos.x, pos.y);
-        u->flag |= EnumNaviUnitFlag_Cell;
-        u->userdata.up1 = cell;
-        imapaddunittolevel(aoimap, u, level);
-        iarrayadd(cell->aoi_cellunits, &u);
-        iassign(neighbor, u);
-        irelease(u);
-        
-        printf("[INavi Cell-Add To Node] corner:"__ipos_format" code: %s pos:"__ipos_format" size:"__isize_format"\n",
-           __ipos_value(pos),
-           neighbor->node->code.code,
-           __ipos_value(neighbor->node->code.pos),
-           __isize_value(aoimap->nodesizes[neighbor->node->level]));
+        __inavi_cell_justaddit;
     }
     
     /* up-left */
     pos = irectupleft(&proj);
     if (!inodecontains(aoimap, u_downleft->node, &pos)) {
-        u = imakeunit(-1, pos.x, pos.y);
-        u->userdata.up1 = cell;
-        u->flag |= EnumNaviUnitFlag_Cell;
-        imapaddunittolevel(aoimap, u, level);
-        iarrayadd(cell->aoi_cellunits, &u);
-        iassign(neighbor, u);
-        irelease(u);
-        
-        printf("[INavi Cell-Add To Node] corner:"__ipos_format" code: %s pos:"__ipos_format" size:"__isize_format"\n",
-           __ipos_value(pos),
-           neighbor->node->code.code,
-           __ipos_value(neighbor->node->code.pos),
-           __isize_value(aoimap->nodesizes[neighbor->node->level]));
+        __inavi_cell_justaddit;
     }
     
     /* up-right */
     pos = irectupright(&proj);
     if (!inodecontains(aoimap, u_downleft->node, &pos)
         && (neighbor == NULL || !inodecontains(aoimap, neighbor->node, &pos))) {
-        u = imakeunit(-1, pos.x, pos.y);
-        u->flag |= EnumNaviUnitFlag_Cell;
-        imapaddunittolevel(aoimap, u, level);
-        iarrayadd(cell->aoi_cellunits, &u);
-        iassign(neighbor, u);
-        irelease(u);
-      
-        printf("[INavi Cell-Add To Node] corner:"__ipos_format" code: %s pos:"__ipos_format" size:"__isize_format"\n",
-           __ipos_value(pos),
-           neighbor->node->code.code,
-           __ipos_value(neighbor->node->code.pos),
-           __isize_value(aoimap->nodesizes[neighbor->node->level]));
+        __inavi_cell_justaddit;
     }
+    
+#if __iopen_log_cell_add
+    printf("[INavi Cell-Add] ##End## "__icell_format"\n", __icell_value(*cell));
+#endif
     
     irelease(u_downleft);
     irelease(neighbor);
@@ -1219,23 +1218,39 @@ iarray *inavimapcellfind(inavimap *map, imap *aoimap, const ipos3 *pos) {
     icode code;
     inode *node;
     iunit *u;
+    inavicell *cell;
+    
+#if __iopen_log_cell_find
+    printf("[INavi Cell-Find] #Begin# pos:"__ipos_format"\n", __ipos_value(*pos));
+#endif
     
     /* gen node code */
     imapgencode(aoimap, &pos2, &code);
     /*Fuzzy Find the top node */
     node = imapgetnode(aoimap, &code, aoimap->divide, EnumFindBehaviorFuzzy);
     while (node) {
+#if __iopen_log_cell_find
+        printf("[INavi Cell-Find] Node:"__inode_format"\n", __inode_value(*aoimap, *node));
+#endif
         u = node->units;
         /* for-each unit in node */
         if (u) do {
             if (u->flag & EnumNaviUnitFlag_Cell) {
-                iarrayadd(arr, &u->userdata.up1);
+                cell = icast(inavicell, u->userdata.up1);
+#if __iopen_log_cell_find
+                printf("[INavi Cell-Find] cell:"__icell_format"\n", __icell_value(*cell));
+#endif
+                iarrayadd(arr, &cell);
             }
             u = u->next;
         }while (u);
         /*to parent*/
         node = node->parent;
     }
+    
+#if __iopen_log_cell_find
+    printf("[INavi Cell-Find] #End# pos:"__ipos_format"\n", __ipos_value(*pos));
+#endif
     
     return arr;
 }
