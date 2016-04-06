@@ -1153,6 +1153,22 @@ iarray* iarraymakeivec3(size_t capacity);
     
 /* 辅助宏，获取*/
 #define iarrayof(arr, type, i) (((type *)iarrayat(arr, i))[0])
+    
+/* Helper-Macro: For-Earch in c89 */
+#define irangec(arr, type, idx, value, wrap) \
+    do { \
+    for(idx=0; idx<iarraylen(arr); ++idx) {\
+        value = iarrayof(arr, type, idx);\
+        wrap;\
+    } } while(0)
+
+/* Helper-Macro: For-Earch in cplusplus */
+#define irange(arr, type, wrap) \
+    do { \
+    for(int __idx=0; __idx<iarraylen(arr); ++__idx) {\
+        type __value = iarrayof(arr, type, __idx);\
+        wrap;\
+    } } while(0)
 
 /*************************************************************/
 /* islice                                                    */
@@ -1247,6 +1263,23 @@ void isliceforeach(const islice *slice, islice_entry_visitor visitor);
     
 /* 辅助宏，获取*/
 #define isliceof(slice, type, i) (((type *)isliceat(slice, i))[0])
+    
+/* Helper-Macro: For-Each in c89*/
+#define irangeslicec(slice, type, idx, value, wrap) \
+    do {\
+    for(int __idx=0; __idx<islicelen(slice); ++__idx) {\
+        type __value = isliceof(slice, type, __idx);\
+        wrap;\
+    }} while(0)   
+
+/* Helper-Macro: For-Each in cplusplus*/
+#define irangeslice(slice, type, wrap) \
+    do {\
+    for(int __idx=0; __idx<islicelen(slice); ++__idx) {\
+        type __value = isliceof(slice, type, __idx);\
+        wrap;\
+    }} while(0)
+
     
 /*************************************************************/
 /* istring                                                   */
