@@ -93,8 +93,7 @@ static imutex *_imeta_mutex() {
 #endif
 
 #undef __ideclaremeta
-/* #define __ideclaremeta(type, cap) {.name=#type, .size=sizeof(type), .current=0, .alloced=0, .freed=0, .cache={.root=NULL, .length=0, .capacity=cap}}*/
-#define __ideclaremeta(type, cap) {#type, {NULL, 0, cap}, sizeof(type), -1, 0, 0}
+#define __ideclaremeta(type, cap) {#type, {NULL, 0, cap}, sizeof(type), -1, 0, 0, NULL, NULL}
 /* 所有类型的元信息系统 */
 imeta gmetas[] = {__iallmeta,
 	__ideclaremeta(imeta, 0)
@@ -148,10 +147,59 @@ int imetaregister(const char* name, int size, int capacity) {
 	gmetasuser[gmetacountuser].name = name;
 	gmetasuser[gmetacountuser].size = size;
 	gmetasuser[gmetacountuser].cache.capacity = capacity;
+    gmetasuser[gmetacountuser].tracecalloc = NULL;
+    gmetasuser[gmetacountuser].tracefree = NULL;
 #if iithreadsafe
     imutexinit(&gmetasuser[gmetacountuser].mutex);
 #endif
 	return gmetacount + gmetacountuser++;
+}
+
+/*calloc memory for meta*/
+static iobj* _imetaobjcalloc(imeta *meta) {
+    int newsize = sizeof(iobj) + meta->size;
+    iobj *obj = (iobj*)icalloc(1, newsize);
+    obj->meta = meta;
+    obj->size = newsize;
+    
+    _imeta_lock;
+    obj->meta->alloced += newsize;
+    obj->meta->current += newsize;
+    _imeta_unlock;
+    
+    _imeta_global_lock;
+    gcallocsize += newsize;
+    gholdsize += newsize;
+    _imeta_global_unlock;
+    
+    /* tracing the alloc */
+    if (meta->tracecalloc) {
+        meta->tracecalloc(meta, obj);
+    }
+    
+    return obj;
+}
+
+/* 释放对象 */
+static void _imetaobjfree(iobj *obj) {
+    imeta *meta = obj->meta;
+    
+    /* tracing the alloc */
+    if (meta->tracefree) {
+        meta->tracefree(meta, obj);
+    }
+    
+    _imeta_lock;
+    obj->meta->current -= obj->size;
+    obj->meta->freed += obj->size;
+    _imeta_unlock;
+    
+    _imeta_global_lock;
+    gfreesize += obj->size;
+    gholdsize -= obj->size;
+    _imeta_global_unlock;
+    
+    ifree(obj);
 }
 
 /**
@@ -159,7 +207,6 @@ int imetaregister(const char* name, int size, int capacity) {
  */
 static iobj *_imetapoll(imeta *meta) {
 	iobj *obj = NULL;
-    int newsize = 0;
    
     _imeta_lock;
 	if (meta->cache.length) {
@@ -168,42 +215,14 @@ static iobj *_imetapoll(imeta *meta) {
 		obj->next = NULL;
 		--meta->cache.length;
 		memset(obj->addr, 0, obj->meta->size);
-	}else {
-		newsize = sizeof(iobj) + meta->size;
-		obj = (iobj*)icalloc(1, newsize);
-		obj->meta = meta;
-		obj->size = newsize;
-		obj->meta->alloced += newsize;
-		obj->meta->current += newsize;
-		
-	}
-    _imeta_unlock;
-    
-    if (newsize) {
-        _imeta_global_lock;
-        gcallocsize += newsize;
-		gholdsize += newsize;
-        _imeta_global_unlock;
+        _imeta_unlock;
+    } else {
+        _imeta_unlock;
+        
+        obj = _imetaobjcalloc(meta);
     }
     
 	return obj;
-}
-
-/* 释放对象 */
-void imetaobjfree(iobj *obj) {
-    imeta *meta = obj->meta;
-    
-    _imeta_lock;
-	obj->meta->current -= obj->size;
-	obj->meta->freed += obj->size;
-    _imeta_unlock;
-    
-    _imeta_global_lock;
-	gfreesize += obj->size;
-	gholdsize -= obj->size;
-    _imeta_global_unlock;
-    
-	ifree(obj);
 }
 
 /* Meta 的缓冲区管理 */
@@ -219,7 +238,7 @@ void imetapush(iobj *obj) {
 	} else {
         _imeta_unlock;
         
-		imetaobjfree(obj);
+		_imetaobjfree(obj);
 	}
 }
 
@@ -248,7 +267,7 @@ void iaoicacheclear(imeta *meta) {
 	cur = meta->cache.root;
 	while (cur) {
 		next = cur->next;
-		imetaobjfree(cur);
+		_imetaobjfree(cur);
 		cur = next;
 	}
 	meta->cache.root = NULL;

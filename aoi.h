@@ -598,6 +598,12 @@ typedef struct iname {
 
 /* 前置声明 */
 struct imeta;
+struct iobj;
+    
+/* tracing the iobj alloc */
+typedef void (*ientryobjcalloctrace)(struct imeta *meta, struct iobj *obj);
+/* tracing the iobj free */
+typedef void (*ientryobjfreetrace)(struct imeta *meta, struct iobj *obj);
 
 /* 基础的内存对象, 都具备缓冲功能 */
 typedef struct iobj {
@@ -622,6 +628,11 @@ typedef struct imeta {
     int64_t current;
     int64_t alloced;
     int64_t freed;
+    
+    /* trace all obj calloc */
+    ientryobjcalloctrace tracecalloc;
+    /* trace all obj free */
+    ientryobjfreetrace tracefree;
     
 /* support thread safe for meta system */
 #if iithreadsafe
