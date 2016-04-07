@@ -264,15 +264,9 @@ void iaoimemorystate() {
    
 	for (i=0; i<gmetacount; ++i) {
         ilog("[AOI-Memory] "__imeta_format"\n", __imeta_value(gmetas[i]));
-		if (gmetas[i].cache.capacity) {
-            ilog("[AOI-Memory] "__imetacache_format"\n", __imetacache_value(gmetas[i]));
-		}
 	}
     for (i=0; i<gmetacountuser; ++i) {
         ilog("[AOI-Memory] "__imeta_format"\n", __imeta_value(gmetasuser[i]));
-        if (gmetasuser[i].cache.capacity) {
-            ilog("[AOI-Memory] "__imetacache_format"\n", __imetacache_value(gmetasuser[i]));
-        }
     }
 	ilog("[AOI-Memory] *************************************************************** End\n");
 }

@@ -630,12 +630,9 @@ typedef struct imeta {
 }imeta;
     
 /*Hepler Macro for log*/
-#define __imeta_format "Meta-Obj: (%s, %d) ---> alloc: %lld, free: %lld, hold: %lld - count: %lld"
-#define __imeta_value(meta) (meta).name,(meta).size,(meta).alloced,(meta).freed,imax((meta).current, 0),imax((meta).current,0)/((meta).size+sizeof(iobj))
-
-#define __imetacache_format "Meta-Obj-Cache: (%s, %d) ---> cache: (%d/%d)"
-#define __imetacache_value(meta) (meta).name,(meta).size,(meta).cache.length,(meta).cache.capacity
-
+#define __imeta_format "Meta-Obj: (%15.15s, %5d) --> alloc: %9lld, free: %9lld, hold: %9lld - count: %8lld - cache(%6d/%6d)"
+#define __imeta_value(meta) (meta).name,(meta).size,(meta).alloced,(meta).freed,imax((meta).current, 0),imax((meta).current,0)/((meta).size+sizeof(iobj)),(meta).cache.length,(meta).cache.capacity
+    
 /* 获取类型的元信息 */
 imeta *imetaget(int idx);
 
