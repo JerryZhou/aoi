@@ -714,7 +714,7 @@ typedef enum EnumAoiMemoerySizeKind {
 } EnumAoiMemoerySizeKind;
 
 /*获取当前的总的内存统计*/
-int64_t iaoimemerysize(imeta *meta, int kind);
+int64_t iaoimemorysize(void *meta, int kind);
 
 #define imetacacheclear(type) (iaoicacheclear(imetaof(type)))
 
@@ -727,6 +727,8 @@ int64_t iaoimemerysize(imeta *meta, int kind);
 
 /* 打印当前内存状态: 空的内存状态 */
 void iaoimemorystate() ;
+    
+int64_t iaoimemorysize(void * meta, int kind);
 
 #define iobjmalloc(type) ((type*)icalloc(1, sizeof(type)))
 #define iobjfree(p) do { ifree(p); p = NULL; } while(0)

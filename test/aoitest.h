@@ -15,11 +15,17 @@
 
 // 清理掉所有缓存并打印内存日志
 void clearalliaoicacheandmemrorystate() {
+    iaoicacheclear(imetaof(iwref));
     iaoicacheclear(imetaof(ifilter));
     iaoicacheclear(imetaof(iunit));
     iaoicacheclear(imetaof(inode));
     iaoicacheclear(imetaof(ireflist));
     iaoicacheclear(imetaof(irefjoint));
+    iaoicacheclear(imetaof(inavicell));
+    iaoicacheclear(imetaof(inavicellconnection));
+    iaoicacheclear(imetaof(inaviwaypoint));
+    iaoicacheclear(imetaof(inavinode));
+    //iaoicacheclear(imetaof(sp_test_cache_clear));
     
     iaoimemorystate();
 }
@@ -182,6 +188,13 @@ SP_CASE(imeta, iaoiistype) {
 // iwref
 SP_SUIT(iwref);
 
+SP_CASE(iwref, begin) {
+    SP_TRUE(1);
+    
+    /*no memory leak about iwref */
+    SP_TRUE(imetaof(iwref)->current == 0);
+}
+
 SP_CASE(iwref, iwrefmake) {
     iref *ref = iobjmalloc(iref);
     iretain(ref);
@@ -199,6 +212,7 @@ SP_CASE(iwref, iwrefmake) {
     SP_EQUAL(strongref, NULL);
     
     irelease(wref0);
+    
 }
 
 SP_CASE(iwref, iwrefmakeby) {
@@ -232,6 +246,8 @@ SP_CASE(iwref, iwrefmakeby) {
     SP_EQUAL(strongref, NULL);
     
     irelease(wref0);
+    irelease(wref1);
+    
 }
 
 SP_CASE(iwref, makenull) {
@@ -248,6 +264,15 @@ SP_CASE(iwref, makenull) {
     
     iwref *wrefzero = iwrefmakeby(NULL);
     SP_EQUAL(wrefzero, NULL);
+    irelease(wrefzero);
+}
+
+SP_CASE(iwref, end) {
+    SP_TRUE(1);
+    
+    
+    /*no memory leak about iwref */
+    SP_TRUE(imetaof(iwref)->current == 0);
 }
 
 // **********************************************************************************
@@ -3103,6 +3128,7 @@ static void silly_search(imap *map, iunit **units, int num, ipos *pos, ireal ran
             ireflistadd(result->units, irefcast(unit));
         }
     }
+    ifilterfree(filter);
 }
 
 static int64_t silly_checksum(ireflist *units) {
@@ -3129,7 +3155,7 @@ SP_CASE(searching_bench_right, searchpos){
     ipos pos = {0, 0};
     isize size = {MAP_SIZE, MAP_SIZE};
     int divide = 10;
-    iunit *units[MAX_COUNT] = {};
+    iarray* units = iarraymakeiref(MAX_COUNT);
     int i = 0;
     int maxunit = MAX_COUNT;
     int bench = 10000;
@@ -3142,10 +3168,12 @@ SP_CASE(searching_bench_right, searchpos){
     imap *map = imapmake(&pos, &size, divide);
     
     for (i=0; i<maxunit; ++i) {
-        units[i] = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
+        iunit * u = imakeunit((iid)i, (ireal)(rand()%MAP_SIZE), (ireal)(rand()%MAP_SIZE));
         /* 给单元加一个随机半径 */
-        units[i]->radius = (ireal)(rand()%100)/100*maxunitrange;
-        imapaddunit(map, units[i]);
+        u->radius = (ireal)(rand()%100)/100*maxunitrange;
+        imapaddunit(map, u);
+        iarrayadd(units, &u);
+        irelease(u);
     }
     
     /* _aoi_print(map, 0xffffff); */
@@ -3155,13 +3183,14 @@ SP_CASE(searching_bench_right, searchpos){
         pos.y = (ireal)(rand()%MAP_SIZE);
         range = (ireal)(rand()%maxrange + minrange);
         imapsearchfrompos(map, &pos, resultlfs, range);
-        silly_search(map, units, MAX_COUNT, &pos, range, resultrfs);
+        silly_search(map, (iunit**)iarraybuffer(units), MAX_COUNT, &pos, range, resultrfs);
         
         SP_EQUAL(ireflistlen(resultrfs->units), ireflistlen(resultlfs->units));
         
         SP_EQUAL(silly_checksum(resultrfs->units), silly_checksum(resultlfs->units));
     }
     
+    iarrayfree(units);
     isearchresultfree(resultlfs);
     isearchresultfree(resultrfs);
     imapfree(map);
@@ -3187,6 +3216,7 @@ static void silly_search_lineofsight(imap *map,
             ireflistadd(result->units, irefcast(unit));
         }
     }
+    ifilterfree(filter);
 }
 
 static void __print_list_unit(const ireflist *list) {
@@ -3201,6 +3231,7 @@ static void __print_list_unit(const ireflist *list) {
 }
 
 SP_CASE(searching_bench_right, lineofsight_accurate) {
+    
     static const int MAX_COUNT = 8;
     static const int MAP_SIZE = 8;
     ipos pos = {0, 0};
@@ -3241,10 +3272,12 @@ SP_CASE(searching_bench_right, lineofsight_accurate) {
     isearchresultfree(resultrfs);
     isearchresultfree(resultlfs);
     imapfree(map);
+    
 }
 
 SP_CASE(searching_bench_right, lineofsight) {
     SP_TRUE(1);
+    
     
     static const int MAX_COUNT = 2000;
     static const int MAP_SIZE = 512;
@@ -4015,10 +4048,9 @@ SP_CASE(islice, islicelen_islicecapacity) {
 
 void __array_print(iarray *s) {
     printf("[");
-    for (int i=0; i <iarraylen(s); ++i) {
-        int v = iarrayof(s, int, i);
-        printf("%d%s", v, i==iarraylen(s)-1 ? "" : ", ");
-    }
+    irange(s, int,
+           printf("%s%d", __idx==0 ? "" : ", ", __value);
+           );
     printf("]");
 }
 
@@ -4593,6 +4625,8 @@ SP_CASE(inavi, nothing) {
 }
 
 SP_CASE(inavi, inavimapdescreadfromtextfile) {
+    
+    clearalliaoicacheandmemrorystate();
     inavimapdesc desc = {{{0}}, 0, 0, 0};
     
     int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
@@ -4606,9 +4640,13 @@ SP_CASE(inavi, inavimapdescreadfromtextfile) {
     
     inavimap * map = inavimapmake(8);
     inavimaploadfromdesc(map, &desc);
-    
     inavimapdescfreeresource(&desc);
+    
     inavimapfree(map);
+    
+    clearalliaoicacheandmemrorystate();
+    
+    __array_println(desc.polygons);
 }
 
 /*map: 8*8 */
@@ -4676,6 +4714,7 @@ static void __navidesc_prepare(inavimapdesc *desc) {
 SP_SUIT(inavimapdesc);
 
 SP_CASE(inavimapdesc, inavimapdescreadfromtextfile) {
+    clearalliaoicacheandmemrorystate();
     inavimapdesc desc = {{{0}}, 0, 0, 0};
     
     int err = inavimapdescreadfromtextfile(&desc, "./navi.map");
@@ -4689,6 +4728,8 @@ SP_CASE(inavimapdesc, inavimapdescreadfromtextfile) {
     __array_println(desc.polygonscosts);
     
     inavimapdescfreeresource(&desc);
+    
+    clearalliaoicacheandmemrorystate();
 }
 
 SP_CASE(inavimapdesc, preparedesc) {
@@ -4750,6 +4791,7 @@ SP_CASE(inavicell, test) {
 }
 
 SP_CASE(inavicell, inavimapfind) {
+    
     inavimap *map = inavimapmake(8);
     
     inavimapdesc desc = {{{0}}, 0, 0, 0};
@@ -4765,6 +4807,7 @@ SP_CASE(inavicell, inavimapfind) {
     __array_println(desc.polygonscosts);
     
     inavimaploadfromdesc(map, &desc);
+    inavimapdescfreeresource(&desc);
     
     ipos3 p = {1.2019791666666666, 0, 0.7873958333333333};
     inavicell *cell = inavimapfind(map, &p);
@@ -4774,7 +4817,6 @@ SP_CASE(inavicell, inavimapfind) {
     ipos3 end = {4.775729166666666, 0,1.5808333333333333};
     
     inavipath * path = inavipathmake();
-    
     inavimapfindpath(map, NULL, &p, &end, path);
     
     {
@@ -4830,9 +4872,11 @@ SP_CASE(inavicell, inavimapfind) {
         inavimapsmoothpath(map, NULL, path, INT32_MAX);
     }
     
-    inavipathfree(path);
+    irange(map->cells, inavicell*,
+           printf("ref:%d"__icell_format"\n", __value->ref,__icell_value(*__value));
+           );
     
-    inavimapdescfreeresource(&desc);
+    inavipathfree(path);
     
     inavimapfree(map);
 }
@@ -4904,6 +4948,18 @@ SP_CASE(inavimap, nothing) {
     SP_TRUE(1);
 }
 
+/*检验一下内存是否有泄露*/
+SP_SUIT(memorycheck);
 
+SP_CASE(memorycheck, check) {
+    clearalliaoicacheandmemrorystate();
+    
+    SP_TRUE(1);
+    
+    /*check the memory leak*/
+    SP_TRUE(iaoimemorysize(NULL, EnumAoiMemoerySizeKind_Hold)==0);
+    SP_EQUAL(iaoimemorysize(NULL, EnumAoiMemoerySizeKind_Freed),
+             iaoimemorysize(NULL, EnumAoiMemoerySizeKind_Alloced));
+}
 
 #endif

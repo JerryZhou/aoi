@@ -303,16 +303,16 @@ int iaoiistype(const void *p, const char* type) {
 }
 
 /*获取当前的总的内存统计*/
-int64_t iaoimemerysize(imeta *meta, int kind) {
+int64_t iaoimemorysize(void *meta, int kind) {
     switch (kind) {
         case EnumAoiMemoerySizeKind_Alloced:
-            return meta ? meta->alloced : gcallocsize;
+            return meta ? ((imeta*)(meta))->alloced : gcallocsize;
             break;
         case EnumAoiMemoerySizeKind_Freed:
-            return meta ? meta->freed : gfreesize;
+            return meta ? ((imeta*)(meta))->freed : gfreesize;
             break;
         case EnumAoiMemoerySizeKind_Hold:
-            return meta ? meta->current : gholdsize;
+            return meta ? ((imeta*)(meta))->current : gholdsize;
             break;
         default:
             break;
@@ -324,6 +324,11 @@ int64_t iaoimemerysize(imeta *meta, int kind) {
 
 void iaoimemorystate() {
 	ilog("[AOI-Memory] Not Implement IMeta \n");
+}
+
+/*获取当前的总的内存统计*/
+int64_t iaoimemorysize(imeta *meta, int kind) {
+    return 0;
 }
 
 #endif
