@@ -360,6 +360,7 @@ void inavimapdescfreeresource(inavimapdesc *desc) {
     iarrayfree(desc->polygons); desc->polygons = NULL;
     iarrayfree(desc->polygonsindex); desc->polygonsindex = NULL;
     iarrayfree(desc->polygonsconnection); desc->polygonsconnection = NULL;
+    iarrayfree(desc->polygonscosts); desc->polygonscosts = NULL;
 }
 
 char * _file_read(const char *file) {
@@ -575,6 +576,17 @@ void inavimaploadfromdesc(inavimap *map, const inavimapdesc *desc) {
 
 /* Free the navi map */
 void inavimapfree(inavimap *map) {
+    /*disconnect all the navicell*/
+    irange(map->cells, inavicell*,
+           inavicelldisconnectfrommap(__value);
+           );
+    
+    /*free all the resources*/
+    iarrayremoveall(map->cells);
+    iarrayremoveall(map->polygons);
+    iarrayremoveall(map->connections);
+    
+    /*release the free */
     irelease(map);
 }
 
@@ -707,7 +719,7 @@ static void _inavipath_entry_free(iref *ref) {
     inavipath *path = icast(inavipath, ref);
     irelease(path->start);
     irelease(path->end);
-    irelease(path->waypoints);
+    ireflistfree(path->waypoints);
     iobjfree(path);
 }
 
@@ -737,9 +749,24 @@ ipos3 _inavicellconnection_closest(const inavicellconnection *connection, const 
     return iline3dclosestpoint(&edge, pos, iepsilon);
 }
 
+/*free the waypoint*/
+static void _inaviwaypoint_entry_free(iref *ref) {
+    inaviwaypoint *waypoint = icast(inaviwaypoint, ref);
+    irelease(waypoint->cell);
+    irelease(waypoint->connection);
+    iobjfree(waypoint);
+}
+
+/* NB!! no retain */
+static inaviwaypoint *_inaviwaypoint_make() {
+    inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
+    waypoint->free = _inaviwaypoint_entry_free;
+    return waypoint;
+}
+
 /* NB!! no retain */
 static inaviwaypoint *_inaviwaypoint_make_by_cell(inavipath *path, inavicell *cell) {
-    inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
+    inaviwaypoint *waypoint = _inaviwaypoint_make();
     waypoint->type = EnumNaviWayPointType_Cell;
     iassign(waypoint->cell, cell);
     waypoint->waypoint = cell->polygon->center;
@@ -748,7 +775,7 @@ static inaviwaypoint *_inaviwaypoint_make_by_cell(inavipath *path, inavicell *ce
 
 /* NB!! no retain */
 static inaviwaypoint *_inaviwaypoint_make_by_connection(inavipath *path, inavicell *cell, inavicellconnection *connection) {
-    inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
+    inaviwaypoint *waypoint = _inaviwaypoint_make();
     inaviwaypoint *last;
     
     waypoint->type = EnumNaviWayPointType_Connection;
@@ -765,7 +792,7 @@ static inaviwaypoint *_inaviwaypoint_make_by_connection(inavipath *path, inavice
 
 /* NB!! no retain */
 static inaviwaypoint *_inaviwaypoint_make_by_goal(inavipath *path, inavicell *cell, ipos3 *goal) {
-    inaviwaypoint *waypoint = iobjmalloc(inaviwaypoint);
+    inaviwaypoint *waypoint = _inaviwaypoint_make();
     waypoint->type = EnumNaviWayPointType_Cell_Goal;
     iassign(waypoint->cell, cell);
     waypoint->waypoint = *goal;
