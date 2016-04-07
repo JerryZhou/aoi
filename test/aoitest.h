@@ -3861,6 +3861,11 @@ SP_CASE(islice, islicemakeby) {
     int values[] = {0, 1, 2};
     iarrayinsert(arr, 0, values, 3);
     
+    /* output array */
+    irange(arr, int,
+           printf("arr[%d]=%d\n", __idx, __value);
+           );
+    
     /* slice = arr[0:3:8]  */
     islice *slice_0_3_8 = isliced(arr, 0, 3);
     SP_EQUAL(islicelen(slice_0_3_8), 3);
@@ -3869,6 +3874,11 @@ SP_CASE(islice, islicemakeby) {
     SP_EQUAL(isliceof(slice_0_3_8, int, 1), 1);
     SP_EQUAL(isliceof(slice_0_3_8, int, 2), 2);
     
+    /* output slice */
+    irange(slice_0_3_8, int,
+           printf("slice_0_3_8-arr[0:3][%d]=%d\n", __idx, __value);
+           );
+    
     /* child = slice[1:2:8] */
     islice *child = islicedby(slice_0_3_8, 1, 2);
     SP_EQUAL(islicelen(child), 1);
@@ -3876,20 +3886,40 @@ SP_CASE(islice, islicemakeby) {
     SP_EQUAL(isliceof(child, int, 0), 1);
     SP_EQUAL(isliceat(child, 1), NULL);
     
+    /*output slice child*/
+    irange(child, int,
+           printf("slice_0_3_8-child[1:2][%d]=%d\n", __idx, __value);
+           );
+    
     /* sub = child[1:1:7] */
     islice* sub = islicedby(child, 1, 1);
     SP_EQUAL(islicelen(sub), 0);
     SP_EQUAL(islicecapacity(sub), 6);
     SP_EQUAL(isliceat(sub, 0), NULL);
     
+    /*output slice child sub*/
+    irange(sub, int,
+           printf("slice_0_3_8-child[1:2]-sub[1:1][%d]=%d\n", __idx, __value);
+           );
+    
     /* xslice = slice[8:8]
      */
     islice *xslice = isliced(arr, 8, 8);
+    
+    /*output xslice*/
+    irange(xslice, int,
+           printf("xslice-arr[8:8][%d]=%d\n", __idx, __value);
+           );
     
     SP_EQUAL(islicelen(xslice), 0);
     SP_EQUAL(islicecapacity(xslice), 0);
     
     islice *yslice = isliced(arr, 5, 5);
+    
+    /*output yslice*/
+    irange(yslice, int,
+           printf("yslice-arr[5:5][%d]=%d\n", __idx, __value);
+           );
     
     SP_EQUAL(islicelen(yslice), 0);
     SP_EQUAL(islicecapacity(yslice), 3);
@@ -3902,8 +3932,18 @@ SP_CASE(islice, islicemakeby) {
     SP_EQUAL(islicecapacity(yslice), 3);
     SP_EQUAL(isliceof(yslice, int, 0), 100);
     
+    /*output yslice*/
+    irange(yslice, int,
+           printf("yslice-arr[5:5]-add{100} [%d]=%d\n", __idx, __value);
+           );
+    
     SP_EQUAL(iarraylen(arr), 4);
     SP_EQUAL(iarrayof(arr, int, 3), 100);
+    
+    /* output array */
+    irange(arr, int,
+           printf("arr-after-yslice-add[%d]=%d\n", __idx, __value);
+           );
     
     islicefree(yslice);
     
@@ -4797,11 +4837,6 @@ SP_CASE(inavicell, inavimapfind) {
     inavimapfree(map);
 }
 
-void _cell_array_visitor(const iarray *arr, int idx, const void* value) {
-    inavicell *cell = ((inavicell**)(value))[0];
-    printf(__icell_format"\n", __icell_value(*cell));
-}
-
 SP_CASE(inavicell, inavimapcelladd) {
     inavimap *map = inavimapmake(8);
     inavimapdesc desc = {{{0}}, 0, 0, 0};
@@ -4813,6 +4848,10 @@ SP_CASE(inavicell, inavimapcelladd) {
     isize size = {16, 16};
     imap *aoimap = imapmake(&pos, &size, 4);
     
+    irange(map->cells, inavicell*,
+           printf("map-cell[%d]: "__icell_format"\n", __idx, __icell_value(*__value));
+           );
+    
     size_t cellnum = iarraylen(map->cells);
     while (cellnum--) {
         inavimapcelladd(map, iarrayof(map->cells, inavicell*, cellnum), aoimap);
@@ -4821,7 +4860,11 @@ SP_CASE(inavicell, inavimapcelladd) {
     ipos3 pos3 = {0, 0, 0};
     iarray *cells = inavimapcellfind(map, aoimap, &pos3);
     printf("\n");
-    iarrayforeach(cells, _cell_array_visitor);
+    
+    irange(cells, inavicell*,
+           printf(__icell_format"\n", __icell_value(*__value));
+           );
+    
     iarrayfree(cells);
     
     cellnum = iarraylen(map->cells);
