@@ -704,6 +704,7 @@ int iaoiistype(const void *p, const char* type);
 #define iobjmalloc(type) ((type*)iaoicalloc(imetaof(type)))
 #define iobjfree(p) do { iaoifree(p); p = NULL; } while(0)
 #define iobjistype(p, type) iaoiistype((void*)p, #type)
+#define iistype(p, type) (iaoigetmeta(p) == imetaof(type))
 
 #else   /* #if iimeta */
 
@@ -713,6 +714,7 @@ void iaoimemorystate() ;
 #define iobjmalloc(type) ((type*)icalloc(1, sizeof(type)))
 #define iobjfree(p) do { ifree(p); p = NULL; } while(0)
 #define iobjistype(p, type) iino
+#define iistype(p, type) iino
 
 #endif  /* #if iimeta */
 
@@ -1155,7 +1157,7 @@ iarray* iarraymakeivec3(size_t capacity);
 #define iarrayof(arr, type, i) (((type *)iarrayat(arr, i))[0])
     
 /* Helper-Macro: For-Earch in c89 */
-#define irangec(arr, type, idx, value, wrap) \
+#define irangearrayc(arr, type, idx, value, wrap) \
     do { \
     for(idx=0; idx<iarraylen(arr); ++idx) {\
         value = iarrayof(arr, type, idx);\
@@ -1163,10 +1165,11 @@ iarray* iarraymakeivec3(size_t capacity);
     } } while(0)
 
 /* Helper-Macro: For-Earch in cplusplus */
-#define irange(arr, type, wrap) \
+#define irangearray(arr, type, wrap) \
     do { \
     for(int __idx=0; __idx<iarraylen(arr); ++__idx) {\
         type __value = iarrayof(arr, type, __idx);\
+        iunused(__value);\
         wrap;\
     } } while(0)
 
@@ -1277,10 +1280,36 @@ void isliceforeach(const islice *slice, islice_entry_visitor visitor);
     do {\
     for(int __idx=0; __idx<islicelen(slice); ++__idx) {\
         type __value = isliceof(slice, type, __idx);\
+        iunused(__value);\
         wrap;\
     }} while(0)
-
     
+/*************************************************************/
+/* irange                                                    */
+/*************************************************************/
+#define irange(container, type, wrap) \
+do {\
+    if (iistype(container, iarray)) {\
+        irangearray(((iarray*)(container)), type, wrap);\
+    } else if (iistype(container, islice)) {\
+        irangeslice(((islice*)(container)), type, wrap);\
+    } else {\
+        ilog("[Err][irangec]");\
+    }\
+}while(0)
+
+#define irangec(slice, type, idx, value, wrap) \
+do {\
+    if (iistype(container, iarray)) {\
+        irangearrayc(((iarray*)(container)), type, idx, value, wrap);\
+    } else if (iistype(container, islice)) {\
+        irangeslicec(((islice*)(container)), type, idx, value, wrap);\
+    } else {\
+        ilog("[Err][irangec]");\
+    }\
+}while(0)
+
+
 /*************************************************************/
 /* istring                                                   */
 /*************************************************************/
