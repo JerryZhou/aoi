@@ -258,22 +258,22 @@ void iaoicacheclear(imeta *meta) {
 
 /* 打印当前内存状态 */
 void iaoimemorystate() {
-	int count = __countof(gmetas);
 	int i;
 	ilog("[AOI-Memory] *************************************************************** Begin\n");
 	ilog("[AOI-Memory] Total---> new: %lld, free: %lld, hold: %lld \n", gcallocsize, gfreesize, gholdsize);
-
-	for (i=0; i<count; ++i) {
-		ilog("[AOI-Memory] Obj: (%s, %d) ---> alloc: %lld, free: %lld, hold: %lld - count: %lld\n",
-				gmetas[i].name,	gmetas[i].size,
-				gmetas[i].alloced, gmetas[i].freed, gmetas[i].current,
-				gmetas[i].current/(gmetas[i].size+sizeof(iobj)));
+   
+	for (i=0; i<gmetacount; ++i) {
+        ilog("[AOI-Memory] "__imeta_format"\n", __imeta_value(gmetas[i]));
 		if (gmetas[i].cache.capacity) {
-			ilog("[AOI-Memory] Obj: (%s, %d) ---> cache: (%d/%d) \n",
-					gmetas[i].name,	gmetas[i].size,
-					gmetas[i].cache.length, gmetas[i].cache.capacity);
+            ilog("[AOI-Memory] "__imetacache_format"\n", __imetacache_value(gmetas[i]));
 		}
 	}
+    for (i=0; i<gmetacountuser; ++i) {
+        ilog("[AOI-Memory] "__imeta_format"\n", __imeta_value(gmetasuser[i]));
+        if (gmetasuser[i].cache.capacity) {
+            ilog("[AOI-Memory] "__imetacache_format"\n", __imetacache_value(gmetasuser[i]));
+        }
+    }
 	ilog("[AOI-Memory] *************************************************************** End\n");
 }
 
@@ -291,11 +291,33 @@ int iaoiistype(const void *p, const char* type) {
 	icheckret(type, iino);
 	meta = iaoigetmeta(p);
 	icheckret(meta, iino);
+    
+    if (strlen(type) != strlen(meta->name)) {
+        return iino;
+    }
 
-	if (strncmp(type, meta->name, __max(strlen(meta->name), strlen(type))) == 0) {
+	if (strncmp(type, meta->name, strlen(meta->name)) == 0) {
 		return iiok;
 	}
 	return iino;
+}
+
+/*获取当前的总的内存统计*/
+int64_t iaoimemerysize(imeta *meta, int kind) {
+    switch (kind) {
+        case EnumAoiMemoerySizeKind_Alloced:
+            return meta ? meta->alloced : gcallocsize;
+            break;
+        case EnumAoiMemoerySizeKind_Freed:
+            return meta ? meta->freed : gfreesize;
+            break;
+        case EnumAoiMemoerySizeKind_Hold:
+            return meta ? meta->current : gholdsize;
+            break;
+        default:
+            break;
+    }
+    return 0;
 }
 
 #else
@@ -1414,16 +1436,35 @@ void irefjointfree(irefjoint* joint) {
 	iobjfree(joint);
 }
 
+/* reflist entry for free */
+static void _ireflist_entry_free(iref *ref) {
+    ireflist *list = icast(ireflist, ref);
+    
+	/* 释放列表节点 */
+	ireflistremoveall(list);
+
+	/* 释放list 本身 */
+	iobjfree(list);
+}
+
 /* 创建列表 */
 ireflist *ireflistmake() {
-	return	iobjmalloc(ireflist);
+	ireflist *list = iobjmalloc(ireflist);
+    list->free = _ireflist_entry_free;
+    iretain(list);
+    return list;
 }
 
 /* 创建列表 */
 ireflist *ireflistmakeentry(irefjoint_entry_res_free entry) {
-    ireflist *list = iobjmalloc(ireflist);
+    ireflist *list = ireflistmake();
     list->entry = entry;
     return list;
+}
+    
+/* 释放列表 */
+void ireflistfree(ireflist *list) {
+    irelease(list);
 }
 
 /* 获取列表长度 */
@@ -1527,16 +1568,6 @@ void ireflistremoveall(ireflist *list) {
 	list->length = 0;
 }
 
-/* 释放列表 */
-void ireflistfree(ireflist *list) {
-	icheck(list);
-
-	/* 释放列表节点 */
-	ireflistremoveall(list);
-
-	/* 释放list 本身 */
-	iobjfree(list);
-}
 
 /*************************************************************/
 /* irefneighbors                                             */
@@ -2595,8 +2626,34 @@ void isliceforeach(const islice *slice, islice_entry_visitor visitor) {
         visitor(slice, idx, isliceat(slice, idx));
     }
 }
- 
+    
+/*************************************************************/
+/* irange                                                    */
+/*************************************************************/
+    
+/* range operator, accept: iarray, islice, istring, iheap */
+size_t irangelen(const void *p) {
+    if (iistype(p, iarray)) {
+        return iarraylen((const iarray*)(p));
+    } else if (iistype(p, islice)) {
+        return islicelen((const islice*)(p));
+    } else {
+        return 0;
+    }
+}
 
+/* range get: accept: iarray, islice, istring, iheap */
+const void* irangeat(const void *p, int index) {
+    if (iistype(p, iarray)) {
+        return iarrayat((const iarray*)(p), index);
+    } else if (iistype(p, islice)) {
+        return isliceat((const islice*)(p), index);
+    } else {
+        return NULL;
+    }   
+}
+    
+    
 /*************************************************************/
 /* istring                                                   */
 /*************************************************************/

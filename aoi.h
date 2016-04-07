@@ -628,6 +628,13 @@ typedef struct imeta {
     imutex mutex; /*will never release resouce until program ended */
 #endif
 }imeta;
+    
+/*Hepler Macro for log*/
+#define __imeta_format "Meta-Obj: (%s, %d) ---> alloc: %lld, free: %lld, hold: %lld - count: %lld"
+#define __imeta_value(meta) (meta).name,(meta).size,(meta).alloced,(meta).freed,imax((meta).current, 0),imax((meta).current,0)/((meta).size+sizeof(iobj))
+
+#define __imetacache_format "Meta-Obj-Cache: (%s, %d) ---> cache: (%d/%d)"
+#define __imetacache_value(meta) (meta).name,(meta).size,(meta).cache.length,(meta).cache.capacity
 
 /* 获取类型的元信息 */
 imeta *imetaget(int idx);
@@ -698,6 +705,16 @@ imeta *iaoigetmeta(const void *p);
 
 /* 指定对象是响应的类型: 一致返回iiok, 否则返回 iino */
 int iaoiistype(const void *p, const char* type);
+
+/* Trace the memory size */
+typedef enum EnumAoiMemoerySizeKind {
+    EnumAoiMemoerySizeKind_Alloced,
+    EnumAoiMemoerySizeKind_Freed,
+    EnumAoiMemoerySizeKind_Hold,
+} EnumAoiMemoerySizeKind;
+
+/*获取当前的总的内存统计*/
+int64_t iaoimemerysize(imeta *meta, int kind);
 
 #define imetacacheclear(type) (iaoicacheclear(imetaof(type)))
 
@@ -848,8 +865,10 @@ void irefjointfree(irefjoint* joint);
 /* 释放附加在列表节点上的资源 */
 typedef void (*irefjoint_entry_res_free)(irefjoint *joint);
 
-/* 营养对象列表 */
+/* 引用对象列表 */
 typedef struct ireflist {
+    irefdeclare;
+    
     /* 列表根节点, 也是列表的第一个节点 */
     irefjoint *root;
     /* 列表长度 */
@@ -862,6 +881,9 @@ typedef struct ireflist {
 
 /* 创建列表 */
 ireflist *ireflistmake();
+    
+/* 释放列表 */
+void ireflistfree(ireflist *list);
     
 /* 创建列表 */
 ireflist *ireflistmakeentry(irefjoint_entry_res_free entry);
@@ -895,8 +917,6 @@ irefjoint* ireflistremove(ireflist *list, iref *value);
 /* 释放所有节点 */
 void ireflistremoveall(ireflist *list);
 
-/* 释放列表 */
-void ireflistfree(ireflist *list);
     
 /*************************************************************/
 /* irefneighbors                                             */
@@ -1157,21 +1177,28 @@ iarray* iarraymakeivec3(size_t capacity);
 #define iarrayof(arr, type, i) (((type *)iarrayat(arr, i))[0])
     
 /* Helper-Macro: For-Earch in c89 */
-#define irangearrayc(arr, type, idx, value, wrap) \
+#define irangearraycin(arr, type, begin, end, idx, value, wrap) \
     do { \
-    for(idx=0; idx<iarraylen(arr); ++idx) {\
+    for(idx=begin; idx<end; ++idx) {\
         value = iarrayof(arr, type, idx);\
         wrap;\
     } } while(0)
+    
+/* Helper-Macro: For-Earch in c89 */
+#define irangearrayc(arr, type, idx, value, wrap) \
+    irangearraycin(arr, type, 0, iarraylen(arr), idx, value, wrap)
+    
+/* Helper-Macro: For-Earch in cplusplus */
+#define irangearrayin(arr, type, begin, end, wrap) \
+    do { \
+        int __idx; \
+        type __value; \
+        irangearraycin(arr, type, begin, end, __idx, __value, wrap); \
+    } while(0)
 
 /* Helper-Macro: For-Earch in cplusplus */
 #define irangearray(arr, type, wrap) \
-    do { \
-    for(int __idx=0; __idx<iarraylen(arr); ++__idx) {\
-        type __value = iarrayof(arr, type, __idx);\
-        iunused(__value);\
-        wrap;\
-    } } while(0)
+    irangearrayin(arr, type, 0, iarraylen(arr), wrap)
 
 /*************************************************************/
 /* islice                                                    */
@@ -1267,49 +1294,68 @@ void isliceforeach(const islice *slice, islice_entry_visitor visitor);
 /* 辅助宏，获取*/
 #define isliceof(slice, type, i) (((type *)isliceat(slice, i))[0])
     
+/* Helper-Macro: For-Earch in c89 */
+#define irangeslicecin(arr, type, begin, end, idx, value, wrap) \
+    do { \
+    for(idx=begin; idx<end; ++idx) {\
+        value = isliceof(arr, type, idx);\
+        wrap;\
+    } } while(0)
+    
 /* Helper-Macro: For-Each in c89*/
 #define irangeslicec(slice, type, idx, value, wrap) \
+    irangeslicecin(slice, type, 0, islicelen(slice), idx, value, wrap)
+    
+/* Helper-Macro: For-Each in cplusplus*/
+#define irangeslicein(slice, type, begin, end, wrap) \
     do {\
-    for(int __idx=0; __idx<islicelen(slice); ++__idx) {\
-        type __value = isliceof(slice, type, __idx);\
-        wrap;\
-    }} while(0)   
+        int __idx;\
+        type __value;\
+        irangeslicecin(slice, type, begin, end, __idx, __value, wrap);\
+    } while(0)
 
 /* Helper-Macro: For-Each in cplusplus*/
 #define irangeslice(slice, type, wrap) \
-    do {\
-    for(int __idx=0; __idx<islicelen(slice); ++__idx) {\
-        type __value = isliceof(slice, type, __idx);\
-        iunused(__value);\
-        wrap;\
-    }} while(0)
+    irangeslicein(slice, type, 0, islicelen(slice), wrap)
     
 /*************************************************************/
 /* irange                                                    */
 /*************************************************************/
-#define irange(container, type, wrap) \
-do {\
-    if (iistype(container, iarray)) {\
-        irangearray(((iarray*)(container)), type, wrap);\
-    } else if (iistype(container, islice)) {\
-        irangeslice(((islice*)(container)), type, wrap);\
-    } else {\
-        ilog("[Err][irangec]");\
-    }\
-}while(0)
+    
+/* range operator, accept: iarray, islice, istring, iheap */
+size_t irangelen(const void *p);
 
-#define irangec(slice, type, idx, value, wrap) \
-do {\
-    if (iistype(container, iarray)) {\
-        irangearrayc(((iarray*)(container)), type, idx, value, wrap);\
-    } else if (iistype(container, islice)) {\
-        irangeslicec(((islice*)(container)), type, idx, value, wrap);\
-    } else {\
-        ilog("[Err][irangec]");\
-    }\
-}while(0)
+/* range get: accept: iarray, islice, istring, iheap */
+const void* irangeat(const void *p, int index);
+    
+/* Helper-Macro: Get-Value */
+#define irangeof(con, type, i) (((type *)irangeat(con, i))[0])
+    
+/* Helper-Macro: For-Earch in c89 */
+#define irangecin(arr, type, begin, end, idx, value, wrap) \
+    do { \
+        for(idx=begin; idx<end; ++idx) {\
+        value = irangeof(arr, type, idx);\
+        wrap;\
+    } } while(0)
 
+/* Helper-Macro: For-Earch in c89 */
+#define irangec(arr, type, idx, value, wrap) \
+    irangecin(arr, type, 0, irangelen(arr), idx, value, wrap)
+    
+/* Helper-Macro: For-Earch in cplusplus */
+#define irangein(arr, type, begin, end, wrap) \
+    do { \
+        int __idx = begin; \
+        type __value;\
+        irangecin(arr, type, begin, end, __idx, __value, wrap); \
+    } while(0)
 
+/* Helper-Macro: For-Earch in cplusplus */
+#define irange(arr, type, wrap) \
+    irangein(arr, type, 0, irangelen(arr), wrap)
+    
+    
 /*************************************************************/
 /* istring                                                   */
 /*************************************************************/
