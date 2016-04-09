@@ -2671,6 +2671,215 @@ const void* irangeat(const void *p, int index) {
     }   
 }
     
+static int _irangenext_reflist(irangeite *ite) {
+    icheckret(ite->container, iino);
+    if (ite->ite == NULL) {
+        ite->ite = ireflistfirst(icast(ireflist, ite->container));
+    } else {
+        ite->ite = icast(irefjoint, ite->ite)->next;
+    }
+    
+    return ite->ite != NULL;
+}
+    
+/* free the irangeite */
+static void _irangeite_entry_free(iref *ref) {
+    irangeite *ite = icast(irangeite, ref);
+    ite->access->accessfree(ite);
+    iobjfree(ite);
+}
+    
+/* make a range ite over the container */
+irangeite* irangeitemake(void* p, const irangeaccess *access) {
+    irangeite *ite = iobjmalloc(irangeite);
+    ite->free = _irangeite_entry_free;
+    ite->container = p;
+    ite->access = access;
+    ite->access->accesscreate(ite);
+    
+    iretain(ite);
+    return ite;
+}
+    
+/* free the range ite */
+void irangeitefree(irangeite *ite) {
+    irelease(ite);
+}
+    
+/*iiok: iino*/
+int irangenext(irangeite *ite) {
+    icheckret(ite, iino);
+    return ite->access->accessnext(ite);
+}
+    
+/* returnt the value address */
+const void *irangevalue(irangeite *ite) {
+    icheckret(ite, NULL);
+    return ite->access->accessvalue(ite);
+}
+
+/* returnt the key: may be key , may be key address */
+const void *irangekey(irangeite *ite) {
+    icheckret(ite, NULL);
+    return ite->access->accesskey(ite);
+}
+    
+/*************************************************************/
+/* irange-array                                              */
+/*************************************************************/
+/* range on array: create */
+static void _irangeite_access_create_array(irangeite *ite) {
+}
+    
+/* range on array: next */
+static int _irangeite_access_next_array(irangeite *ite) {
+    icheckret(ite->container, iino);
+    
+    if (ite->ite == NULL) {
+        ite->ite = icalloc(1, sizeof(int));
+        *(int*)ite->ite = 0;
+    } else {
+        ++(*(int*)ite->ite);
+    }
+    return (*(int*)(ite->ite)) < iarraylen(icast(iarray, ite->container));
+}
+
+/* range on array: free */
+static void _irangeite_access_free_array(irangeite *ite) {
+    if (ite->ite) {
+        ifree(ite->ite);
+        ite->ite = NULL;
+    }
+}
+
+/* range on array: value */
+static const void * _irangeite_access_value_array(irangeite *ite) {
+    icheckret(ite->ite, NULL);
+    return iarrayat(icast(iarray, ite->container), *(int*)ite->ite);
+}
+
+/* range on array: key */
+static const void * _irangeite_access_key_array(irangeite *ite) {
+    return ite->ite;
+}
+
+/* range on array */
+static const irangeaccess _irangeaccess_array = {
+    _irangeite_access_create_array,
+    _irangeite_access_free_array,
+    _irangeite_access_next_array,
+    _irangeite_access_value_array,
+    _irangeite_access_key_array,
+};
+    
+/*************************************************************/
+/* irange-slice                                              */
+/*************************************************************/
+/* range on slice: create */
+static void _irangeite_access_create_slice(irangeite *ite) {
+}
+    
+/* range on slice: next */
+static int _irangeite_access_next_slice(irangeite *ite) {
+    icheckret(ite->container, iino);
+    
+    if (ite->ite == NULL) {
+        ite->ite = icalloc(1, sizeof(int));
+        *(int*)ite->ite = 0;
+    } else {
+        ++(*(int*)ite->ite);
+    }
+    return (*(int*)(ite->ite)) < islicelen(icast(islice, ite->container));
+}
+
+/* range on slice: free */
+static void _irangeite_access_free_slice(irangeite *ite) {
+    if (ite->ite) {
+        ifree(ite->ite);
+        ite->ite = NULL;
+    }
+}
+
+/* range on slice: value */
+static const void * _irangeite_access_value_slice(irangeite *ite) {
+    icheckret(ite->ite, NULL);
+    return isliceat(icast(islice, ite->container), *(int*)ite->ite);
+}
+
+/* range on slice: key */
+static const void * _irangeite_access_key_slice(irangeite *ite) {
+    return ite->ite;
+}
+
+/* range on slice */
+static const irangeaccess _irangeaccess_slice = {
+    _irangeite_access_create_slice,
+    _irangeite_access_free_slice,
+    _irangeite_access_next_slice,
+    _irangeite_access_value_slice,
+    _irangeite_access_key_slice,
+};
+    
+/*************************************************************/
+/* irange-reflist                                            */
+/*************************************************************/
+/* range on reflist: create */
+static void _irangeite_access_create_reflist(irangeite *ite) {
+}
+    
+/* range on reflist: next */
+static int _irangeite_access_next_reflist(irangeite *ite) {
+    icheckret(ite->container, iino);
+    
+    if (ite->ite == NULL) {
+        ite->ite = icalloc(1, sizeof(irefjoint*));
+        ((irefjoint**)ite->ite)[0] = ireflistfirst(icast(ireflist, ite->container));
+    } else {
+        ((irefjoint**)ite->ite)[0] = ((irefjoint**)ite->ite)[0]->next;
+    }
+    return ite->ite != NULL;
+}
+
+/* range on reflist: free */
+static void _irangeite_access_free_reflist(irangeite *ite) {
+    if (ite->ite) {
+        ifree(ite->ite);
+        ite->ite = NULL;
+    }
+}
+
+/* range on reflist: value */
+static const void * _irangeite_access_value_reflist(irangeite *ite) {
+    icheckret(ite->ite, NULL);
+    return icast(irefjoint, ite->ite)->value;
+}
+
+/* range on reflist: key */
+static const void * _irangeite_access_key_reflist(irangeite *ite) {
+    return ite->ite;
+}
+
+/* range on reflist */
+static const irangeaccess _irangeaccess_reflist = {
+    _irangeite_access_create_reflist,
+    _irangeite_access_free_reflist,
+    _irangeite_access_next_reflist,
+    _irangeite_access_value_reflist,
+    _irangeite_access_key_reflist,
+};
+    
+/* make the rangeite for array or slice or reflist */
+irangeite *irangeitemakefrom(void *p) {
+    if (iistype(p, iarray)) {
+        return irangeitemake(p, &_irangeaccess_array);
+    } else if (iistype(p, islice)) {
+        return irangeitemake(p, &_irangeaccess_slice);
+    } else if (iistype(p, ireflist)) {
+        return irangeitemake(p, &_irangeaccess_reflist);
+    }
+    
+    return NULL;
+}
     
 /*************************************************************/
 /* istring                                                   */
@@ -2692,7 +2901,7 @@ istring istringmakelen(const char* s, size_t len) {
     
     str = islicemake(arr, 0, len, 0);
     iarrayfree(arr);
-    return str;
+    return istringlaw(str);
 }
 
 /*Make a copy of s with c-style string*/
@@ -2712,8 +2921,12 @@ const char* istringbuf(const istring s) {
 }
 
 /*set the entry for stack string */
-void istringlaw(const istring s) {
-    s->array->entry = &_arr_entry_char;
+istring istringlaw(istring s) {
+    if (s->array->entry == NULL) {
+        s->array->entry = &_arr_entry_char;
+    }
+    s->flag |= EnumSliceFlag_String;
+    return s;
 }
 
 /* Helper for irg_print() doing the actual number -> string
@@ -2877,7 +3090,7 @@ istring istringformat(const char* fmt, ...) {
     
     s = islicemakearg(arr, ":");
     iarrayfree(arr);
-    return s;
+    return istringlaw(s);
 }
 
 /*compare the two istring*/
@@ -3012,7 +3225,7 @@ int istringfind(const istring rfs, const char *sub, int len, int index) {
 
 /*sub string*/
 istring istringsub(const istring s, int begin, int end) {
-    return islicedby(s, begin, end);
+    return istringlaw(islicedby(s, begin, end));
 }
 
 /*return the array of istring*/
@@ -3079,7 +3292,7 @@ istring istringjoin(const iarray* ss, const char* join, int len) {
     /*make slice*/
     s = islicemakearg(joined, ":");
     iarrayfree(joined);
-    return s;
+    return istringlaw(s);
 }
 
 /*return the new istring with new component*/
@@ -3097,10 +3310,10 @@ istring istringappend(const istring s, const char* append) {
     iarray *arr = iarraymakechar(istringlen(s) + strlen(append));
     iarrayinsert(arr, 0, istringbuf(s), istringlen(s));
     iarrayinsert(arr, iarraylen(arr), append, strlen(append));
+    
     ns = islicemakearg(arr, ":");
     iarrayfree(arr);
-    
-    return ns;
+    return istringlaw(ns);
 }
 
 /*baisc wrap for ::atoi */

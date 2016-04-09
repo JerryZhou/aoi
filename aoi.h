@@ -673,6 +673,7 @@ int imetaregister(const char* name, int size, int capacity);
     __ideclaremeta(iobj, 0),                  \
     __ideclaremeta(iref, 0),                  \
     __ideclaremeta(iwref, 0),                 \
+    __ideclaremeta(irangeite, 0),             \
     __ideclaremeta(ireflist, 1000),           \
     __ideclaremeta(irefjoint, 200000),        \
     __ideclaremeta(inode, 4000),              \
@@ -1187,23 +1188,23 @@ iarray* iarraymakeivec3(size_t capacity);
 #define iarrayof(arr, type, i) (((type *)iarrayat(arr, i))[0])
     
 /* Helper-Macro: For-Earch in c89 */
-#define irangearraycin(arr, type, begin, end, idx, value, wrap) \
+#define irangearraycin(arr, type, begin, end, key, value, wrap) \
     do { \
-    for(idx=begin; idx<end; ++idx) {\
-        value = iarrayof(arr, type, idx);\
+    for(key=begin; key<end; ++key) {\
+        value = iarrayof(arr, type, key);\
         wrap;\
     } } while(0)
     
 /* Helper-Macro: For-Earch in c89 */
-#define irangearrayc(arr, type, idx, value, wrap) \
-    irangearraycin(arr, type, 0, iarraylen(arr), idx, value, wrap)
+#define irangearrayc(arr, type, key, value, wrap) \
+    irangearraycin(arr, type, 0, iarraylen(arr), key, value, wrap)
     
 /* Helper-Macro: For-Earch in cplusplus */
 #define irangearrayin(arr, type, begin, end, wrap) \
     do { \
-        int __idx; \
+        int __key; \
         type __value; \
-        irangearraycin(arr, type, begin, end, __idx, __value, wrap); \
+        irangearraycin(arr, type, begin, end, __key, __value, wrap); \
     } while(0)
 
 /* Helper-Macro: For-Earch in cplusplus */
@@ -1213,6 +1214,11 @@ iarray* iarraymakeivec3(size_t capacity);
 /*************************************************************/
 /* islice                                                    */
 /*************************************************************/
+/*make the slice be a string or heap*/
+typedef enum EnumSliceFlag {
+    EnumSliceFlag_String = 1<<3,
+    EnumSliceFlag_Heap = 1<<4,
+}EnumSliceFlag;
 
 /*
  * 与 slice 搭配的是 array
@@ -1231,6 +1237,9 @@ typedef struct islice {
     int begin;
     int end;
     int capacity;
+    
+    /* special flags */
+    int flag;
 }islice;
     
 /* 遍历 访问 */
@@ -1305,23 +1314,23 @@ void isliceforeach(const islice *slice, islice_entry_visitor visitor);
 #define isliceof(slice, type, i) (((type *)isliceat(slice, i))[0])
     
 /* Helper-Macro: For-Earch in c89 */
-#define irangeslicecin(arr, type, begin, end, idx, value, wrap) \
+#define irangeslicecin(arr, type, begin, end, key, value, wrap) \
     do { \
-    for(idx=begin; idx<end; ++idx) {\
+    for(key=begin; key<end; ++key) {\
         value = isliceof(arr, type, idx);\
         wrap;\
     } } while(0)
     
 /* Helper-Macro: For-Each in c89*/
-#define irangeslicec(slice, type, idx, value, wrap) \
-    irangeslicecin(slice, type, 0, islicelen(slice), idx, value, wrap)
+#define irangeslicec(slice, type, key, value, wrap) \
+    irangeslicecin(slice, type, 0, islicelen(slice), key, value, wrap)
     
 /* Helper-Macro: For-Each in cplusplus*/
 #define irangeslicein(slice, type, begin, end, wrap) \
     do {\
-        int __idx;\
+        int __key;\
         type __value;\
-        irangeslicecin(slice, type, begin, end, __idx, __value, wrap);\
+        irangeslicecin(slice, type, begin, end, __key, __value, wrap);\
     } while(0)
 
 /* Helper-Macro: For-Each in cplusplus*/
@@ -1331,40 +1340,103 @@ void isliceforeach(const islice *slice, islice_entry_visitor visitor);
 /*************************************************************/
 /* irange                                                    */
 /*************************************************************/
+struct irangeite;
+    
+/* tell the container, about irangite create */
+typedef void (*_irangeentry_create)(struct irangeite *ite);
+/* free all resource about ite */
+typedef void (*_irangeentry_free)(struct irangeite *ite);
+/* do next move */
+typedef int (*_irangeentry_next)(struct irangeite *ite);
+/* give me the real value address */
+typedef const void* (*_irangeentry_value)(struct irangeite *ite);
+/* give me the real key key */
+typedef const void* (*_irangeentry_key)(struct irangeite *ite);
+    
+/* iterator accessor */
+typedef struct irangeaccess {
+    _irangeentry_create accesscreate;
+    _irangeentry_free accessfree;
+    _irangeentry_next accessnext;
+    _irangeentry_value accessvalue;
+    _irangeentry_key accesskey;
+    
+}irangeaccess;
+    
+/* iterator over a range container */
+typedef struct irangeite {
+    irefdeclare;
+    
+    void *container;
+    void *ite;
+    
+    const irangeaccess *access;
+    int __internal;
+}irangeite;
     
 /* range operator, accept: iarray, islice, istring, iheap */
 size_t irangelen(const void *p);
 
 /* range get: accept: iarray, islice, istring, iheap */
 const void* irangeat(const void *p, int index);
+
+/* make a range ite over the container */
+irangeite* irangeitemake(void* p, const irangeaccess* access);
+
+/* free the range ite */
+void irangeitefree(irangeite *ite);
+    
+/*iiok: iino*/
+int irangenext(irangeite *ite);
+    
+/* returnt the value address */
+const void *irangevalue(irangeite *ite);
+    
+/* returnt the key address */
+const void *irangekey(irangeite *ite);
     
 /* Helper-Macro: Get-Value */
 #define irangeof(con, type, i) (((type *)irangeat(con, i))[0])
     
 /* Helper-Macro: For-Earch in c89 */
-#define irangecin(arr, type, begin, end, idx, value, wrap) \
+#define irangecin(arr, type, begin, end, key, value, wrap) \
     do { \
-        for(idx=begin; idx<end; ++idx) {\
-        value = irangeof(arr, type, idx);\
+        for(key=begin; key<end; ++key) {\
+        value = irangeof(arr, type, key);\
         wrap;\
     } } while(0)
 
 /* Helper-Macro: For-Earch in c89 */
-#define irangec(arr, type, idx, value, wrap) \
-    irangecin(arr, type, 0, irangelen(arr), idx, value, wrap)
+#define irangec(arr, type, key, value, wrap) \
+    irangecin(arr, type, 0, irangelen(arr), key, value, wrap)
     
 /* Helper-Macro: For-Earch in cplusplus */
 #define irangein(arr, type, begin, end, wrap) \
     do { \
-        int __idx = begin; \
+        int __key = begin; \
         type __value;\
-        irangecin(arr, type, begin, end, __idx, __value, wrap); \
+        irangecin(arr, type, begin, end, __key, __value, wrap); \
     } while(0)
 
 /* Helper-Macro: For-Earch in cplusplus */
 #define irange(arr, type, wrap) \
     irangein(arr, type, 0, irangelen(arr), wrap)
     
+/*can deal with: iarray, islice, ireflist */
+irangeite *irangeitemakefrom(void *p);
+    
+/* can not over container for delete */
+#define irangeover(con, keytype, valuetype, wrap) \
+    do {\
+        irangeite *ite = irangeitemakefrom((void*)(con));\
+        while (irangenext(ite) == iiok) { \
+            keytype __key = ((keytype*)irangekey(ite))[0];\
+            valuetype __value = ((valuetype*)irangevalue(ite))[0];\
+            iunused(__key); iunused(__value); \
+            wrap;\
+        } \
+        irangeitefree(ite);\
+    } while(0)
     
 /*************************************************************/
 /* istring                                                   */
@@ -1394,7 +1466,7 @@ size_t istringlen(const istring s);
 const char* istringbuf(const istring s);
     
 /*set the entry for stack string */
-void istringlaw(const istring s);
+istring istringlaw(istring s);
 
 /*format the string and return the value*/
 /* This function is similar to sdscatprintf, but much faster as it does
