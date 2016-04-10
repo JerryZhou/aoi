@@ -1,8 +1,10 @@
 ## TODO:
 * foundation
-    - imath: ivec2 imatrix basic mathmatics
+    - imath: imatrix basic mathmatics
 * ai: fsm, learing-deep, game - tree algorithms
 * actor: moving-collide-system
+* rangite: make range-over is safe for container remove and delete
+* navi: auto-gen-mesh, gen-mesh-for-tilebased
 
 # 视野服务 area of interest(AOI)
 游戏服务器的AOI（area of interest)部分，位置有关的游戏实体一般都有一个视野或关心的范围
