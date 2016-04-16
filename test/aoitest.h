@@ -4962,4 +4962,72 @@ SP_CASE(memorycheck, check) {
              iaoimemorysize(NULL, EnumAoiMemoerySizeKind_Alloced));
 }
 
+
+SP_SUIT(navimesh);
+
+SP_CASE(navimesh, tiled) {
+    
+    /*
+     *
+     */
+    
+    printf("\n");
+    for (int j=0; j<16; ++j) {
+        for (int i=0; i<16; ++i) {
+            int b = (i==j|| i-j==1 || j-i==1);
+            printf("%s%d", i!=0?",":"\n",b);
+        }
+    }
+    printf("\n");
+    
+    char __blocks [] = {
+        1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+    };
+    int trytotal = 2 + 2 + 14 * 3;
+    
+    typedef struct _iwaypos {
+        int x, y;
+    }_iwaypos;
+    
+    typedef struct _iwaytry {
+        _iwaypos pos;
+        int next;
+    }_iwaytry;
+    
+    iarray *__meta_arr = iarraymakeipos(2);
+    iarrayentry _waytry_entry = {
+        EnumArrayFlagAutoShirk |
+        EnumArrayFlagKeepOrder |
+        EnumArrayFlagMemsetZero,
+        sizeof(_iwaytry),
+        __meta_arr->entry->swap,
+        __meta_arr->entry->assign,
+        NULL,
+    };
+    iarrayfree(__meta_arr);
+    
+    iarray *arr = iarraymake(20, &_waytry_entry);
+    
+    while (trytotal) {
+        
+    }
+    
+    iarrayfree(arr);
+}
+
 #endif

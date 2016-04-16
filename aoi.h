@@ -1217,7 +1217,6 @@ iarray* iarraymakeivec3(size_t capacity);
 /*make the slice be a string or heap*/
 typedef enum EnumSliceFlag {
     EnumSliceFlag_String = 1<<3,
-    EnumSliceFlag_Heap = 1<<4,
 }EnumSliceFlag;
 
 /*
