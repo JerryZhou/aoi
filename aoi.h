@@ -604,6 +604,10 @@ struct iobj;
 typedef void (*ientryobjcalloctrace)(struct imeta *meta, struct iobj *obj);
 /* tracing the iobj free */
 typedef void (*ientryobjfreetrace)(struct imeta *meta, struct iobj *obj);
+/* make all iobj has the hash values */
+typedef int (*ientryobjhash)(struct imeta *meta, struct iobj *obj);
+/* make all iobj can be compare with each other */
+typedef int (*ientryobjcompare)(struct imeta *meta, struct iobj *lfs, struct iobj *rfs);
 
 /* 基础的内存对象, 都具备缓冲功能 */
 typedef struct iobj {
@@ -633,6 +637,11 @@ typedef struct imeta {
     ientryobjcalloctrace tracecalloc;
     /* trace all obj free */
     ientryobjfreetrace tracefree;
+    
+    /*all iobj can be do hash */
+    ientryobjhash _hash;
+    /*all iobj can be do compare */
+    ientryobjcompare _compare;
     
 /* support thread safe for meta system */
 #if iithreadsafe
