@@ -2649,6 +2649,11 @@ void isliceforeach(const islice *slice, islice_entry_visitor visitor) {
 /* irange                                                    */
 /*************************************************************/
     
+/*save a state in ite*/
+typedef enum EnumRangeIteState {
+    EnumRangeIteState_Invalid = 1,
+}EnumRangeIteState;
+    
 /* range operator, accept: iarray, islice, istring, iheap */
 size_t irangelen(const void *p) {
     if (iistype(p, iarray)) {
@@ -2669,17 +2674,6 @@ const void* irangeat(const void *p, int index) {
     } else {
         return NULL;
     }   
-}
-    
-static int _irangenext_reflist(irangeite *ite) {
-    icheckret(ite->container, iino);
-    if (ite->ite == NULL) {
-        ite->ite = ireflistfirst(icast(ireflist, ite->container));
-    } else {
-        ite->ite = icast(irefjoint, ite->ite)->next;
-    }
-    
-    return ite->ite != NULL;
 }
     
 /* free the irangeite */
@@ -2709,18 +2703,24 @@ void irangeitefree(irangeite *ite) {
 /*iiok: iino*/
 int irangenext(irangeite *ite) {
     icheckret(ite, iino);
+    icheckret(ite->__internal & EnumRangeIteState_Invalid, iino); // invalid ite
+    
     return ite->access->accessnext(ite);
 }
     
 /* returnt the value address */
 const void *irangevalue(irangeite *ite) {
     icheckret(ite, NULL);
+    icheckret(ite->__internal & EnumRangeIteState_Invalid, NULL); // invalid ite
+    
     return ite->access->accessvalue(ite);
 }
 
 /* returnt the key: may be key , may be key address */
 const void *irangekey(irangeite *ite) {
     icheckret(ite, NULL);
+    icheckret(ite->__internal & EnumRangeIteState_Invalid, NULL); // invalid ite
+    
     return ite->access->accesskey(ite);
 }
     
@@ -3123,6 +3123,8 @@ static void _istringfind_prebmbc(unsigned char *pattern, int m, int bmBc[]) {
         bmBc[(int)pattern[i]] = m - 1 - i;
     }
 }
+    
+/*
 static void _istringfind_suffix_old(unsigned char *pattern, int m, int suff[]) {
     int i, j;
     suff[m - 1] = m;
@@ -3133,6 +3135,7 @@ static void _istringfind_suffix_old(unsigned char *pattern, int m, int suff[]) {
         suff[i] = i - j;
     }
 }
+*/
 
 static void _istringfind_suffix(unsigned char *pattern, int m, int suff[]) {
     int f, g, i;
