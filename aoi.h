@@ -1686,12 +1686,40 @@ size_t idictsize(idict *d);
     
 /* clear all the key-values */
 void idictclear(idict *d);
+   
+/*Resize the table to the minimal size that contains all the elements,
+* but with the invariant of a USED/BUCKETS ratio near to <= 1*/
+int idictresize(idict *d);
 
+/* Rehash for an amount of time between ms milliseconds and ms+1 milliseconds */
+int idictrehashmilliseconds(idict *d, int ms);
+
+void idictenableresize(void);
+void idictdisableresize(void);
+    
 /* if the dict has the key-value */
 int idicthas(idict *d, const void *key);
     
 /* scan the dict */
 unsigned long idictscan(idict *d, unsigned long v, idictscanfunction fn, void *privdata);
+
+/*all details idict: */
+unsigned int idictgenhashfunction(const void *key, int len);
+    
+void idictsethashfunctionseed(uint32_t seed);
+uint32_t idictgethashfunctionseed(void);
+    
+int idictdelete(idict *ht, const void *key);
+int idictdeletenofree(idict *ht, const void *key);
+    
+idictentry *idictreplaceraw(idict *d, void *key);
+    
+idictiterator * idictgetsafeiterator(idict *d);
+idictentry *idictNext(idictiterator *iter);
+void idictreleaseiterator(idictiterator *iter);
+    
+idictentry *idictgetrandomkey(idict *d);
+unsigned int idictgetsomekeys(idict *d, idictentry **des, unsigned int count);
 
 /*************************************************************/
 /* ipolygon3d                                                */

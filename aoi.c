@@ -3729,6 +3729,7 @@ static int _idictexpand(idict *d, unsigned long size);
 /* -------------------------- hash functions -------------------------------- */
 
 /* Thomas Wang's 32 bit Mix Function */
+/*
 static unsigned int _idictinthashfunction(unsigned int key) {
     key += ~(key << 15);
     key ^=  (key >> 10);
@@ -3738,14 +3739,15 @@ static unsigned int _idictinthashfunction(unsigned int key) {
     key ^=  (key >> 16);
     return key;
 }
+*/
 
 static uint32_t dict_hash_function_seed = 5381;
 
-static void _idictsethashfunctionseed(uint32_t seed) {
+void idictsethashfunctionseed(uint32_t seed) {
     dict_hash_function_seed = seed;
 }
 
-static uint32_t _idictgethashfunctionseed(void) {
+uint32_t idictgethashfunctionseed(void) {
     return dict_hash_function_seed;
 }
 
@@ -3760,7 +3762,7 @@ static uint32_t _idictgethashfunctionseed(void) {
  * 2. It will not produce the same results on little-endian and big-endian
  *    machines.
  */
-static unsigned int _idictgenhashfunction(const void *key, int len) {
+unsigned int idictgenhashfunction(const void *key, int len) {
     /* 'm' and 'r' are mixing constants generated offline.
      They're not really 'magic', they just happen to work well.  */
     uint32_t seed = dict_hash_function_seed;
@@ -3804,13 +3806,13 @@ static unsigned int _idictgenhashfunction(const void *key, int len) {
 }
 
 /* And a case insensitive hash function (based on djb hash) */
-static unsigned int _idictgencasehashfunction(const unsigned char *buf, int len) {
-    unsigned int hash = (unsigned int)dict_hash_function_seed;
-    
-    while (len--)
-        hash = ((hash << 5) + hash) + (tolower(*buf++)); /* hash * 33 + c */
-    return hash;
-}
+//static unsigned int _idictgencasehashfunction(const unsigned char *buf, int len) {
+//    unsigned int hash = (unsigned int)dict_hash_function_seed;
+//
+//    while (len--)
+//        hash = ((hash << 5) + hash) + (tolower(*buf++)); /* hash * 33 + c */
+//    return hash;
+//}
 
 /* ----------------------------- API implementation ------------------------- */
 
@@ -3837,7 +3839,7 @@ static int _idictinit(idict *d, idicttype *type,
 
 /* Resize the table to the minimal size that contains all the elements,
  * but with the invariant of a USED/BUCKETS ratio near to <= 1 */
-static int _idictresize(idict *d) {
+int idictresize(idict *d) {
     int minimal;
     
     if (!dict_can_resize || idictisrehashing(d)) return DICT_ERR;
@@ -3934,7 +3936,7 @@ static int _idictrehash(idict *d, int n) {
 }
 
 /* Rehash for an amount of time between ms milliseconds and ms+1 milliseconds */
-static int _idictrehashmilliseconds(idict *d, int ms) {
+int idictrehashmilliseconds(idict *d, int ms) {
     int64_t start = igetcurmicro();
     int rehashes = 0;
     
@@ -4039,7 +4041,7 @@ static int _idictreplace(idict *d, void *key, void *val) {
  * existing key is returned.)
  *
  * See dictAddRaw() for more information. */
-static idictentry *_idictreplaceraw(idict *d, void *key) {
+idictentry *idictreplaceraw(idict *d, void *key) {
     idictentry *entry = _idictfind(d,key);
     
     return entry ? entry : _idictaddraw(d,key);
@@ -4082,11 +4084,11 @@ static int _idictgenericdelete(idict *d, const void *key, int nofree) {
     return DICT_ERR; /* not found */
 }
 
-static int _idictdelete(idict *ht, const void *key) {
+int idictdelete(idict *ht, const void *key) {
     return _idictgenericdelete(ht,key,0);
 }
 
-static int _idictdeletenofree(idict *ht, const void *key) {
+int idictdeletenofree(idict *ht, const void *key) {
     return _idictgenericdelete(ht,key,1);
 }
 
@@ -4194,14 +4196,14 @@ static idictiterator *_idictgetiterator(idict *d) {
     return iter;
 }
 
-static idictiterator *_idictgetsafeiterator(idict *d) {
+idictiterator * idictgetsafeiterator(idict *d) {
     idictiterator *i = _idictgetiterator(d);
     
     i->safe = 1;
     return i;
 }
 
-static idictentry *_idictNext(idictiterator *iter) {
+idictentry *idictNext(idictiterator *iter) {
     while (1) {
         if (iter->entry == NULL) {
             idicthashtable *ht = &iter->d->ht[iter->table];
@@ -4235,7 +4237,7 @@ static idictentry *_idictNext(idictiterator *iter) {
     return NULL;
 }
 
-static void _idictreleaseiterator(idictiterator *iter) {
+void idictreleaseiterator(idictiterator *iter) {
     if (!(iter->index == -1 && iter->table == 0)) {
         if (iter->safe)
             iter->d->iterators--;
@@ -4247,7 +4249,7 @@ static void _idictreleaseiterator(idictiterator *iter) {
 
 /* Return a random entry from the hash table. Useful to
  * implement randomized algorithms */
-static idictentry *_idictgetrandomkey(idict *d) {
+idictentry *idictgetrandomkey(idict *d) {
     idictentry *he, *orighe;
     unsigned int h;
     int listlen, listele;
@@ -4309,7 +4311,7 @@ static idictentry *_idictgetrandomkey(idict *d) {
  * of continuous elements to run some kind of algorithm or to produce
  * statistics. However the function is much faster than dictGetRandomKey()
  * at producing N elements. */
-static unsigned int _idictgetsomekeys(idict *d, idictentry **des, unsigned int count) {
+unsigned int idictgetsomekeys(idict *d, idictentry **des, unsigned int count) {
     unsigned long j; /* internal hash table id, 0 or 1. */
     unsigned long tables; /* 1 or 2 tables? */
     unsigned long stored = 0, maxsizemask;
@@ -4618,11 +4620,11 @@ static void _idictempty(idict *d, void(callback)(void*)) {
     d->iterators = 0;
 }
 
-static void _idictenableresize(void) {
+void idictenableresize(void) {
     dict_can_resize = 1;
 }
 
-static void _idictdisableresize(void) {
+void idictdisableresize(void) {
     dict_can_resize = 0;
 }
 
@@ -4657,7 +4659,7 @@ int idictset(idict *d, const void *key, void *value) {
 
 /* Search and remove an element */
 int idictremove(idict *d, const void *key) {
-    return _idictdelete(d, key);
+    return idictdelete(d, key);
 }
 
 /* get the dict size */
