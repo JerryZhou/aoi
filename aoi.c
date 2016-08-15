@@ -436,9 +436,9 @@ void imutexunlock(imutex *mx) {
 /* compare the store with expected, than store the value with desired */
 uint32_t iatomiccompareexchange(volatile uint32_t *store, uint32_t expected, uint32_t desired) {
 #ifdef WIN32
-    return _InterlockedCompareExchange((volatile LONG*)store, desired, expected);
+    return _InterlockedCompareExchange((volatile LONG*)store, expected, desired);
 #else
-    return __sync_val_compare_and_swap_4(store, desired, expected);
+    return __sync_val_compare_and_swap_4(store, expected, desired);
 #endif
 }
 
