@@ -2076,7 +2076,7 @@ static void _iarray_entry_assign_copy(struct iarray *arr,
 static void _iarray_entry_swap_copy(struct iarray *arr,
                           int i, int j) {
     /* 空对象 */
-    char buffer[256];
+    static char buffer[256];
     char *tmp;
     if (arr->entry->size > 256) {
         tmp = icalloc(1, arr->entry->size);
@@ -2096,6 +2096,9 @@ static void _iarray_entry_swap_copy(struct iarray *arr,
         memmove(tmp, __arr_i(arr, i), arr->entry->size);
         memmove(__arr_i(arr, i), __arr_i(arr, j), arr->entry->size);
         memmove(__arr_i(arr, j), tmp, arr->entry->size);
+    }
+    if (tmp != buffer) {
+        ifree(tmp);
     }
 }
 
