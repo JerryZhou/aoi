@@ -16,7 +16,6 @@ Please see examples for more details.
 #include <stdarg.h>
 #include <ctype.h>
 #include <assert.h>
-#include <inttypes.h>
 
 #ifdef _WIN32
 #ifdef __cplusplus

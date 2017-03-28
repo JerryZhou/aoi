@@ -21,6 +21,7 @@
 #include <time.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <inttypes.h>
 
 #ifdef _WIN32
 
