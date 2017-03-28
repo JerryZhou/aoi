@@ -32,8 +32,16 @@
 # define DLOG(...)
 #endif
 
-#if (LUA_VERSION_NUM < 502 && !defined(luaL_newlib))
+#if (LUA_VERSION_NUM < 502)
+# ifndef luaL_newlib
 #  define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))
+# endif
+# ifndef lua_getuservalue
+#  define lua_getuservalue(L, n) lua_getfenv(L, n)
+# endif
+# ifndef lua_setuservalue
+#  define lua_setuservalue(L, n) lua_setfenv(L, n)
+# endif
 #endif
 
 #define AOI_MAP "cls{aoi_map}"
@@ -61,6 +69,7 @@
 	lua_setmetatable(L, -2);                                    \
 } while(0)
 
+#if iimeta
 #define META_MAP(XX)                 \
 	XX(iobj, 0)                  \
 	XX(iref, 0)                  \
@@ -73,38 +82,9 @@
 	XX(ifilter, 2000)            \
 	XX(isearchresult, 0)         \
 	XX(irefautoreleasepool, 0)
-
-#if LUA_VERSION_NUM < 502
-static void luac__map_getfield(lua_State *L, int mapidx, const char * fieldname)
-{
-	lua_getfenv(L, mapidx);
-	lua_getfield(L, -1, fieldname);
-	lua_replace(L, -2);
-}
-
-static void luac__map_setfield(lua_State *L, int mapidx, const char* fieldname)
-{
-	/* bind a fenv table onto map, to save units */
-	lua_newtable(L);
-
-	lua_newtable(L);
-	lua_setfield(L, -2, AOI_UNITS_MAP_NAME);
-
-	lua_setfenv(L, -2);
-}
 #else
-static void luac__map_getfield(lua_State *L, int mapidx, const char * fieldname)
-{
-	lua_getuservalue(L, mapidx);
-}
-
-static void luac__map_setfield(lua_State *L, int mapidx, const char* fieldname)
-{
-	lua_newtable(L);
-	lua_setuservalue(L, -2);
-}
+#define META_MAP(XX)
 #endif
-
 
 /* {{ map */
 
@@ -139,7 +119,8 @@ static int lua__map_new(lua_State *L)
 	LUA_BIND_META(L, imap, map, AOI_MAP);
 
 	/* bind a fenv table onto map, to save units */
-	luac__map_setfield(L, -1, AOI_UNITS_MAP_NAME);
+	lua_newtable(L);
+	lua_setuservalue(L, -2);
 
 	DLOG("new map,map=%p\n", map);
 	return 1;
@@ -206,7 +187,7 @@ static int lua__map_unit_add(lua_State *L)
 	imap * map = CHECK_AOI_MAP(L, 1);
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 	lua_pushinteger(L, (lua_Integer)unit->id);
 	lua_rawget(L, -2);
 
@@ -227,8 +208,9 @@ static int lua__map_unit_del_byid(lua_State *L)
 	iunit * unit = NULL;
 	imap * map = CHECK_AOI_MAP(L, 1);
 	iid id = (iid)luaL_checkinteger(L, 2);
+	lua_settop(L, 2);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 	lua_pushinteger(L, (lua_Integer)id);
 	lua_rawget(L, -2);
 	if (lua_isnoneornil(L, -1)) {
@@ -255,7 +237,7 @@ static int lua__map_unit_del(lua_State *L)
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
 	imapremoveunit(map, unit);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 	lua_pushinteger(L, (lua_Integer)unit->id);
 	lua_pushnil(L);
 	lua_rawset(L, -3);
@@ -290,7 +272,7 @@ static int lua__map_get_units(lua_State *L)
 {
 	imap * map = CHECK_AOI_MAP(L, 1);
 	(void)map;
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 	return 1;
 }
 
@@ -305,7 +287,7 @@ static int lua__map_unit_search(lua_State *L)
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
 	range = luaL_checknumber(L, 3);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 
 	/* to restore result */
 	lua_newtable(L);
@@ -350,7 +332,7 @@ static int lua__map_searchcircle(lua_State *L)
 	lua_rawgeti(L, 3, 2);
 	pos.y = luaL_checknumber(L, -1);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 
 	lua_newtable(L);
 

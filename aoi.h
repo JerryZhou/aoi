@@ -650,7 +650,7 @@ typedef struct imeta {
 }imeta;
     
 /*Hepler Macro for log*/
-#define __imeta_format "Meta-Obj: (%15.15s, %5d) --> alloc: %9lld, free: %9lld, hold: %9lld - count: %8lld - cache(%6d/%6d)"
+#define __imeta_format "Meta-Obj: (%15.15s, %5d) --> alloc: %9" PRId64 ", free: %9" PRId64 ", hold: %9" PRId64 " - count: %8" PRId64 " - cache(%6d/%6d)"
 #define __imeta_value(meta) (meta).name,(meta).size,(meta).alloced,(meta).freed,imax((meta).current, 0),imax((meta).current,0)/((meta).size+sizeof(iobj)),(meta).cache.length,(meta).cache.capacity
     
 /* 获取类型的元信息 */

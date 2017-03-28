@@ -66,6 +66,10 @@ static int gettimeofday(struct timeval *tp, void *tzp)
 #define _state_remove(value, state) value &= ~state
 #define _state_is(value, state) (value & state)
 
+#ifndef __max
+#define __max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
 #if iimeta
 /* 内存统计 */
 volatile int64_t gcallocsize = 0;
@@ -108,10 +112,6 @@ imeta gmetasuser[IMaxMetaCountForUser] = {{0}};
 
 #ifndef __countof
 #define __countof(array) (sizeof(array)/sizeof(array[0]))
-#endif
-
-#ifndef __max
-#define __max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
 /* 内置的meta个数 */
@@ -341,7 +341,7 @@ void iaoimemorystate() {
 }
 
 /*获取当前的总的内存统计*/
-int64_t iaoimemorysize(imeta *meta, int kind) {
+int64_t iaoimemorysize(void *meta, int kind) {
     return 0;
 }
 
