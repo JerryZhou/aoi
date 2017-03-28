@@ -69,13 +69,13 @@ static int gettimeofday(struct timeval *tp, void *tzp)
 #define __max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
-#if iimeta
+#if (iimeta)
 /* 内存统计 */
 volatile int64_t gcallocsize = 0;
 volatile int64_t gfreesize = 0;
 volatile int64_t gholdsize = 0;
 
-#if iithreadsafe
+#if (iithreadsafe)
 static imutex *_imeta_mutex() {
     static imutex realmutex;
     static imutex *mutex = NULL;
@@ -97,9 +97,9 @@ static imutex *_imeta_mutex() {
 #endif
 
 #undef __ideclaremeta
-#define __ideclaremeta(type, cap) {#type, {NULL, 0, cap}, sizeof(type), -1, 0, 0, NULL, NULL}
+#define __ideclaremeta(type, cap) {#type, {NULL, 0, cap}, sizeof(type), -1, 0, 0, NULL, NULL},
 /* 所有类型的元信息系统 */
-imeta gmetas[] = {__iallmeta,
+imeta gmetas[] = {__iallmeta(__ideclaremeta)
 	__ideclaremeta(imeta, 0)
 };
 
@@ -129,7 +129,7 @@ imeta *imetaget(int idx) {
         /*take current as the mark for first time*/
         if (meta->current == -1) {
             meta->current = 0;
-#if iithreadsafe
+#if (iithreadsafe)
             imutexinit(&meta->mutex);
 #endif
         }
@@ -149,7 +149,7 @@ int imetaregister(const char* name, int size, int capacity) {
 	gmetasuser[gmetacountuser].cache.capacity = capacity;
     gmetasuser[gmetacountuser].tracecalloc = NULL;
     gmetasuser[gmetacountuser].tracefree = NULL;
-#if iithreadsafe
+#if (iithreadsafe)
     imutexinit(&gmetasuser[gmetacountuser].mutex);
 #endif
 	return gmetacount + gmetacountuser++;
@@ -1282,7 +1282,7 @@ int icirclerelation(const icircle *con, const icircle *c) {
 
 /* 增加引用计数 */
 int irefretain(iref *ref) {
-#if iithreadsafe
+#if (iithreadsafe)
     return iatomicincrement(&ref->ref);
 #else
 	return ++ref->ref;
@@ -1293,7 +1293,7 @@ int irefretain(iref *ref) {
 void irefrelease(iref *ref) {
 	
 	/* 没有引用了，析构对象 */
-#if iithreadsafe
+#if (iithreadsafe)
     if (iatomicdecrement(&ref->ref) == 0) {
 #else
     if (--ref->ref == 0) {
@@ -2706,7 +2706,7 @@ void irangeitefree(irangeite *ite) {
 /*iiok: iino*/
 int irangenext(irangeite *ite) {
     icheckret(ite, iino);
-    icheckret(ite->__internal & EnumRangeIteState_Invalid, iino); // invalid ite
+    icheckret(ite->__internal & EnumRangeIteState_Invalid, iino); /* invalid ite */
     
     return ite->access->accessnext(ite);
 }
@@ -2714,7 +2714,7 @@ int irangenext(irangeite *ite) {
 /* returnt the value address */
 const void *irangevalue(irangeite *ite) {
     icheckret(ite, NULL);
-    icheckret(ite->__internal & EnumRangeIteState_Invalid, NULL); // invalid ite
+    icheckret(ite->__internal & EnumRangeIteState_Invalid, NULL); /* invalid ite */
     
     return ite->access->accessvalue(ite);
 }
@@ -6080,7 +6080,7 @@ void imaprefreshunit(imap *map, const iunit *unit) {
 	iunused(map);
 	iunused(unit);
 
-#if iiradius
+#if (iiradius)
 	if (map->maxradius < unit->radius) {
 		map->maxradius = unit->radius;
 	}
@@ -6298,7 +6298,7 @@ int _ientryfilter_circle(imap *map, const ifilter *filter, const iunit* unit) {
 	icheckret(unit, iino);
 	iunused(map);
 
-#if iiradius
+#if (iiradius)
 	ucircle.pos = unit->pos;
 	ucircle.radius = unit->radius;
 	/* 距离超出范围 */
@@ -6356,7 +6356,7 @@ static int _ientryfilter_rect(imap *map, const ifilter *filter, const iunit* uni
 	icheckret(unit, iino);
 	iunused(map);
 
-#if iiradius
+#if (iiradius)
 	/* 距离超出范围 */
 	c.pos = unit->pos;
 	c.radius = unit->radius;
@@ -6425,7 +6425,7 @@ static int _ientryfilter_line(imap *map,  const ifilter *filter, const iunit* un
     ipos closest = iline2dclosestpoint(line, center, epsilon);
     ireal distance;
     
-#if iiradius
+#if (iiradius)
     distanceradius += unit->radius * unit->radius;
 #endif
     distance = idistancepow2(center, &closest);
@@ -6776,7 +6776,7 @@ void imapsearchcollectline(imap *map, const iline2d *line, ireflist *collects) {
     int i;
     int level = map->divide;
     
-#if iiradius
+#if (iiradius)
     radius += map->maxradius;
     /* if the radius grater than zero,
      * we should move back the dir with radius*/
@@ -6804,7 +6804,7 @@ void imapsearchcollectline(imap *map, const iline2d *line, ireflist *collects) {
         r = _irect_make_from(&begin, &end);
         
         /*expand the rect with radius*/
-#if iiradius
+#if (iiradius)
         _irect_expand_radius(&r, map->maxradius);
 #endif
         

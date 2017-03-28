@@ -76,13 +76,19 @@ extern "C" {
 #endif
 
 /* 是否启动元信息： 记录类型对象的内存使用情况, 并加一层对象的内存缓冲区 */
-#define iimeta (1)
+#ifndef iimeta 
+# define iimeta 1
+#endif
 
 /* 是否启动单位半径支持 */
-#define iiradius (1)
+#ifndef iiradius
+# define iiradius 1
+#endif
     
 /* if we support thread safe in meta system and ref */
-#define iithreadsafe (1)
+#ifndef iithreadsafe
+# define iithreadsafe 1
+#endif
 
 /* 常用布尔宏 */
 #define iiyes 1
@@ -90,7 +96,7 @@ extern "C" {
 #define iino 0
 
 /* 条件检查，不带assert */
-#define icheck(con) do { if(!(con)) return ; } while(0)
+#define icheck(con) do { if(!(con)) return; } while(0)
 #define icheckret(con, ret) do { if(!(con)) return ret; } while(0)
 
 /* flat array count */
@@ -592,7 +598,7 @@ typedef struct iname {
 #define irealloc(ptr, size) realloc(ptr, size)
 #define ifree(p) free(p)
 
-#if iimeta  /* if iimeta */
+#if (iimeta)  /* if iimeta */
 
 /* 最多支持100个类型对象 */
 #define IMaxMetaCountForUser 100
@@ -645,7 +651,7 @@ typedef struct imeta {
     ientryobjcompare _compare;
     
 /* support thread safe for meta system */
-#if iithreadsafe
+#if (iithreadsafe)
     imutex mutex; /*will never release resouce until program ended */
 #endif
 }imeta;
@@ -677,33 +683,33 @@ int imetaregister(const char* name, int size, int capacity);
 
 
 /* 定义所有内部对象的meta索引 */
-#define __ideclaremeta(type, capacity) imetaindex(type)
+#define __ideclaremeta(type, capacity) imetaindex(type),
 
-#define __iallmeta                            \
-    __ideclaremeta(iobj, 0),                  \
-    __ideclaremeta(iref, 0),                  \
-    __ideclaremeta(iwref, 0),                 \
-    __ideclaremeta(irangeite, 0),             \
-    __ideclaremeta(ireflist, 1000),           \
-    __ideclaremeta(irefjoint, 200000),        \
-    __ideclaremeta(inode, 4000),              \
-    __ideclaremeta(iunit, 2000),              \
-    __ideclaremeta(imap, 0),                  \
-    __ideclaremeta(irefcache, 0),             \
-    __ideclaremeta(ifilter, 2000),            \
-    __ideclaremeta(isearchresult, 0),         \
-    __ideclaremeta(irefautoreleasepool, 0),   \
-    __ideclaremeta(iarray, 0),                \
-    __ideclaremeta(islice, 0),                \
-    __ideclaremeta(iringbuffer, 0),           \
-    __ideclaremeta(idict, 0),                 \
-    __ideclaremeta(ipolygon3d, 0),            \
-    __ideclaremeta(ipolygon2d, 0)
+#define __iallmeta(XX)           \
+    XX(iobj, 0)                  \
+    XX(iref, 0)                  \
+    XX(iwref, 0)                 \
+    XX(irangeite, 0)             \
+    XX(ireflist, 1000)           \
+    XX(irefjoint, 200000)        \
+    XX(inode, 4000)              \
+    XX(iunit, 2000)              \
+    XX(imap, 0)                  \
+    XX(irefcache, 0)             \
+    XX(ifilter, 2000)            \
+    XX(isearchresult, 0)         \
+    XX(irefautoreleasepool, 0)   \
+    XX(iarray, 0)                \
+    XX(islice, 0)                \
+    XX(iringbuffer, 0)           \
+    XX(idict, 0)                 \
+    XX(ipolygon3d, 0)            \
+    XX(ipolygon2d, 0)
     
 
 /* 定义所有元信息索引 */
 typedef enum EnumMetaTypeIndex {
-    __iallmeta,
+    __iallmeta(__ideclaremeta)
    EnumMetaTypeIndex_imax,
 }EnumMetaTypeIndex;
 
@@ -1930,7 +1936,7 @@ typedef struct iunit {
     ipos  pos;
     icode code;
 
-#if iiradius
+#if (iiradius)
     /* 半径 */
     ireal radius;
 #endif
@@ -2076,7 +2082,7 @@ typedef struct imap {
     ipos  pos;
     isize size;
 
-#if iiradius
+#if (iiradius)
     /* 单位的最大半径 */
     ireal maxradius;
 #endif
