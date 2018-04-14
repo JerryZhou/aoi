@@ -23,17 +23,29 @@
 #include "lauxlib.h"
 #include "aoi.h"
 
-/*
+
+ 
+/** 
  * #define ENABLE_LAOI_DEBUG
  */
+
+
 #ifdef ENABLE_LAOI_DEBUG
 # define DLOG(fmt, ...) fprintf(stderr, "<laoi>" fmt, ##__VA_ARGS__)
 #else
 # define DLOG(...)
 #endif
 
-#if (LUA_VERSION_NUM < 502 && !defined(luaL_newlib))
+#if (LUA_VERSION_NUM < 502)
+# ifndef luaL_newlib
 #  define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))
+# endif
+# ifndef lua_getuservalue
+#  define lua_getuservalue(L, n) lua_getfenv(L, n)
+# endif
+# ifndef lua_setuservalue
+#  define lua_setuservalue(L, n) lua_setfenv(L, n)
+# endif
 #endif
 
 #define AOI_MAP "cls{aoi_map}"
@@ -61,48 +73,8 @@
 	lua_setmetatable(L, -2);                                    \
 } while(0)
 
-#define META_MAP(XX)                 \
-	XX(iobj, 0)                  \
-	XX(iref, 0)                  \
-	XX(ireflist, 1000)           \
-	XX(irefjoint, 200000)        \
-	XX(inode, 4000)              \
-	XX(iunit, 2000)              \
-	XX(imap, 0)                  \
-	XX(irefcache, 0)             \
-	XX(ifilter, 2000)            \
-	XX(isearchresult, 0)         \
-	XX(irefautoreleasepool, 0)
-
-#if LUA_VERSION_NUM < 502
-static void luac__map_getfield(lua_State *L, int mapidx, const char * fieldname)
-{
-	lua_getfenv(L, mapidx);
-	lua_getfield(L, -1, fieldname);
-	lua_replace(L, -2);
-}
-
-static void luac__map_setfield(lua_State *L, int mapidx, const char* fieldname)
-{
-	/* bind a fenv table onto map, to save units */
-	lua_newtable(L);
-
-	lua_newtable(L);
-	lua_setfield(L, -2, AOI_UNITS_MAP_NAME);
-
-	lua_setfenv(L, -2);
-}
-#else
-static void luac__map_getfield(lua_State *L, int mapidx, const char * fieldname)
-{
-	lua_getuservalue(L, mapidx);
-}
-
-static void luac__map_setfield(lua_State *L, int mapidx, const char* fieldname)
-{
-	lua_newtable(L);
-	lua_setuservalue(L, -2);
-}
+#ifndef __iallmeta
+# define __iallmeta(XX)
 #endif
 
 
@@ -139,7 +111,8 @@ static int lua__map_new(lua_State *L)
 	LUA_BIND_META(L, imap, map, AOI_MAP);
 
 	/* bind a fenv table onto map, to save units */
-	luac__map_setfield(L, -1, AOI_UNITS_MAP_NAME);
+	lua_newtable(L);
+	lua_setuservalue(L, -2);
 
 	DLOG("new map,map=%p\n", map);
 	return 1;
@@ -206,7 +179,7 @@ static int lua__map_unit_add(lua_State *L)
 	imap * map = CHECK_AOI_MAP(L, 1);
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 	lua_pushinteger(L, (lua_Integer)unit->id);
 	lua_rawget(L, -2);
 
@@ -227,12 +200,13 @@ static int lua__map_unit_del_byid(lua_State *L)
 	iunit * unit = NULL;
 	imap * map = CHECK_AOI_MAP(L, 1);
 	iid id = (iid)luaL_checkinteger(L, 2);
+	lua_settop(L, 2);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 	lua_pushinteger(L, (lua_Integer)id);
 	lua_rawget(L, -2);
 	if (lua_isnoneornil(L, -1)) {
-		DLOG("%s,id=%lld not found\n", __FUNCTION__, id);
+		DLOG("%s,id=%" PRId64 " not found\n", __FUNCTION__, id);
 		return 0;
 	}
 
@@ -242,8 +216,8 @@ static int lua__map_unit_del_byid(lua_State *L)
 	lua_pushinteger(L, (lua_Integer)id);
 	lua_pushnil(L);
 	lua_rawset(L, 3);
-	DLOG("%s,id=%lld removed\n", __FUNCTION__, id);
-	/* fprintf(stderr, "%s,id=%lld removed\n", __FUNCTION__, id); */
+	DLOG("%s,id=%" PRId64 " removed\n", __FUNCTION__, id);
+	/* fprintf(stderr, "%s,id=%" PRId64 " removed\n", __FUNCTION__, id); */
 
 	return 0;
 }
@@ -255,7 +229,7 @@ static int lua__map_unit_del(lua_State *L)
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
 	imapremoveunit(map, unit);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 	lua_pushinteger(L, (lua_Integer)unit->id);
 	lua_pushnil(L);
 	lua_rawset(L, -3);
@@ -274,7 +248,7 @@ static int lua__map_unit_update(lua_State *L)
 		lua_rawgeti(L, 3, 2);
 		pos.y = luaL_checknumber(L, -1);
 
-                DLOG("unit move,id=%lld,from=(%.2f,%.2f),to=(%.2f,%.2f)\n",
+                DLOG("unit move,id=%" PRId64 ",from=(%.2f,%.2f),to=(%.2f,%.2f)\n",
 		     unit->id,
 		     unit->pos.x, unit->pos.y,
 		     pos.x, pos.y);
@@ -290,7 +264,7 @@ static int lua__map_get_units(lua_State *L)
 {
 	imap * map = CHECK_AOI_MAP(L, 1);
 	(void)map;
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 	return 1;
 }
 
@@ -305,7 +279,7 @@ static int lua__map_unit_search(lua_State *L)
 	iunit * unit = CHECK_AOI_UNIT(L, 2);
 	range = luaL_checknumber(L, 3);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 
 	/* to restore result */
 	lua_newtable(L);
@@ -350,7 +324,7 @@ static int lua__map_searchcircle(lua_State *L)
 	lua_rawgeti(L, 3, 2);
 	pos.y = luaL_checknumber(L, -1);
 
-	luac__map_getfield(L, 1, AOI_UNITS_MAP_NAME);
+	lua_getuservalue(L, 1);
 
 	lua_newtable(L);
 
@@ -399,7 +373,7 @@ static int lua__unit_new(lua_State *L)
 		return 0;
 	}
 	LUA_BIND_META(L, iunit, u, AOI_UNIT);
-	DLOG("new unit,id=%lld\n", id);
+	DLOG("new unit,id=%" PRId64 "\n", id);
 	return 1;
 }
 
@@ -424,7 +398,7 @@ static int lua__unit_new_with_radius(lua_State *L)
 		return 0;
 	}
 	LUA_BIND_META(L, iunit, u, AOI_UNIT);
-	DLOG("new unit,id=%lld\n", id);
+	DLOG("new unit,id=%" PRId64 "\n", id);
 	return 1;
 }
 
@@ -432,7 +406,7 @@ static int lua__unit_gc(lua_State *L)
 {
 	iunit * unit = CHECK_AOI_UNIT(L, 1);
 	if (unit != NULL) {
-		DLOG("unit gc,id=%lld\n", unit->id);
+		DLOG("unit gc,id=%" PRId64 "\n", unit->id);
 		ifreeunit(unit);
 	}
 	return 0;
@@ -471,22 +445,36 @@ static int lua__unit_get_tick(lua_State *L)
 
 /* }} iunit */
 
+static int luac__meta_cache_clear(const char *typename)
+{
+	if (strcmp(typename, "all") == 0) {
+#define CLEAR_IMETA_CACHE(imeta_type, imeta_cache_cap) imetacacheclear(imeta_type);
+		__iallmeta(CLEAR_IMETA_CACHE)
+#undef CLEAR_IMETA_CACHE
+		return 0;
+#define CLEAR_IMETA_CACHE_ELSEIF(imeta_type, imeta_cache_cap) \
+	} else if (strcmp(typename, #imeta_type) == 0) { \
+		imetacacheclear(imeta_type); return 0;
+		__iallmeta(CLEAR_IMETA_CACHE_ELSEIF)
+#undef CLEAR_IMETA_CACHE_ELSEIF
+	}
+	/* failed */
+	return -1;
+}
+
+static void luac__clear_all_meta_cache()
+{
+	luac__meta_cache_clear("all");
+}
+
 static int lua__meta_cache_clear(lua_State *L)
 {
+	int ret;
 	const char * typename = luaL_optstring(L, 1, "all");
-	if (strcmp(typename, "all") == 0) {
-#define XX(imeta_type, imeta_cache_cap) imetacacheclear(imeta_type);
-	META_MAP(XX)
-#undef XX
-
-#define XX(imeta_type, imeta_cache_cap) \
-	} else if (strcmp(typename, #imeta_type) == 0) { \
-		imetacacheclear(imeta_type);
-	META_MAP(XX)
-#undef XX
-	} else {
-		return luaL_error(L, "unkown imeta_type");
-	}
+	DLOG("meta_cache_clear %s\n", typename);
+	ret = luac__meta_cache_clear(typename);
+	if (ret != 0)
+		return luaL_error(L, "error type in meta_cache_clear");
 	return 0;
 }
 
@@ -566,11 +554,11 @@ int luac__new_node_enum(lua_State *L)
 int luac__new_imeta_map(lua_State *L)
 {
 	lua_newtable(L);
-#define XX(imeta_type, imeta_cache_cap) \
+#define NEW_META_CACHE_CAPMAP(imeta_type, imeta_cache_cap) \
 	LUA_SETMACRO(L, -1, #imeta_type, imeta_cache_cap);
 
-	META_MAP(XX);
-#undef XX
+	__iallmeta(NEW_META_CACHE_CAPMAP);
+#undef NEW_META_CACHE_CAPMAP
 	return 1;
 }
 
@@ -617,5 +605,6 @@ int luaopen_laoi(lua_State* L)
 	luac__new_imeta_map(L);
 	lua_setfield(L, -2, "IMetaCacheCap");
 
+	atexit(luac__clear_all_meta_cache);
 	return 1;
 }
