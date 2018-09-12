@@ -5023,9 +5023,8 @@ SP_CASE(navimesh, tiled) {
     
     iarray *arr = iarraymake(20, &_waytry_entry);
     
-    while (trytotal) {
-        
-    }
+    //while (trytotal) {
+    //}
     
     iarrayfree(arr);
 }
