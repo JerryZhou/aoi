@@ -1,7 +1,7 @@
 #include "aoi.h"
 #include "draw.h"
 
-#include "aoitest.h"
+// #include "aoitest.h"
 
 // Draw App Event Loop With Window
 void drawapp(int argc, char **argv) {
@@ -27,7 +27,7 @@ int main(int argc, char ** argv){
     
     irelease(node);
     
-    runAllTest();
+    // runAllTest();
     
     drawapp(argc, argv);
     
