@@ -35,7 +35,7 @@
     ```
     aoi-prof c [divide] [max-unit] [min-search-range] [max-rand-search-range] [benchtimes]
     ```
-![测试样例](http://dwgaga-image.qiniudn.com/more_img_1__Default__bash_.png)
+![测试样例](https://raw.githubusercontent.com/JerryZhou/aoi/master/media/aoi.prof-min.png)
 
 # 单元测试
     ```
@@ -95,10 +95,7 @@ build first and then:
 # wiki
 主要是维护实体区域，并维护对象的AOI列表
 
-![8个对象，1个视野对象维护AOI](http://dwgaga-image.qiniudn.com/App_0_8_23.png)
-
-
-![1.2M内存消耗，750 个对象同时移动，100个对象同时计算周围的AOI，总共消耗2毫秒的样子](http://dwgaga-image.qiniudn.com/Banners_and_Alerts_App_0_8_2.png)
+![1.2M内存消耗，7500 个对象同时移动，1000个对象同时计算周围的AOI，总共消耗2毫秒的样子](https://raw.githubusercontent.com/JerryZhou/aoi/master/media/aoi.test-min.png)
 
 
 # 增加了Navigation-Mesh 的方案
